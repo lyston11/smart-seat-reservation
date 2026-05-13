@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, DatePicker, Form, InputNumber, message, Space, Table, Tag } from 'antd';
+import { Button, DatePicker, Form, Input, InputNumber, message, Space, Table, Tag } from 'antd';
 import type { TableColumnsType } from 'antd';
 import dayjs from 'dayjs';
-import { createReservation, listSeatSlots, type SeatSlot } from '../api/seatSlots';
+import {
+  cancelReservation,
+  checkInReservation,
+  checkOutReservation,
+  createReservation,
+  listSeatSlots,
+  type ReservationResult,
+  type SeatSlot,
+} from '../api/seatSlots';
 
 const statusText: Record<SeatSlot['status'], string> = {
   AVAILABLE: '空闲',
   RESERVED: '已预约',
   USING: '使用中',
-  RELEASED: '已释放',
-  CANCELLED: '已取消',
-  EXPIRED: '已过期',
   ABNORMAL: '异常占用',
 };
 
@@ -18,9 +23,6 @@ const statusColor: Record<SeatSlot['status'], string> = {
   AVAILABLE: 'green',
   RESERVED: 'blue',
   USING: 'orange',
-  RELEASED: 'default',
-  CANCELLED: 'default',
-  EXPIRED: 'red',
   ABNORMAL: 'red',
 };
 
@@ -29,8 +31,11 @@ export default function SeatSlotsPage() {
   const [userId, setUserId] = useState(1);
   const [date, setDate] = useState(dayjs());
   const [slots, setSlots] = useState<SeatSlot[]>([]);
+  const [activeReservation, setActiveReservation] = useState<ReservationResult | null>(null);
+  const [checkinCode, setCheckinCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [reservingId, setReservingId] = useState<number | null>(null);
+  const [reservationAction, setReservationAction] = useState<string | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
 
   const dateText = useMemo(() => date.format('YYYY-MM-DD'), [date]);
@@ -49,13 +54,40 @@ export default function SeatSlotsPage() {
   async function reserve(slotId: number) {
     setReservingId(slotId);
     try {
-      await createReservation(slotId, userId);
+      const reservation = await createReservation(slotId, userId);
+      setActiveReservation(reservation);
+      setCheckinCode(reservation.checkinCode);
       messageApi.success('预约成功');
       await loadSlots();
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '预约失败');
     } finally {
       setReservingId(null);
+    }
+  }
+
+  async function runReservationAction(action: 'check-in' | 'check-out' | 'cancel') {
+    if (!activeReservation) {
+      messageApi.warning('请先完成预约');
+      return;
+    }
+
+    setReservationAction(action);
+    try {
+      const reservation =
+        action === 'check-in'
+          ? await checkInReservation(activeReservation.reservationId, { userId, checkinCode })
+          : action === 'check-out'
+            ? await checkOutReservation(activeReservation.reservationId, userId)
+            : await cancelReservation(activeReservation.reservationId, userId);
+
+      setActiveReservation(reservation);
+      messageApi.success('操作成功');
+      await loadSlots();
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '操作失败');
+    } finally {
+      setReservationAction(null);
     }
   }
 
@@ -119,6 +151,47 @@ export default function SeatSlotsPage() {
             </Button>
           </Form.Item>
         </Form>
+      </div>
+
+      <div className="reservation-panel">
+        <div className="reservation-fields">
+          <Input
+            className="reservation-input"
+            addonBefore="预约"
+            value={activeReservation?.reservationId ?? ''}
+            readOnly
+          />
+          <Input
+            className="reservation-code"
+            addonBefore="签到码"
+            value={checkinCode}
+            onChange={(event) => setCheckinCode(event.target.value)}
+          />
+        </div>
+        <Space>
+          <Button
+            disabled={!activeReservation}
+            loading={reservationAction === 'check-in'}
+            onClick={() => runReservationAction('check-in')}
+          >
+            签到
+          </Button>
+          <Button
+            disabled={!activeReservation}
+            loading={reservationAction === 'check-out'}
+            onClick={() => runReservationAction('check-out')}
+          >
+            签退
+          </Button>
+          <Button
+            danger
+            disabled={!activeReservation}
+            loading={reservationAction === 'cancel'}
+            onClick={() => runReservationAction('cancel')}
+          >
+            取消
+          </Button>
+        </Space>
       </div>
 
       <Table

@@ -34,25 +34,24 @@ config      配置类
 
 关键业务逻辑必须放在 service 层，controller 不写复杂业务判断。
 
-## 3. 预约状态流转
+## 3. 状态流转
 
 ```text
-AVAILABLE -> RESERVED -> USING -> RELEASED
-AVAILABLE -> RESERVED -> CANCELLED
-AVAILABLE -> RESERVED -> EXPIRED
-USING     -> ABNORMAL
-ABNORMAL  -> RELEASED
+seat_slots:
+AVAILABLE -> RESERVED -> USING -> AVAILABLE
+AVAILABLE -> RESERVED -> AVAILABLE
+
+reservations:
+RESERVED -> CHECKED_IN -> CHECKED_OUT
+RESERVED -> CANCELLED
+RESERVED -> EXPIRED
 ```
 
 说明：
 
-- AVAILABLE：可预约。
-- RESERVED：已预约，等待签到。
-- USING：已签到，正在使用。
-- RELEASED：正常释放。
-- CANCELLED：学生取消。
-- EXPIRED：超时未签到自动释放。
-- ABNORMAL：管理员标记异常占用。
+- `seat_slots` 表表示某个座位时段的当前库存状态，释放后应回到 `AVAILABLE`。
+- `reservations` 表保存预约历史，取消、过期、签退等终态记录在这里。
+- `checkin_records` 表保存签到、签退、取消、过期释放等动作审计。
 
 ## 4. 防超卖策略
 

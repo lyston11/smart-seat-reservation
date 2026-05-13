@@ -48,6 +48,7 @@ npm run dev
 - [项目开发大纲](./docs/PROJECT_OUTLINE.md)
 - [系统架构说明](./docs/architecture/ARCHITECTURE.md)
 - [本地开发与部署路线](./docs/deployment/LOCAL_DEVELOPMENT.md)
+- [API 手测示例](./docs/API_EXAMPLES.md)
 
 ## 协作开发
 

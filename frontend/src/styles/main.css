@@ -71,9 +71,49 @@ body {
   border-radius: 8px;
 }
 
+.reservation-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.reservation-fields {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.reservation-input {
+  width: 180px;
+}
+
+.reservation-code {
+  width: 420px;
+}
+
 .ant-table-wrapper {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   overflow: hidden;
+}
+
+@media (max-width: 860px) {
+  .reservation-panel,
+  .reservation-fields {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .reservation-input,
+  .reservation-code {
+    width: 100%;
+  }
 }

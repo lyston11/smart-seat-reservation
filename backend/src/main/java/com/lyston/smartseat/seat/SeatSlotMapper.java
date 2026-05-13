@@ -49,4 +49,59 @@ public interface SeatSlotMapper extends BaseMapper<SeatSlot> {
             @Param("userId") Long userId,
             @Param("now") LocalDateTime now
     );
+
+    @Update("""
+            UPDATE seat_slots
+            SET status = 'USING',
+                version = version + 1,
+                updated_at = #{now}
+            WHERE id = #{seatSlotId}
+              AND reservation_id = #{reservationId}
+              AND reserved_by = #{userId}
+              AND status = 'RESERVED'
+            """)
+    int markUsing(
+            @Param("seatSlotId") Long seatSlotId,
+            @Param("reservationId") Long reservationId,
+            @Param("userId") Long userId,
+            @Param("now") LocalDateTime now
+    );
+
+    @Update("""
+            UPDATE seat_slots
+            SET status = 'AVAILABLE',
+                reserved_by = NULL,
+                reservation_id = NULL,
+                version = version + 1,
+                updated_at = #{now}
+            WHERE id = #{seatSlotId}
+              AND reservation_id = #{reservationId}
+              AND reserved_by = #{userId}
+              AND status = 'USING'
+            """)
+    int releaseUsingSlot(
+            @Param("seatSlotId") Long seatSlotId,
+            @Param("reservationId") Long reservationId,
+            @Param("userId") Long userId,
+            @Param("now") LocalDateTime now
+    );
+
+    @Update("""
+            UPDATE seat_slots
+            SET status = 'AVAILABLE',
+                reserved_by = NULL,
+                reservation_id = NULL,
+                version = version + 1,
+                updated_at = #{now}
+            WHERE id = #{seatSlotId}
+              AND reservation_id = #{reservationId}
+              AND reserved_by = #{userId}
+              AND status = 'RESERVED'
+            """)
+    int releaseReservedSlot(
+            @Param("seatSlotId") Long seatSlotId,
+            @Param("reservationId") Long reservationId,
+            @Param("userId") Long userId,
+            @Param("now") LocalDateTime now
+    );
 }

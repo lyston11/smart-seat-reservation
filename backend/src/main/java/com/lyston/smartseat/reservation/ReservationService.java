@@ -1,9 +1,13 @@
 package com.lyston.smartseat.reservation;
 
+import com.lyston.smartseat.checkin.CheckinAction;
+import com.lyston.smartseat.checkin.CheckinRecord;
+import com.lyston.smartseat.checkin.CheckinRecordMapper;
 import com.lyston.smartseat.common.BusinessException;
 import com.lyston.smartseat.seat.SeatSlot;
 import com.lyston.smartseat.seat.SeatSlotMapper;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,10 +19,16 @@ public class ReservationService {
 
     private final SeatSlotMapper seatSlotMapper;
     private final ReservationMapper reservationMapper;
+    private final CheckinRecordMapper checkinRecordMapper;
 
-    public ReservationService(SeatSlotMapper seatSlotMapper, ReservationMapper reservationMapper) {
+    public ReservationService(
+            SeatSlotMapper seatSlotMapper,
+            ReservationMapper reservationMapper,
+            CheckinRecordMapper checkinRecordMapper
+    ) {
         this.seatSlotMapper = seatSlotMapper;
         this.reservationMapper = reservationMapper;
+        this.checkinRecordMapper = checkinRecordMapper;
     }
 
     @Transactional
@@ -60,7 +70,145 @@ public class ReservationService {
         );
     }
 
+    @Transactional
+    public ReservationResponse checkIn(Long reservationId, CheckinRequest request) {
+        LocalDateTime now = LocalDateTime.now();
+        Reservation reservation = requireReservation(reservationId);
+
+        int reservationRows = reservationMapper.markCheckedIn(
+                reservationId,
+                request.userId(),
+                request.checkinCode(),
+                now
+        );
+        if (reservationRows != 1) {
+            throw new BusinessException("RESERVATION_CHECKIN_FAILED", "Reservation cannot be checked in");
+        }
+
+        int slotRows = seatSlotMapper.markUsing(
+                reservation.getSeatSlotId(),
+                reservation.getId(),
+                request.userId(),
+                now
+        );
+        if (slotRows != 1) {
+            throw new BusinessException("SEAT_SLOT_CHECKIN_FAILED", "Seat slot cannot be checked in");
+        }
+
+        recordAction(reservation.getId(), request.userId(), CheckinAction.CHECK_IN, now);
+        Reservation updated = requireReservation(reservationId);
+        return toResponse(updated);
+    }
+
+    @Transactional
+    public ReservationResponse checkOut(Long reservationId, ReservationActionRequest request) {
+        LocalDateTime now = LocalDateTime.now();
+        Reservation reservation = requireReservation(reservationId);
+
+        int reservationRows = reservationMapper.markCheckedOut(reservationId, request.userId(), now);
+        if (reservationRows != 1) {
+            throw new BusinessException("RESERVATION_CHECKOUT_FAILED", "Reservation cannot be checked out");
+        }
+
+        int slotRows = seatSlotMapper.releaseUsingSlot(
+                reservation.getSeatSlotId(),
+                reservation.getId(),
+                request.userId(),
+                now
+        );
+        if (slotRows != 1) {
+            throw new BusinessException("SEAT_SLOT_CHECKOUT_FAILED", "Seat slot cannot be released");
+        }
+
+        recordAction(reservation.getId(), request.userId(), CheckinAction.CHECK_OUT, now);
+        Reservation updated = requireReservation(reservationId);
+        return toResponse(updated);
+    }
+
+    @Transactional
+    public ReservationResponse cancel(Long reservationId, ReservationActionRequest request) {
+        LocalDateTime now = LocalDateTime.now();
+        Reservation reservation = requireReservation(reservationId);
+
+        int reservationRows = reservationMapper.markCancelled(reservationId, request.userId(), now);
+        if (reservationRows != 1) {
+            throw new BusinessException("RESERVATION_CANCEL_FAILED", "Reservation cannot be cancelled");
+        }
+
+        int slotRows = seatSlotMapper.releaseReservedSlot(
+                reservation.getSeatSlotId(),
+                reservation.getId(),
+                request.userId(),
+                now
+        );
+        if (slotRows != 1) {
+            throw new BusinessException("SEAT_SLOT_CANCEL_FAILED", "Seat slot cannot be cancelled");
+        }
+
+        recordAction(reservation.getId(), request.userId(), CheckinAction.CANCEL, now);
+        Reservation updated = requireReservation(reservationId);
+        return toResponse(updated);
+    }
+
+    @Transactional
+    public int expireOverdueReservations(int limit) {
+        LocalDateTime now = LocalDateTime.now();
+        List<Reservation> expiredReservations = reservationMapper.findExpiredReservations(now, limit);
+        int expiredCount = 0;
+
+        for (Reservation reservation : expiredReservations) {
+            int reservationRows = reservationMapper.markExpired(reservation.getId(), reservation.getUserId(), now);
+            if (reservationRows != 1) {
+                continue;
+            }
+
+            int slotRows = seatSlotMapper.releaseReservedSlot(
+                    reservation.getSeatSlotId(),
+                    reservation.getId(),
+                    reservation.getUserId(),
+                    now
+            );
+            if (slotRows == 1) {
+                recordAction(reservation.getId(), reservation.getUserId(), CheckinAction.EXPIRE, now);
+                expiredCount++;
+            } else {
+                throw new BusinessException("SEAT_SLOT_EXPIRE_FAILED", "Expired seat slot cannot be released");
+            }
+        }
+
+        return expiredCount;
+    }
+
     private String generateCheckinCode() {
         return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private Reservation requireReservation(Long reservationId) {
+        Reservation reservation = reservationMapper.selectById(reservationId);
+        if (reservation == null) {
+            throw new BusinessException("RESERVATION_NOT_FOUND", "Reservation not found");
+        }
+        return reservation;
+    }
+
+    private void recordAction(Long reservationId, Long userId, String action, LocalDateTime now) {
+        CheckinRecord record = new CheckinRecord();
+        record.setReservationId(reservationId);
+        record.setUserId(userId);
+        record.setAction(action);
+        record.setOccurredAt(now);
+        checkinRecordMapper.insert(record);
+    }
+
+    private ReservationResponse toResponse(Reservation reservation) {
+        return new ReservationResponse(
+                reservation.getId(),
+                reservation.getSeatSlotId(),
+                reservation.getSeatId(),
+                reservation.getUserId(),
+                reservation.getStatus(),
+                reservation.getCheckinCode(),
+                reservation.getExpiresAt()
+        );
     }
 }

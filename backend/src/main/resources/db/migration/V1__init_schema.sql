@@ -65,7 +65,7 @@ CREATE TABLE reservations (
     expires_at DATETIME NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_reservations_seat_slot_id (seat_slot_id),
+    KEY idx_reservations_seat_slot_id (seat_slot_id),
     UNIQUE KEY uk_reservations_checkin_code (checkin_code),
     KEY idx_reservations_user_status (user_id, status),
     CONSTRAINT fk_reservations_user_id FOREIGN KEY (user_id) REFERENCES users (id),
