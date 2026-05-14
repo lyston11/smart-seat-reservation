@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { getStoredUser } from './api/http';
 import AppLayout from './layout/AppLayout';
+import RoleRoute from './router/RoleRoute';
 
 const AdminAreasPage = lazy(() => import('./pages/AdminAreasPage'));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
@@ -30,10 +31,12 @@ export default function App() {
             <Route index element={<Navigate to="/student/seats" replace />} />
             <Route path="/student/seats" element={<SeatSlotsPage />} />
             <Route path="/student/reservations" element={<MyReservationsPage />} />
-            <Route path="/admin/areas" element={<AdminAreasPage />} />
-            <Route path="/admin/seats" element={<AdminSeatsPage />} />
-            <Route path="/admin/seat-slots" element={<AdminSeatSlotsPage />} />
-            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+            <Route element={<RoleRoute allowedRoles={['ADMIN']} />}>
+              <Route path="/admin/areas" element={<AdminAreasPage />} />
+              <Route path="/admin/seats" element={<AdminSeatsPage />} />
+              <Route path="/admin/seat-slots" element={<AdminSeatSlotsPage />} />
+              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+            </Route>
           </Route>
           <Route path="*" element={<Navigate to="/student/seats" replace />} />
         </Routes>

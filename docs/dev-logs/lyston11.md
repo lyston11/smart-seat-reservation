@@ -519,3 +519,45 @@
 - 后续新增座位状态流转时，应继续通过 `SeatSlotMapper` 条件更新保证并发安全。
 - 管理员状态变更必须保留原因字段并写审计，避免比赛答辩时无法解释操作来源。
 - 前端新增页面建议继续走懒加载，保持页面级拆包。
+
+## 2026-05-14
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-merged-development
+- 目标: 继续优化前端体验，把学生选座、管理员操作和前端权限做得更像完整系统。
+
+### 本次改动
+- 学生选座页区域筛选从手填区域 ID 改为区域下拉，只展示启用区域。
+- 学生座位展示从表格改为按时间段分组的座位地图，座位卡片直接展示状态并支持点击预约。
+- 新增 `SeatMap` 组件，封装座位地图布局、空状态、加载态和状态标签。
+- 新增 `AdminSeatSlotActions` 组件，抽出开放时段表格里的撤销、释放、标异常、恢复按钮逻辑。
+- 新增 `RoleRoute` 路由守卫，管理员页面在前端路由层要求 `ADMIN` 角色。
+- 新增 `seatSlotStatus` 常量文件，统一座位时段状态文案和颜色。
+- 优化移动端布局，侧边栏在窄屏下转为顶部区域，工具栏、选择框、按钮和座位地图自适应宽度。
+
+### 涉及文件
+- frontend/src/App.tsx
+- frontend/src/router/RoleRoute.tsx
+- frontend/src/components/SeatMap.tsx
+- frontend/src/components/AdminSeatSlotActions.tsx
+- frontend/src/constants/seatSlotStatus.ts
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/pages/AdminSeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端测试通过。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 座位地图目前基于 `seatId` 展示，后续后端可把 `seatNo` 一并返回，前端显示真实座位编号。
+- 座位地图目前按时间段分组，后续如果有真实平面图坐标，可升级为区域平面图布局。
+- 前端已有路由守卫，最终权限仍以后端 `@RequireRole` 为准。
+
+### 对其他成员的影响
+- 新增学生端选座展示建议继续复用 `SeatMap`，避免回到页面内堆表格逻辑。
+- 新增管理员时段操作按钮时优先扩展 `AdminSeatSlotActions`。
+- 管理员新页面路由应挂在 `RoleRoute allowedRoles={['ADMIN']}` 下。

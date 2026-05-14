@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, DatePicker, Form, Input, InputNumber, message, Space, Table, Tag } from 'antd';
-import type { TableColumnsType } from 'antd';
+import { Button, DatePicker, Form, Input, message, Select, Space } from 'antd';
 import dayjs from 'dayjs';
+import { listAreas } from '../api/areas';
 import {
   cancelReservation,
   checkInReservation,
@@ -9,24 +9,12 @@ import {
   createReservation,
   listSeatSlots,
 } from '../api/seatSlots';
+import SeatMap from '../components/SeatMap';
 import type { ReservationResult } from '../types/reservation';
-import type { SeatSlot, SeatSlotStatus } from '../types/seat';
-
-const statusText: Record<SeatSlotStatus, string> = {
-  AVAILABLE: '空闲',
-  RESERVED: '已预约',
-  USING: '使用中',
-  ABNORMAL: '异常占用',
-};
-
-const statusColor: Record<SeatSlotStatus, string> = {
-  AVAILABLE: 'green',
-  RESERVED: 'blue',
-  USING: 'orange',
-  ABNORMAL: 'red',
-};
+import type { Area, SeatSlot } from '../types/seat';
 
 export default function SeatSlotsPage() {
+  const [areas, setAreas] = useState<Area[]>([]);
   const [areaId, setAreaId] = useState(1);
   const [date, setDate] = useState(dayjs());
   const [slots, setSlots] = useState<SeatSlot[]>([]);
@@ -38,6 +26,20 @@ export default function SeatSlotsPage() {
   const [messageApi, contextHolder] = message.useMessage();
 
   const dateText = useMemo(() => date.format('YYYY-MM-DD'), [date]);
+  const activeAreas = useMemo(() => areas.filter((area) => area.status === 'ACTIVE'), [areas]);
+
+  const loadAreas = useCallback(async () => {
+    try {
+      const nextAreas = await listAreas();
+      setAreas(nextAreas);
+      const nextActiveAreas = nextAreas.filter((area) => area.status === 'ACTIVE');
+      if (nextActiveAreas.length > 0 && !nextActiveAreas.some((area) => area.id === areaId)) {
+        setAreaId(nextActiveAreas[0].id);
+      }
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '加载区域失败');
+    }
+  }, [areaId, messageApi]);
 
   const loadSlots = useCallback(async () => {
     setLoading(true);
@@ -92,46 +94,11 @@ export default function SeatSlotsPage() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
+      void loadAreas();
       void loadSlots();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadSlots]);
-
-  const columns: TableColumnsType<SeatSlot> = [
-    { title: '座位', dataIndex: 'seatId', width: 120 },
-    { title: '日期', dataIndex: 'slotDate', width: 140 },
-    {
-      title: '时间段',
-      width: 180,
-      render: (_, record) => `${record.startTime.slice(0, 5)}-${record.endTime.slice(0, 5)}`,
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      width: 140,
-      render: (status: SeatSlotStatus) => (
-        <Tag color={statusColor[status]}>{statusText[status]}</Tag>
-      ),
-    },
-    { title: '预约人', dataIndex: 'reservedBy', width: 120, render: (value) => value ?? '-' },
-    {
-      title: '操作',
-      width: 160,
-      render: (_, record) => (
-        <Space>
-          <Button
-            size="small"
-            type="primary"
-            disabled={record.status !== 'AVAILABLE'}
-            loading={reservingId === record.id}
-            onClick={() => reserve(record.id)}
-          >
-            预约
-          </Button>
-        </Space>
-      ),
-    },
-  ];
+  }, [loadAreas, loadSlots]);
 
   return (
     <div className="page">
@@ -139,7 +106,15 @@ export default function SeatSlotsPage() {
       <div className="toolbar">
         <Form layout="inline">
           <Form.Item label="区域">
-            <InputNumber min={1} value={areaId} onChange={(value) => setAreaId(value ?? 1)} />
+            <Select
+              className="area-select"
+              value={areaId}
+              options={activeAreas.map((area) => ({
+                label: `${area.name}${area.floor ? ` · ${area.floor}` : ''}`,
+                value: area.id,
+              }))}
+              onChange={setAreaId}
+            />
           </Form.Item>
           <Form.Item label="日期">
             <DatePicker value={date} onChange={(value) => setDate(value ?? dayjs())} />
@@ -193,13 +168,7 @@ export default function SeatSlotsPage() {
         </Space>
       </div>
 
-      <Table
-        rowKey="id"
-        loading={loading}
-        dataSource={slots}
-        pagination={false}
-        columns={columns}
-      />
+      <SeatMap slots={slots} loading={loading} loadingSlotId={reservingId} onReserve={reserve} />
     </div>
   );
 }

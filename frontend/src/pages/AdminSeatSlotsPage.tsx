@@ -5,7 +5,6 @@ import {
   Form,
   Input,
   Modal,
-  Popconfirm,
   Select,
   Space,
   TimePicker,
@@ -25,6 +24,8 @@ import {
   publishSeatSlots,
 } from '../api/seatSlots';
 import { listSeats } from '../api/seats';
+import AdminSeatSlotActions from '../components/AdminSeatSlotActions';
+import type { AdminSeatSlotActionType } from '../components/AdminSeatSlotActions';
 import type { Area, Seat, SeatSlot, SeatSlotStatus } from '../types/seat';
 
 type PublishFormValues = {
@@ -61,7 +62,7 @@ export default function AdminSeatSlotsPage() {
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
   const [reason, setReason] = useState('');
   const [reasonAction, setReasonAction] = useState<{
-    type: 'release' | 'mark-abnormal' | 'restore';
+    type: AdminSeatSlotActionType;
     slotId: number;
   } | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
@@ -169,7 +170,7 @@ export default function AdminSeatSlotsPage() {
     }
   }
 
-  function openReasonAction(type: 'release' | 'mark-abnormal' | 'restore', slotId: number) {
+  function openReasonAction(type: AdminSeatSlotActionType, slotId: number) {
     setReasonAction({ type, slotId });
     setReason('');
   }
@@ -213,62 +214,15 @@ export default function AdminSeatSlotsPage() {
     {
       title: '操作',
       width: 180,
-      render: (_, record) => {
-        const canCancel = record.status === 'AVAILABLE';
-        const canMarkAbnormal = record.status === 'AVAILABLE' && !record.reservedBy && !record.reservationId;
-        const canRestore = record.status === 'ABNORMAL' && !record.reservedBy && !record.reservationId;
-        const canRelease =
-          record.status === 'RESERVED'
-          || record.status === 'USING'
-          || (record.status === 'ABNORMAL' && Boolean(record.reservationId));
-
-        return (
-          <Space>
-            {canMarkAbnormal ? (
-              <Button
-                size="small"
-                loading={actionLoadingId === record.id}
-                onClick={() => openReasonAction('mark-abnormal', record.id)}
-              >
-                标异常
-              </Button>
-            ) : null}
-            {canCancel ? (
-              <Popconfirm
-                title="撤销开放时段"
-                description="只能撤销尚未被预约的空闲时段。"
-                okText="撤销"
-                cancelText="取消"
-                onConfirm={() => cancelSlot(record.id)}
-              >
-                <Button size="small" danger loading={cancellingId === record.id}>
-                  撤销
-                </Button>
-              </Popconfirm>
-            ) : null}
-            {canRelease ? (
-              <Button
-                size="small"
-                danger
-                loading={actionLoadingId === record.id}
-                onClick={() => openReasonAction('release', record.id)}
-              >
-                释放
-              </Button>
-            ) : null}
-            {canRestore ? (
-              <Button
-                size="small"
-                type="primary"
-                loading={actionLoadingId === record.id}
-                onClick={() => openReasonAction('restore', record.id)}
-              >
-                恢复
-              </Button>
-            ) : null}
-          </Space>
-        );
-      },
+      render: (_, record) => (
+        <AdminSeatSlotActions
+          slot={record}
+          cancelling={cancellingId === record.id}
+          actionLoading={actionLoadingId === record.id}
+          onCancel={cancelSlot}
+          onReasonAction={openReasonAction}
+        />
+      ),
     },
   ];
 
