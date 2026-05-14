@@ -1,0 +1,308 @@
+:root {
+  color: #111827;
+  background: #f5f5f4;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-sider {
+  border-right: 1px solid #e5e7eb;
+}
+
+.brand {
+  height: 72px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.brand-title {
+  color: #111827;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.brand-subtitle {
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.app-header {
+  height: 72px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.page-title {
+  margin: 0 !important;
+}
+
+.app-content {
+  padding: 24px;
+  background: #f5f5f4;
+}
+
+.route-loading {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  color: #4b5563;
+  background: #f5f5f4;
+}
+
+.page {
+  max-width: 1180px;
+}
+
+.empty-panel {
+  padding: 48px 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.toolbar {
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.toolbar .ant-form-inline {
+  row-gap: 12px;
+}
+
+.area-select {
+  width: 260px;
+}
+
+.seat-select {
+  min-width: 280px;
+}
+
+.seat-form {
+  padding-top: 8px;
+}
+
+.reservation-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.reservation-fields {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.reservation-input {
+  width: 180px;
+}
+
+.reservation-code {
+  width: 420px;
+}
+
+.seat-map {
+  display: grid;
+  gap: 16px;
+}
+
+.seat-map-section {
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.seat-map-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.seat-map-section-header strong {
+  color: #111827;
+  font-size: 15px;
+}
+
+.seat-map-section-header span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.seat-map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 10px;
+}
+
+.seat-map-cell.ant-btn {
+  height: 76px;
+  padding: 10px;
+  display: grid;
+  justify-items: start;
+  align-content: space-between;
+  border-color: #d1d5db;
+  text-align: left;
+}
+
+.seat-map-cell span {
+  overflow: hidden;
+  max-width: 100%;
+  color: #111827;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seat-map-cell .ant-tag {
+  margin: 0;
+}
+
+.seat-map-cell-available.ant-btn {
+  background: #f0fdf4;
+  border-color: #86efac;
+}
+
+.seat-map-cell-reserved.ant-btn,
+.seat-map-cell-using.ant-btn,
+.seat-map-cell-abnormal.ant-btn {
+  background: #f9fafb;
+}
+
+.ant-table-wrapper {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.usage-row {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+}
+
+.usage-row span {
+  display: block;
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+@media (max-width: 860px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .app-sider {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    flex: none !important;
+    border-right: 0;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .brand {
+    height: auto;
+    padding: 12px 16px;
+  }
+
+  .app-header {
+    height: auto;
+    padding: 14px 16px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .app-content {
+    padding: 16px;
+  }
+
+  .page {
+    max-width: none;
+  }
+
+  .toolbar .ant-form,
+  .toolbar .ant-space {
+    width: 100%;
+  }
+
+  .toolbar .ant-form-item,
+  .toolbar .ant-picker,
+  .toolbar .ant-btn,
+  .area-select,
+  .seat-select {
+    width: 100%;
+  }
+
+  .reservation-panel,
+  .reservation-fields {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .reservation-input,
+  .reservation-code {
+    width: 100%;
+  }
+
+  .stats-grid,
+  .usage-row {
+    grid-template-columns: 1fr;
+  }
+
+  .seat-map-section-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .seat-map-grid {
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  }
+
+  .seat-map-cell.ant-btn {
+    height: 72px;
+  }
+}

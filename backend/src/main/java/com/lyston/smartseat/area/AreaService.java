@@ -1,0 +1,134 @@
+package com.lyston.smartseat.area;
+
+import com.lyston.smartseat.audit.AuditAction;
+import com.lyston.smartseat.audit.AuditService;
+import com.lyston.smartseat.common.BusinessException;
+import com.lyston.smartseat.seat.SeatMapper;
+import com.lyston.smartseat.seat.SeatSlotMapper;
+import java.time.LocalDateTime;
+import java.util.List;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class AreaService {
+
+    private final AreaMapper areaMapper;
+    private final SeatMapper seatMapper;
+    private final SeatSlotMapper seatSlotMapper;
+    private final AuditService auditService;
+
+    public AreaService(
+            AreaMapper areaMapper,
+            SeatMapper seatMapper,
+            SeatSlotMapper seatSlotMapper,
+            AuditService auditService
+    ) {
+        this.areaMapper = areaMapper;
+        this.seatMapper = seatMapper;
+        this.seatSlotMapper = seatSlotMapper;
+        this.auditService = auditService;
+    }
+
+    public List<AreaResponse> listAreas() {
+        return areaMapper.findAllOrderById()
+                .stream()
+                .map(AreaResponse::from)
+                .toList();
+    }
+
+    @Transactional
+    public AreaResponse createArea(CreateAreaRequest request, Long actorUserId) {
+        String name = normalizeName(request.name());
+        ensureAreaNameAvailable(name, null);
+
+        LocalDateTime now = LocalDateTime.now();
+        Area area = new Area();
+        area.setName(name);
+        area.setFloor(normalizeNullable(request.floor()));
+        area.setDescription(normalizeNullable(request.description()));
+        area.setStatus(AreaStatus.ACTIVE);
+        area.setCreatedAt(now);
+        area.setUpdatedAt(now);
+        areaMapper.insert(area);
+        auditService.record(actorUserId, AuditAction.AREA_CREATE, "AREA", area.getId(), "create area");
+        return AreaResponse.from(area);
+    }
+
+    @Transactional
+    public AreaResponse updateArea(Long areaId, UpdateAreaRequest request, Long actorUserId) {
+        Area area = requireArea(areaId);
+        String name = normalizeName(request.name());
+        String status = normalizeStatus(request.status());
+
+        ensureAreaNameAvailable(name, areaId);
+        ensureAreaCanUseStatus(area, status);
+
+        area.setName(name);
+        area.setFloor(normalizeNullable(request.floor()));
+        area.setDescription(normalizeNullable(request.description()));
+        area.setStatus(status);
+        area.setUpdatedAt(LocalDateTime.now());
+        areaMapper.updateById(area);
+        auditService.record(actorUserId, AuditAction.AREA_UPDATE, "AREA", area.getId(), "update area");
+        return AreaResponse.from(requireArea(areaId));
+    }
+
+    @Transactional
+    public AreaResponse updateAreaStatus(Long areaId, UpdateAreaStatusRequest request, Long actorUserId) {
+        Area area = requireArea(areaId);
+        String status = normalizeStatus(request.status());
+        ensureAreaCanUseStatus(area, status);
+
+        area.setStatus(status);
+        area.setUpdatedAt(LocalDateTime.now());
+        areaMapper.updateById(area);
+        auditService.record(actorUserId, AuditAction.AREA_STATUS_UPDATE, "AREA", area.getId(), "update area status");
+        return AreaResponse.from(requireArea(areaId));
+    }
+
+    private String normalizeName(String name) {
+        return name.trim();
+    }
+
+    private String normalizeNullable(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private String normalizeStatus(String status) {
+        String normalizedStatus = status.trim().toUpperCase();
+        if (!AreaStatus.isAllowed(normalizedStatus)) {
+            throw new BusinessException("INVALID_AREA_STATUS", "Area status is invalid");
+        }
+        return normalizedStatus;
+    }
+
+    private Area requireArea(Long areaId) {
+        Area area = areaMapper.selectById(areaId);
+        if (area == null) {
+            throw new BusinessException("AREA_NOT_FOUND", "Area not found");
+        }
+        return area;
+    }
+
+    private void ensureAreaNameAvailable(String name, Long excludedAreaId) {
+        if (areaMapper.countDuplicateName(name, excludedAreaId) > 0) {
+            throw new BusinessException("AREA_NAME_ALREADY_EXISTS", "Area name already exists");
+        }
+    }
+
+    private void ensureAreaCanUseStatus(Area area, String status) {
+        if (AreaStatus.ACTIVE.equals(status)) {
+            return;
+        }
+        if (seatSlotMapper.countBusySlotsByAreaId(area.getId()) > 0) {
+            throw new BusinessException("AREA_HAS_ACTIVE_RESERVATION", "Area has active reservations");
+        }
+        if (seatMapper.countByAreaId(area.getId()) == 0) {
+            return;
+        }
+    }
+}

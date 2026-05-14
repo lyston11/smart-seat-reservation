@@ -51,7 +51,37 @@ docs/update-development      文档分支
 - 要求至少 1 个 Review 通过。
 - 合并方式优先使用 Squash and merge，让提交历史更清晰。
 
-## 4. 日常开发流程
+## 4. 技术栈与开发路线
+
+本项目面向全校高峰期预约场景，后端采用 Java 技术栈，数据库作为最终一致性来源，Redis 只作为缓存和限流辅助。
+
+```text
+前端：React + TypeScript + Vite + Ant Design
+后端：Java 21 + Spring Boot 4 + MyBatis-Plus
+数据库：MySQL 8.4
+缓存：Redis 7
+数据库迁移：Flyway
+接口文档：springdoc-openapi
+本地依赖：Docker Compose
+```
+
+开发路线：
+
+```text
+先搭单体项目骨架
+再完成座位资源管理
+再完成预约、签到、签退主流程
+再补缓存、限流、超时释放和压测
+最后补充完整部署配置和验收文档
+```
+
+详细说明见：
+
+- [项目开发大纲](./docs/PROJECT_OUTLINE.md)
+- [系统架构说明](./docs/architecture/ARCHITECTURE.md)
+- [本地开发与部署路线](./docs/deployment/LOCAL_DEVELOPMENT.md)
+
+## 5. 日常开发流程
 
 第一次拉取项目：
 
@@ -116,7 +146,7 @@ git pull origin main
 
 合并或结束当天开发后，更新自己的开发日志，记录本次分支、Issue、改动内容、验证方式和遗留问题。
 
-## 5. Issue 使用规范
+## 6. Issue 使用规范
 
 所有想法、任务、问题都优先写成 Issue。Issue 用来记录「要做什么」，Pull Request 用来记录「做了什么」。
 
@@ -158,7 +188,7 @@ Issue 内容建议包含：
 说明正确行为应该是什么。
 ```
 
-## 6. 个人开发日志规范
+## 7. 个人开发日志规范
 
 每位成员都需要在 `docs/dev-logs/` 下维护自己的开发日志。日志文件名建议使用成员姓名或 GitHub 用户名：
 
@@ -210,7 +240,7 @@ docs/dev-logs/wangwu.md
 
 如果当天只是调研或设计，也要记录结论，方便其他成员和 AI 后续接上。
 
-## 7. Pull Request 规范
+## 8. Pull Request 规范
 
 PR 标题建议使用清晰的动词开头：
 
@@ -247,7 +277,7 @@ Closes #1
 - 数据库字段、接口路径、页面路由命名清晰。
 - 影响其他成员工作的改动已在 PR 中说明。
 
-## 8. 分支命名规范
+## 9. 分支命名规范
 
 分支名称使用小写英文和连字符。
 
@@ -272,7 +302,7 @@ fix/reservation-time-conflict
 docs/update-api-guide
 ```
 
-## 9. 提交信息规范
+## 10. 提交信息规范
 
 提交信息使用以下格式：
 
@@ -300,7 +330,7 @@ fix: prevent booking occupied seat
 docs: add collaboration workflow
 ```
 
-## 10. AI 辅助开发约定
+## 11. AI 辅助开发约定
 
 本项目可以大量使用 AI 辅助开发，但要遵守以下约定：
 
@@ -330,7 +360,7 @@ docs: add collaboration workflow
 5. 完成后更新我的开发日志
 ```
 
-## 11. 任务拆分建议
+## 12. 任务拆分建议
 
 本项目可以先拆分为以下 Issue：
 
@@ -349,7 +379,7 @@ docs: add collaboration workflow
 - 实现管理员查看实时座位占用情况。
 - 实现管理员手动释放异常占用座位。
 
-## 12. 冲突处理
+## 13. 冲突处理
 
 如果自己的分支落后于 `main`，先同步：
 
@@ -370,7 +400,7 @@ git merge main
 
 不要为了快速解决冲突而删除其他成员的代码。如果不确定，应在群里说明冲突文件和冲突原因。
 
-## 13. 沟通规则
+## 14. 沟通规则
 
 - 开始做某个任务前，先在 Issue 下留言或把自己 Assign 上。
 - 开发前先阅读所有成员开发日志，确认没有重复工作。
@@ -380,7 +410,7 @@ git merge main
 - 发现更好的功能想法，先建 Issue，不要直接混进当前 PR。
 - 每个人都可以提出产品想法，但进入开发前要拆成具体任务。
 
-## 14. 推荐开发节奏
+## 15. 推荐开发节奏
 
 每次开发尽量保持小步提交：
 
