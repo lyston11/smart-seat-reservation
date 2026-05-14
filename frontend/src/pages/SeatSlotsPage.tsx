@@ -8,18 +8,18 @@ import {
   checkOutReservation,
   createReservation,
   listSeatSlots,
-  type ReservationResult,
-  type SeatSlot,
 } from '../api/seatSlots';
+import type { ReservationResult } from '../types/reservation';
+import type { SeatSlot, SeatSlotStatus } from '../types/seat';
 
-const statusText: Record<SeatSlot['status'], string> = {
+const statusText: Record<SeatSlotStatus, string> = {
   AVAILABLE: '空闲',
   RESERVED: '已预约',
   USING: '使用中',
   ABNORMAL: '异常占用',
 };
 
-const statusColor: Record<SeatSlot['status'], string> = {
+const statusColor: Record<SeatSlotStatus, string> = {
   AVAILABLE: 'green',
   RESERVED: 'blue',
   USING: 'orange',
@@ -107,7 +107,7 @@ export default function SeatSlotsPage() {
       title: '状态',
       dataIndex: 'status',
       width: 140,
-      render: (status: SeatSlot['status']) => (
+      render: (status: SeatSlotStatus) => (
         <Tag color={statusColor[status]}>{statusText[status]}</Tag>
       ),
     },

@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
@@ -16,7 +17,11 @@ describe('App', () => {
       }),
     );
 
-    render(<App />);
+    render(
+      <MemoryRouter initialEntries={['/student/seats']}>
+        <App />
+      </MemoryRouter>,
+    );
     expect(screen.getByText('学生选座')).toBeTruthy();
   });
 });

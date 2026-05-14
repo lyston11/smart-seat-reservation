@@ -34,3 +34,7 @@ management:
     web:
       exposure:
         include: health,info
+
+smart-seat:
+  reservation-expiration:
+    fixed-delay-ms: ${RESERVATION_EXPIRATION_DELAY_MS:60000}

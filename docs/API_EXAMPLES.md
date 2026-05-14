@@ -22,7 +22,23 @@ curl "http://localhost:8080/api/seat-slots?areaId=1&date=2026-05-13"
 
 返回中的 `id` 是后续预约使用的 `seatSlotId`。
 
-## 3. 创建预约
+## 3. 查询区域和座位资源
+
+查询所有区域：
+
+```bash
+curl http://localhost:8080/api/areas
+```
+
+查询区域 `1` 下的座位资源：
+
+```bash
+curl "http://localhost:8080/api/seats?areaId=1"
+```
+
+这些接口用于管理员座位资源页和学生端区域选择。后续新增区域/座位维护能力时，应继续放在对应资源模块下。
+
+## 4. 创建预约
 
 ```bash
 curl -X POST http://localhost:8080/api/reservations \
@@ -55,7 +71,7 @@ SET status = 'RESERVED'
 WHERE id = ? AND status = 'AVAILABLE';
 ```
 
-## 4. 签到
+## 5. 签到
 
 使用预约返回的 `checkinCode`：
 
@@ -70,7 +86,7 @@ curl -X POST http://localhost:8080/api/reservations/1/check-in \
 
 成功后预约状态变为 `CHECKED_IN`，座位时段状态变为 `USING`。
 
-## 5. 签退
+## 6. 签退
 
 ```bash
 curl -X POST http://localhost:8080/api/reservations/1/check-out \
@@ -82,7 +98,7 @@ curl -X POST http://localhost:8080/api/reservations/1/check-out \
 
 成功后预约状态变为 `CHECKED_OUT`，座位时段重新变为 `AVAILABLE`。
 
-## 6. 取消预约
+## 7. 取消预约
 
 ```bash
 curl -X POST http://localhost:8080/api/reservations/1/cancel \
@@ -94,9 +110,9 @@ curl -X POST http://localhost:8080/api/reservations/1/cancel \
 
 成功后预约状态变为 `CANCELLED`，座位时段重新变为 `AVAILABLE`。
 
-## 7. 释放超时未签到预约
+## 8. 释放超时未签到预约
 
-当前先提供手动触发接口，后续可以改为定时任务。
+当前既保留手动触发接口，也已经提供定时任务入口。默认每 60 秒扫描一次超时未签到预约。
 
 ```bash
 curl -X POST "http://localhost:8080/api/reservations/expire-overdue?limit=100"
@@ -104,7 +120,23 @@ curl -X POST "http://localhost:8080/api/reservations/expire-overdue?limit=100"
 
 返回值是本次释放的预约数量。释放成功后预约状态变为 `EXPIRED`，座位时段重新变为 `AVAILABLE`。
 
-## 8. 前端联调说明
+## 9. 查询管理员看板
+
+查询今天的座位使用汇总：
+
+```bash
+curl http://localhost:8080/api/admin/dashboard
+```
+
+查询指定日期：
+
+```bash
+curl "http://localhost:8080/api/admin/dashboard?date=2026-05-14"
+```
+
+返回内容包含总时段、空闲、已预约、使用中、异常占用、活跃预约数，以及各区域利用率。
+
+## 10. 前端联调说明
 
 当前前端学生选座页已经接入：
 
@@ -114,6 +146,11 @@ curl -X POST "http://localhost:8080/api/reservations/expire-overdue?limit=100"
 - 使用签到码签到。
 - 签退释放座位。
 - 取消预约释放座位。
+
+当前前端管理页骨架已经接入：
+
+- 座位管理页查询区域座位。
+- 占用看板页查询区域利用率和统计卡片。
 
 本地启动前端后访问：
 

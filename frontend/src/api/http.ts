@@ -1,9 +1,4 @@
-export type ApiResponse<T> = {
-  success: boolean;
-  code: string;
-  message: string;
-  data: T;
-};
+import type { ApiResponse } from '../types/api';
 
 export async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, {

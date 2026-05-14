@@ -63,6 +63,20 @@ body {
   max-width: 1180px;
 }
 
+.empty-panel {
+  padding: 48px 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
 .toolbar {
   padding: 16px;
   margin-bottom: 16px;
@@ -105,6 +119,21 @@ body {
   overflow: hidden;
 }
 
+.usage-row {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+}
+
+.usage-row span {
+  display: block;
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
 @media (max-width: 860px) {
   .reservation-panel,
   .reservation-fields {
@@ -115,5 +144,10 @@ body {
   .reservation-input,
   .reservation-code {
     width: 100%;
+  }
+
+  .stats-grid,
+  .usage-row {
+    grid-template-columns: 1fr;
   }
 }
