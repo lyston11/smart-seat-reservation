@@ -14,4 +14,17 @@ public interface SeatMapper extends BaseMapper<Seat> {
             ORDER BY seat_no
             """)
     List<Seat> findByAreaId(@Param("areaId") Long areaId);
+
+    @Select("""
+            SELECT COUNT(*)
+            FROM seats
+            WHERE area_id = #{areaId}
+              AND seat_no = #{seatNo}
+              AND (#{excludedSeatId} IS NULL OR id <> #{excludedSeatId})
+            """)
+    int countDuplicateSeatNo(
+            @Param("areaId") Long areaId,
+            @Param("seatNo") String seatNo,
+            @Param("excludedSeatId") Long excludedSeatId
+    );
 }

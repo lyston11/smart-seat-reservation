@@ -85,6 +85,18 @@ body {
   border-radius: 8px;
 }
 
+.area-select {
+  width: 260px;
+}
+
+.seat-select {
+  min-width: 280px;
+}
+
+.seat-form {
+  padding-top: 8px;
+}
+
 .reservation-panel {
   display: flex;
   align-items: center;

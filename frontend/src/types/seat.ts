@@ -13,6 +13,8 @@ export type Seat = {
   status: string;
 };
 
+export type SeatStatus = 'ACTIVE' | 'INACTIVE';
+
 export type SeatSlotStatus = 'AVAILABLE' | 'RESERVED' | 'USING' | 'ABNORMAL';
 
 export type SeatSlot = {
@@ -24,4 +26,10 @@ export type SeatSlot = {
   endTime: string;
   status: SeatSlotStatus;
   reservedBy: number | null;
+};
+
+export type PublishSeatSlotsResult = {
+  createdCount: number;
+  skippedCount: number;
+  createdSlots: SeatSlot[];
 };

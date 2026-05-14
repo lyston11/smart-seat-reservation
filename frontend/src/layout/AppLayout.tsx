@@ -5,6 +5,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   MapPinned,
+  Timer,
 } from 'lucide-react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
@@ -27,6 +28,11 @@ const menuItems: MenuProps['items'] = [
     label: <Link to="/admin/seats">座位管理</Link>,
   },
   {
+    key: '/admin/seat-slots',
+    icon: <Timer size={18} />,
+    label: <Link to="/admin/seat-slots">开放时段</Link>,
+  },
+  {
     key: '/admin/dashboard',
     icon: <LayoutDashboard size={18} />,
     label: <Link to="/admin/dashboard">占用看板</Link>,
@@ -37,6 +43,7 @@ const pageTitles: Record<string, string> = {
   '/student/seats': '学生选座',
   '/student/reservations': '我的预约',
   '/admin/seats': '座位管理',
+  '/admin/seat-slots': '开放时段',
   '/admin/dashboard': '占用看板',
 };
 

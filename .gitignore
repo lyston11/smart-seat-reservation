@@ -9,6 +9,7 @@ Thumbs.db
 # Java
 backend/target/
 backend/.mvn/wrapper/maven-wrapper.jar
+.m2/
 *.class
 
 # Node
@@ -20,6 +21,9 @@ frontend/.vite/
 .idea/
 .vscode/
 *.iml
+
+# Local prototype backup kept outside formal app structure
+prototype/
 
 # Logs
 *.log

@@ -11,4 +11,16 @@ public record ReservationResponse(
         String checkinCode,
         LocalDateTime expiresAt
 ) {
+
+    public static ReservationResponse from(Reservation reservation) {
+        return new ReservationResponse(
+                reservation.getId(),
+                reservation.getSeatSlotId(),
+                reservation.getSeatId(),
+                reservation.getUserId(),
+                reservation.getStatus(),
+                reservation.getCheckinCode(),
+                reservation.getExpiresAt()
+        );
+    }
 }

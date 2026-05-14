@@ -179,6 +179,14 @@ public class ReservationService {
         return expiredCount;
     }
 
+    public List<ReservationResponse> listUserReservations(Long userId, int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+        return reservationMapper.findByUserId(userId, safeLimit)
+                .stream()
+                .map(ReservationResponse::from)
+                .toList();
+    }
+
     private String generateCheckinCode() {
         return UUID.randomUUID().toString().replace("-", "");
     }
@@ -201,14 +209,6 @@ public class ReservationService {
     }
 
     private ReservationResponse toResponse(Reservation reservation) {
-        return new ReservationResponse(
-                reservation.getId(),
-                reservation.getSeatSlotId(),
-                reservation.getSeatId(),
-                reservation.getUserId(),
-                reservation.getStatus(),
-                reservation.getCheckinCode(),
-                reservation.getExpiresAt()
-        );
+        return ReservationResponse.from(reservation);
     }
 }

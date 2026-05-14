@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, DatePicker, Form, Input, InputNumber, message, Space, Table, Tag } from 'antd';
 import type { TableColumnsType } from 'antd';
 import dayjs from 'dayjs';
@@ -40,7 +40,7 @@ export default function SeatSlotsPage() {
 
   const dateText = useMemo(() => date.format('YYYY-MM-DD'), [date]);
 
-  async function loadSlots() {
+  const loadSlots = useCallback(async () => {
     setLoading(true);
     try {
       setSlots(await listSeatSlots(areaId, dateText));
@@ -49,7 +49,7 @@ export default function SeatSlotsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [areaId, dateText, messageApi]);
 
   async function reserve(slotId: number) {
     setReservingId(slotId);
@@ -92,8 +92,11 @@ export default function SeatSlotsPage() {
   }
 
   useEffect(() => {
-    void loadSlots();
-  }, []);
+    const timer = window.setTimeout(() => {
+      void loadSlots();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadSlots]);
 
   const columns: TableColumnsType<SeatSlot> = [
     { title: '座位', dataIndex: 'seatId', width: 120 },

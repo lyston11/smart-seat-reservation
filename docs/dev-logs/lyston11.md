@@ -139,3 +139,186 @@
 - 前端接口类型优先放入 `frontend/src/types/`，不要在页面里重复声明。
 - 后端新业务继续按模块拆分 Entity / Mapper / Service / Controller / Response，不要把业务逻辑写在 Controller。
 - 超时预约释放已有定时任务入口，后续修改释放规则时要同步更新 `ReservationService` 和 `ReservationExpirationJob`。
+
+## 2026-05-14
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-merged-development
+- 目标: 合并两个 feature 分支后，继续在合并分支上补齐学生端“我的预约”查询切片。
+
+### 本次改动
+- 提交 `feature/lyston11-engineering-framework` 的工程化框架改动。
+- 创建合并开发分支 `feature/lyston11-merged-development`，该分支包含初始工程和工程化框架提交。
+- 将本地 `prototype/` 备份加入 `.gitignore`，避免误提交原型文件。
+- 后端在 `reservation` 模块新增按用户查询预约记录接口。
+- 前端在 `seatSlots` API 中新增 `listUserReservations`。
+- 前端“我的预约”页面接入预约记录查询，替换原空状态骨架。
+- 更新 API 手测文档。
+
+### 涉及文件
+- .gitignore
+- backend/src/main/java/com/lyston/smartseat/reservation/
+- frontend/src/api/seatSlots.ts
+- frontend/src/pages/MyReservationsPage.tsx
+- docs/API_EXAMPLES.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已确认 `feature/lyston11-merged-development` 同时包含 `feature/lyston11-initial-app` 和 `feature/lyston11-engineering-framework`。
+- 尚未运行前后端测试，原因同上：本地缺少 Maven，前端依赖尚未安装。
+
+### 遗留问题
+- 预约记录接口当前仍通过 `userId` 模拟身份，后续登录鉴权完成后需要改为当前登录用户。
+- 前端预约记录目前只展示基础字段，后续可补座位编号、区域名称、时间段等聚合视图。
+
+### 对其他成员的影响
+- 后续开发统一基于 `feature/lyston11-merged-development` 继续。
+- 不要提交 `prototype/` 目录，它只是本地原型备份。
+
+## 2026-05-14
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-merged-development
+- 目标: 安装前后端依赖，跑通本地联调环境，并按要求避开 8080 端口。
+
+### 本次改动
+- 安装前端依赖并生成 `frontend/package-lock.json`。
+- 安装并使用本地 Maven / JDK 21 运行后端测试和 Spring Boot 服务。
+- 将 Maven 依赖缓存固定到仓库本地 `.m2/repository`，避免依赖用户全局 Maven 缓存。
+- 修正 Spring Boot 4 下 Flyway 集成方式，使用 `spring-boot-starter-flyway` 配合 `flyway-mysql`。
+- 确认 Docker Compose 中 MySQL 和 Redis 正常运行，Flyway 已完成 `V1__init_schema.sql` 和 `V2__seed_demo_data.sql`。
+- 后端默认端口从 8080 调整为 `18080`，并同步更新 `.env.example`、Vite proxy 和本地开发/API 文档。
+- 启动后端 `http://localhost:18080`，启动前端 `http://127.0.0.1:5173`。
+
+### 涉及文件
+- .env.example
+- .gitignore
+- backend/pom.xml
+- backend/src/main/resources/application.yml
+- frontend/package-lock.json
+- frontend/vite.config.ts
+- docs/API_EXAMPLES.md
+- docs/deployment/LOCAL_DEVELOPMENT.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端测试通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已验证 `http://127.0.0.1:18080/api/health` 返回 `UP`。
+- 已验证 `http://127.0.0.1:5173/` 返回前端页面入口。
+- 已验证 `http://127.0.0.1:5173/api/health` 可通过 Vite proxy 转发到后端。
+- 已完成预约主流程冒烟：查询可用座位时段、创建预约、查询我的预约、签到、签退，签退后座位时段恢复为 `AVAILABLE`。
+
+### 遗留问题
+- 前端构建存在 Vite 大 chunk 提醒，当前不影响运行，后续可通过路由级懒加载和拆包优化。
+- Vitest 下 Ant Design 触发 jsdom `getComputedStyle` 伪元素能力提示，当前测试仍通过，后续如增加视觉相关测试可补 mock。
+- 当前接口仍以 `userId` 模拟身份，后续登录鉴权完成后需要改为从当前会话读取用户。
+
+### 对其他成员的影响
+- 本地联调后端默认使用 `18080`，不要再使用 8080。
+- 前端开发服务默认使用 Vite 的 `5173`，`/api` 已代理到 `http://localhost:18080`。
+- 运行 Maven 命令时建议继续使用仓库本地 `.m2/repository`，避免不同机器的全局缓存影响结果。
+
+## 2026-05-14
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-merged-development
+- 目标: 继续补齐管理员端功能，将座位管理页从只读列表升级为可维护资源的管理页面。
+
+### 本次改动
+- 后端 `seat` 模块新增座位资源创建、编辑、状态更新接口。
+- 新增 `CreateSeatRequest`、`UpdateSeatRequest`、`UpdateSeatStatusRequest` 和 `SeatStatus`，保持请求对象、状态常量与业务逻辑分层。
+- 座位编号按区域做唯一性校验，避免同一区域重复座位编号。
+- 座位停用采用逻辑状态 `INACTIVE`，不做物理删除，保护历史预约、签到记录和外键关系。
+- 停用座位前检查是否存在 `RESERVED` 或 `USING` 状态的时段，避免误停正在预约或使用中的座位。
+- 学生端座位时段查询过滤非启用区域和非启用座位。
+- 管理员看板过滤非启用区域和非启用座位。
+- 前端座位管理页接入区域下拉、座位新增弹窗、编辑弹窗、停用确认和启用操作。
+- 更新 API 手测示例，补充座位资源维护接口说明。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/seat/
+- backend/src/main/java/com/lyston/smartseat/dashboard/DashboardMapper.java
+- docs/API_EXAMPLES.md
+- docs/dev-logs/lyston11.md
+- frontend/src/api/seats.ts
+- frontend/src/pages/AdminSeatsPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/types/seat.ts
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `npm run test`，前端测试通过。
+- 已重启后端到 `http://localhost:18080` 并验证 Spring Boot 正常启动。
+- 已通过接口冒烟验证座位新增、编辑、停用、启用和列表查询。
+- 已验证学生端座位时段查询仍正常返回启用座位的开放时段。
+- 已验证管理员看板仍正常返回区域统计。
+
+### 遗留问题
+- 新增座位后目前不会自动生成开放时段，后续需要补管理员发布开放时段功能。
+- 座位管理当前仍未接入管理员鉴权，后续登录与角色权限完成后需要限制到管理员角色。
+- 停用座位只检查正在预约或使用中的时段，后续如引入未来预约计划，需要扩展停用规则。
+
+### 对其他成员的影响
+- 座位删除请继续走逻辑停用，不要直接删除 `seats` 记录。
+- 学生端座位时段查询已经只看启用区域和启用座位，测试数据如果被停用，学生端会自动隐藏。
+- 管理员看板统计也会过滤停用资源，统计口径需要和页面说明保持一致。
+
+## 2026-05-14
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-merged-development
+- 目标: 按工程化结构继续开发管理员开放时段发布能力，让新增座位可以进入学生端可预约流程。
+
+### 本次改动
+- 新增 `SeatSlotService`，将座位时段查询从 Controller 直连 Mapper 调整为 Controller / Service / Mapper 分层。
+- 后端新增 `POST /api/seat-slots/publish`，支持按区域、日期、开始时间、结束时间和座位集合批量发布开放时段。
+- 新增 `PublishSeatSlotsRequest` 和 `PublishSeatSlotsResponse`，避免接口请求/响应结构散落在 Controller 中。
+- 发布时段校验区域必须启用、座位必须属于该区域且启用、开始时间必须早于结束时间。
+- 重复发布相同座位、日期和时间段时不报错，返回 `skippedCount` 说明跳过数量。
+- 前端新增独立页面 `AdminSeatSlotsPage`，把开放时段管理从座位资源管理页拆出。
+- 侧边栏新增“开放时段”入口，接入区域选择、日期选择、时间段选择、座位多选、发布和查询。
+- 前端 API 和类型层新增 `publishSeatSlots`、`PublishSeatSlotsPayload`、`PublishSeatSlotsResult`。
+- 更新 API 手测示例，补充开放时段发布接口说明。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotController.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotMapper.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotService.java
+- backend/src/main/java/com/lyston/smartseat/seat/PublishSeatSlotsRequest.java
+- backend/src/main/java/com/lyston/smartseat/seat/PublishSeatSlotsResponse.java
+- docs/API_EXAMPLES.md
+- docs/dev-logs/lyston11.md
+- frontend/src/App.tsx
+- frontend/src/api/seatSlots.ts
+- frontend/src/layout/AppLayout.tsx
+- frontend/src/pages/AdminSeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/types/seat.ts
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `npm run test`，前端测试通过。
+- 已重启后端到 `http://localhost:18080`，确认最新接口加载成功。
+- 已通过接口冒烟验证 2026-05-15 14:00-16:00 对座位 1、2 第一次发布创建 2 个时段，第二次重复发布跳过 2 个时段。
+- 已验证前端代理 `http://127.0.0.1:5173/api/seat-slots?areaId=1&date=2026-05-15` 正常返回发布后的开放时段。
+
+### 遗留问题
+- 开放时段发布当前只支持单个时间段批量发布到多个座位，后续可以扩展为一天多时间段模板。
+- 当前未提供开放时段撤销接口，后续需要在未预约状态下允许管理员撤销误发布时段。
+- 仍未接入管理员鉴权，后续登录与角色权限完成后需要限制发布操作。
+
+### 对其他成员的影响
+- 时段相关业务逻辑以后优先放入 `SeatSlotService`，不要再让 Controller 直接访问 Mapper。
+- 发布开放时段采用幂等风格，重复发布同一 seat/date/time 会跳过而不是抛错。
+- 新增座位后需要通过开放时段页发布时段，学生端才会看到可预约资源。

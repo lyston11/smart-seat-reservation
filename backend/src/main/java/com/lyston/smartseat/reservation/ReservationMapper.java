@@ -81,4 +81,14 @@ public interface ReservationMapper extends BaseMapper<Reservation> {
             LIMIT #{limit}
             """)
     List<Reservation> findExpiredReservations(@Param("now") LocalDateTime now, @Param("limit") int limit);
+
+    @Select("""
+            SELECT id, user_id, seat_id, seat_slot_id, status, checkin_code, reserved_at,
+                   checked_in_at, checked_out_at, expires_at, created_at, updated_at
+            FROM reservations
+            WHERE user_id = #{userId}
+            ORDER BY created_at DESC, id DESC
+            LIMIT #{limit}
+            """)
+    List<Reservation> findByUserId(@Param("userId") Long userId, @Param("limit") int limit);
 }

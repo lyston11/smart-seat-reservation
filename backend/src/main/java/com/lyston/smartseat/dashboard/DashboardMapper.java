@@ -10,15 +10,21 @@ public interface DashboardMapper {
     @Select("""
             SELECT
                 COUNT(*) AS totalSlots,
-                COALESCE(SUM(CASE WHEN status = 'AVAILABLE' THEN 1 ELSE 0 END), 0) AS availableSlots,
-                COALESCE(SUM(CASE WHEN status = 'RESERVED' THEN 1 ELSE 0 END), 0) AS reservedSlots,
-                COALESCE(SUM(CASE WHEN status = 'USING' THEN 1 ELSE 0 END), 0) AS usingSlots,
-                COALESCE(SUM(CASE WHEN status = 'ABNORMAL' THEN 1 ELSE 0 END), 0) AS abnormalSlots,
-                COALESCE(SUM(CASE WHEN reservation_id IS NOT NULL AND status IN ('RESERVED', 'USING') THEN 1 ELSE 0 END), 0)
+                COALESCE(SUM(CASE WHEN ss.status = 'AVAILABLE' THEN 1 ELSE 0 END), 0) AS availableSlots,
+                COALESCE(SUM(CASE WHEN ss.status = 'RESERVED' THEN 1 ELSE 0 END), 0) AS reservedSlots,
+                COALESCE(SUM(CASE WHEN ss.status = 'USING' THEN 1 ELSE 0 END), 0) AS usingSlots,
+                COALESCE(SUM(CASE WHEN ss.status = 'ABNORMAL' THEN 1 ELSE 0 END), 0) AS abnormalSlots,
+                COALESCE(SUM(CASE WHEN ss.reservation_id IS NOT NULL AND ss.status IN ('RESERVED', 'USING') THEN 1 ELSE 0 END), 0)
                     AS activeReservations,
-                COALESCE(SUM(CASE WHEN status = 'USING' THEN 1 ELSE 0 END), 0) AS checkedInReservations
-            FROM seat_slots
-            WHERE slot_date = #{date}
+                COALESCE(SUM(CASE WHEN ss.status = 'USING' THEN 1 ELSE 0 END), 0) AS checkedInReservations
+            FROM seat_slots ss
+            JOIN seats s
+              ON s.id = ss.seat_id
+             AND s.status = 'ACTIVE'
+            JOIN areas a
+              ON a.id = ss.area_id
+             AND a.status = 'ACTIVE'
+            WHERE ss.slot_date = #{date}
             """)
     DashboardSummary summarizeByDate(@Param("date") LocalDate date);
 
@@ -38,9 +44,13 @@ public interface DashboardMapper {
                     )
                 END AS usageRate
             FROM areas a
+            LEFT JOIN seats s
+              ON s.area_id = a.id
+             AND s.status = 'ACTIVE'
             LEFT JOIN seat_slots ss
-              ON ss.area_id = a.id
+              ON ss.seat_id = s.id
              AND ss.slot_date = #{date}
+            WHERE a.status = 'ACTIVE'
             GROUP BY a.id, a.name
             ORDER BY a.id
             """)

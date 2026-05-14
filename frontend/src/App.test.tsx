@@ -22,6 +22,6 @@ describe('App', () => {
         <App />
       </MemoryRouter>,
     );
-    expect(screen.getByText('学生选座')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 3, name: '学生选座' })).toBeTruthy();
   });
 });

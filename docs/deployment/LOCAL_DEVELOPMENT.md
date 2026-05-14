@@ -65,19 +65,19 @@ mvn spring-boot:run
 默认地址：
 
 ```text
-http://localhost:8080
+http://localhost:18080
 ```
 
 接口文档：
 
 ```text
-http://localhost:8080/swagger-ui.html
+http://localhost:18080/swagger-ui.html
 ```
 
 健康检查：
 
 ```text
-http://localhost:8080/api/health
+http://localhost:18080/api/health
 ```
 
 ## 5. 启动前端

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, DatePicker, List, message, Progress, Statistic } from 'antd';
 import dayjs from 'dayjs';
 import { getDashboard } from '../api/dashboard';
@@ -12,7 +12,7 @@ export default function AdminDashboardPage() {
 
   const dateText = useMemo(() => date.format('YYYY-MM-DD'), [date]);
 
-  async function loadDashboard(nextDate = dateText) {
+  const loadDashboard = useCallback(async (nextDate = dateText) => {
     setLoading(true);
     try {
       setData(await getDashboard(nextDate));
@@ -21,11 +21,14 @@ export default function AdminDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [dateText, messageApi]);
 
   useEffect(() => {
-    void loadDashboard();
-  }, []);
+    const timer = window.setTimeout(() => {
+      void loadDashboard();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadDashboard]);
 
   const summary = data?.summary;
 
