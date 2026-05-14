@@ -3,7 +3,6 @@ package com.lyston.smartseat.reservation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lyston.smartseat.cache.ReservationRateLimiter;
 import com.lyston.smartseat.cache.SeatSlotCacheService;
 import com.lyston.smartseat.checkin.CheckinRecord;
@@ -17,6 +16,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
 
 class ReservationServiceTest {
 

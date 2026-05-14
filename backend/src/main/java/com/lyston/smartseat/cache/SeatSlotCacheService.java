@@ -1,14 +1,13 @@
 package com.lyston.smartseat.cache;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lyston.smartseat.seat.SeatSlotResponse;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class SeatSlotCacheService {
@@ -32,7 +31,7 @@ public class SeatSlotCacheService {
             }
             return objectMapper.readValue(value, new TypeReference<>() {
             });
-        } catch (JsonProcessingException | RuntimeException ignored) {
+        } catch (RuntimeException ignored) {
             return null;
         }
     }
@@ -41,7 +40,7 @@ public class SeatSlotCacheService {
         try {
             String value = objectMapper.writeValueAsString(slots);
             redisTemplate.opsForValue().set(key(areaId, date), value, CACHE_TTL);
-        } catch (JsonProcessingException | RuntimeException ignored) {
+        } catch (RuntimeException ignored) {
             // Cache failures must not block reservation correctness.
         }
     }

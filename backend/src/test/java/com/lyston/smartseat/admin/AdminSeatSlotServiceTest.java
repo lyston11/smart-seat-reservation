@@ -2,7 +2,6 @@ package com.lyston.smartseat.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lyston.smartseat.audit.AuditAction;
 import com.lyston.smartseat.audit.AuditLogMapper;
 import com.lyston.smartseat.audit.AuditService;
@@ -20,6 +19,7 @@ import java.lang.reflect.Proxy;
 import java.time.LocalDate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
 
 class AdminSeatSlotServiceTest {
 
