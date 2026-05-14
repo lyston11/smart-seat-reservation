@@ -1,6 +1,7 @@
 import { request } from './http';
 import type {
   AdminSeatSlotReleaseResult,
+  AdminSeatSlotStatusResult,
   CheckinPayload,
   ReservationResult,
 } from '../types/reservation';
@@ -35,6 +36,20 @@ export function cancelSeatSlot(seatSlotId: number) {
 
 export function adminReleaseSeatSlot(seatSlotId: number, reason: string) {
   return request<AdminSeatSlotReleaseResult>(`/api/admin/seat-slots/${seatSlotId}/release`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export function adminMarkSeatSlotAbnormal(seatSlotId: number, reason: string) {
+  return request<AdminSeatSlotStatusResult>(`/api/admin/seat-slots/${seatSlotId}/abnormal`, {
+    method: 'POST',
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export function adminRestoreSeatSlot(seatSlotId: number, reason: string) {
+  return request<AdminSeatSlotStatusResult>(`/api/admin/seat-slots/${seatSlotId}/restore`, {
     method: 'POST',
     body: JSON.stringify({ reason }),
   });

@@ -471,3 +471,51 @@
 - 管理员接口应继续使用 `@RequireRole(UserRole.ADMIN)` 限制权限。
 - 学生接口应继续从 `CurrentUser` 读取当前用户，业务层仍保留状态和所有权校验。
 - 新增会影响座位状态的功能时，需要同步失效 `SeatSlotCacheService` 对应区域日期缓存。
+
+## 2026-05-14
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-merged-development
+- 目标: 继续补齐管理员异常占用闭环，并优化前端工程化拆包。
+
+### 本次改动
+- 管理员开放时段页新增“标异常”和“恢复”操作，原因填写弹窗复用释放流程。
+- 后端新增管理员标记异常和恢复异常接口，路径为 `/api/admin/seat-slots/{seatSlotId}/abnormal` 和 `/api/admin/seat-slots/{seatSlotId}/restore`。
+- 仅允许未绑定预约的 `AVAILABLE` 时段直接标记异常，仅允许未绑定预约的 `ABNORMAL` 时段直接恢复。
+- 已绑定预约的异常时段继续走管理员释放流程，释放后关联预约进入 `ADMIN_RELEASED`。
+- 新增异常标记和恢复审计动作，管理员原因会写入 `audit_logs`。
+- `SeatSlotResponse` 补充 `reservationId`，前端据此区分异常恢复和异常释放。
+- 前端路由改为 `React.lazy` + `Suspense`，拆分页面级 chunk，降低首包体积并消除大 chunk 提醒。
+- 更新 API 示例文档，补充异常标记和恢复 curl 示例。
+- 补充管理员时段服务单测，覆盖标异常、恢复和审计原因。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/admin/
+- backend/src/main/java/com/lyston/smartseat/audit/AuditAction.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotMapper.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotResponse.java
+- backend/src/test/java/com/lyston/smartseat/admin/AdminSeatSlotServiceTest.java
+- frontend/src/App.tsx
+- frontend/src/App.test.tsx
+- frontend/src/api/seatSlots.ts
+- frontend/src/pages/AdminSeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/types/
+- docs/API_EXAMPLES.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端测试通过，当前共 7 个测试。
+- 已运行 `npm run test`，前端测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过，页面级 chunk 已拆分。
+
+### 遗留问题
+- 异常占用目前是管理员手动标记，后续可结合签到超时、设备上报或座位传感器自动触发。
+- 审计日志已经记录原因，后续可补后台审计查询页面。
+- 前端管理员开放时段页操作较多，后续可抽出表格 action 组件，进一步降低页面复杂度。
+
+### 对其他成员的影响
+- 后续新增座位状态流转时，应继续通过 `SeatSlotMapper` 条件更新保证并发安全。
+- 管理员状态变更必须保留原因字段并写审计，避免比赛答辩时无法解释操作来源。
+- 前端新增页面建议继续走懒加载，保持页面级拆包。

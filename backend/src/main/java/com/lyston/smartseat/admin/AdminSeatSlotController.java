@@ -30,4 +30,22 @@ public class AdminSeatSlotController {
     ) {
         return ApiResponse.ok(adminSeatSlotService.releaseSeatSlot(seatSlotId, request, currentUser.id()));
     }
+
+    @PostMapping("/{seatSlotId}/abnormal")
+    public ApiResponse<AdminSeatSlotStatusResponse> markAbnormal(
+            @PathVariable Long seatSlotId,
+            @Valid @RequestBody AdminSeatSlotStatusRequest request,
+            CurrentUser currentUser
+    ) {
+        return ApiResponse.ok(adminSeatSlotService.markAbnormal(seatSlotId, request, currentUser.id()));
+    }
+
+    @PostMapping("/{seatSlotId}/restore")
+    public ApiResponse<AdminSeatSlotStatusResponse> restoreAbnormal(
+            @PathVariable Long seatSlotId,
+            @Valid @RequestBody AdminSeatSlotStatusRequest request,
+            CurrentUser currentUser
+    ) {
+        return ApiResponse.ok(adminSeatSlotService.restoreAbnormal(seatSlotId, request, currentUser.id()));
+    }
 }

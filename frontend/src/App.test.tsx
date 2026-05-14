@@ -9,7 +9,7 @@ afterEach(() => {
 });
 
 describe('App', () => {
-  it('renders student seat page title', () => {
+  it('renders student seat page title', async () => {
     window.localStorage.setItem('smart-seat-auth-token', 'test-token');
     window.localStorage.setItem(
       'smart-seat-auth-user',
@@ -29,6 +29,6 @@ describe('App', () => {
         <App />
       </MemoryRouter>,
     );
-    expect(screen.getByRole('heading', { level: 3, name: '学生选座' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 3, name: '学生选座' })).toBeTruthy();
   });
 });

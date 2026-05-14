@@ -86,6 +86,30 @@ public interface SeatSlotMapper extends BaseMapper<SeatSlot> {
 
     @Update("""
             UPDATE seat_slots
+            SET status = 'ABNORMAL',
+                version = version + 1,
+                updated_at = #{now}
+            WHERE id = #{seatSlotId}
+              AND status = 'AVAILABLE'
+              AND reserved_by IS NULL
+              AND reservation_id IS NULL
+            """)
+    int markAvailableSlotAbnormal(@Param("seatSlotId") Long seatSlotId, @Param("now") LocalDateTime now);
+
+    @Update("""
+            UPDATE seat_slots
+            SET status = 'AVAILABLE',
+                version = version + 1,
+                updated_at = #{now}
+            WHERE id = #{seatSlotId}
+              AND status = 'ABNORMAL'
+              AND reserved_by IS NULL
+              AND reservation_id IS NULL
+            """)
+    int restoreAbnormalSlot(@Param("seatSlotId") Long seatSlotId, @Param("now") LocalDateTime now);
+
+    @Update("""
+            UPDATE seat_slots
             SET status = 'RESERVED',
                 reserved_by = #{userId},
                 version = version + 1,

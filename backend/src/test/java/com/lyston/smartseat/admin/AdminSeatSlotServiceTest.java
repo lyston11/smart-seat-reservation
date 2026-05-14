@@ -72,6 +72,48 @@ class AdminSeatSlotServiceTest {
         assertThat(auditService.reason).isEqualTo("现场确认空座");
     }
 
+    @Test
+    void markAbnormalShouldChangeAvailableSlotAndAuditReason() {
+        SeatSlot slot = seatSlot();
+        slot.setStatus(SeatSlotStatus.AVAILABLE);
+        slot.setReservationId(null);
+        seatSlotMapper.slot = slot;
+        seatSlotMapper.markAbnormalRows = 1;
+
+        AdminSeatSlotStatusResponse response = adminSeatSlotService.markAbnormal(
+                1L,
+                new AdminSeatSlotStatusRequest("设备故障"),
+                2L
+        );
+
+        assertThat(response.seatSlotStatus()).isEqualTo(SeatSlotStatus.ABNORMAL);
+        assertThat(response.reason()).isEqualTo("设备故障");
+        assertThat(seatSlotCacheService.evictedAreaId).isEqualTo(2L);
+        assertThat(auditService.action).isEqualTo(AuditAction.ADMIN_MARK_SEAT_SLOT_ABNORMAL);
+        assertThat(auditService.reason).isEqualTo("设备故障");
+    }
+
+    @Test
+    void restoreAbnormalShouldReturnSlotToAvailableAndAuditReason() {
+        SeatSlot slot = seatSlot();
+        slot.setStatus(SeatSlotStatus.ABNORMAL);
+        slot.setReservationId(null);
+        seatSlotMapper.slot = slot;
+        seatSlotMapper.restoreRows = 1;
+
+        AdminSeatSlotStatusResponse response = adminSeatSlotService.restoreAbnormal(
+                1L,
+                new AdminSeatSlotStatusRequest("维护完成"),
+                2L
+        );
+
+        assertThat(response.seatSlotStatus()).isEqualTo(SeatSlotStatus.AVAILABLE);
+        assertThat(response.reason()).isEqualTo("维护完成");
+        assertThat(seatSlotCacheService.evictedAreaId).isEqualTo(2L);
+        assertThat(auditService.action).isEqualTo(AuditAction.ADMIN_RESTORE_SEAT_SLOT);
+        assertThat(auditService.reason).isEqualTo("维护完成");
+    }
+
     private SeatSlot seatSlot() {
         SeatSlot slot = new SeatSlot();
         slot.setId(1L);
@@ -96,11 +138,15 @@ class AdminSeatSlotServiceTest {
     private static final class SeatSlotMapperFake {
         private SeatSlot slot;
         private int releaseRows;
+        private int markAbnormalRows;
+        private int restoreRows;
 
         SeatSlotMapper proxy() {
             return AdminSeatSlotServiceTest.proxy(SeatSlotMapper.class, (unused, method, args) -> switch (method.getName()) {
                 case "selectById" -> slot;
                 case "adminReleaseOccupiedSlot" -> releaseRows;
+                case "markAvailableSlotAbnormal" -> markAbnormalRows;
+                case "restoreAbnormalSlot" -> restoreRows;
                 default -> defaultValue(method.getReturnType());
             });
         }

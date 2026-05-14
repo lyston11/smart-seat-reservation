@@ -17,7 +17,9 @@ import type { TableColumnsType } from 'antd';
 import dayjs from 'dayjs';
 import { listAreas } from '../api/areas';
 import {
+  adminMarkSeatSlotAbnormal,
   adminReleaseSeatSlot,
+  adminRestoreSeatSlot,
   cancelSeatSlot,
   listSeatSlots,
   publishSeatSlots,
@@ -56,9 +58,12 @@ export default function AdminSeatSlotsPage() {
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
-  const [releasingId, setReleasingId] = useState<number | null>(null);
-  const [releaseReason, setReleaseReason] = useState('');
-  const [releaseTargetId, setReleaseTargetId] = useState<number | null>(null);
+  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
+  const [reason, setReason] = useState('');
+  const [reasonAction, setReasonAction] = useState<{
+    type: 'release' | 'mark-abnormal' | 'restore';
+    slotId: number;
+  } | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
 
   const dateText = useMemo(() => slotDate.format('YYYY-MM-DD'), [slotDate]);
@@ -133,27 +138,40 @@ export default function AdminSeatSlotsPage() {
     }
   }
 
-  async function releaseSlot() {
-    if (!releaseTargetId) {
+  async function runReasonAction() {
+    if (!reasonAction) {
       return;
     }
-    if (!releaseReason.trim()) {
-      messageApi.warning('请填写释放原因');
+    if (!reason.trim()) {
+      messageApi.warning('请填写原因');
       return;
     }
-    const slotId = releaseTargetId;
-    setReleasingId(slotId);
+    const slotId = reasonAction.slotId;
+    setActionLoadingId(slotId);
     try {
-      await adminReleaseSeatSlot(slotId, releaseReason.trim());
-      messageApi.success('座位时段已释放');
-      setReleaseTargetId(null);
-      setReleaseReason('');
+      if (reasonAction.type === 'release') {
+        await adminReleaseSeatSlot(slotId, reason.trim());
+        messageApi.success('座位时段已释放');
+      } else if (reasonAction.type === 'mark-abnormal') {
+        await adminMarkSeatSlotAbnormal(slotId, reason.trim());
+        messageApi.success('座位时段已标记异常');
+      } else {
+        await adminRestoreSeatSlot(slotId, reason.trim());
+        messageApi.success('座位时段已恢复空闲');
+      }
+      setReasonAction(null);
+      setReason('');
       await loadSlots();
     } catch (error) {
-      messageApi.error(error instanceof Error ? error.message : '释放失败');
+      messageApi.error(error instanceof Error ? error.message : '操作失败');
     } finally {
-      setReleasingId(null);
+      setActionLoadingId(null);
     }
+  }
+
+  function openReasonAction(type: 'release' | 'mark-abnormal' | 'restore', slotId: number) {
+    setReasonAction({ type, slotId });
+    setReason('');
   }
 
   useEffect(() => {
@@ -197,10 +215,24 @@ export default function AdminSeatSlotsPage() {
       width: 180,
       render: (_, record) => {
         const canCancel = record.status === 'AVAILABLE';
-        const canRelease = record.status === 'RESERVED' || record.status === 'USING' || record.status === 'ABNORMAL';
+        const canMarkAbnormal = record.status === 'AVAILABLE' && !record.reservedBy && !record.reservationId;
+        const canRestore = record.status === 'ABNORMAL' && !record.reservedBy && !record.reservationId;
+        const canRelease =
+          record.status === 'RESERVED'
+          || record.status === 'USING'
+          || (record.status === 'ABNORMAL' && Boolean(record.reservationId));
 
         return (
           <Space>
+            {canMarkAbnormal ? (
+              <Button
+                size="small"
+                loading={actionLoadingId === record.id}
+                onClick={() => openReasonAction('mark-abnormal', record.id)}
+              >
+                标异常
+              </Button>
+            ) : null}
             {canCancel ? (
               <Popconfirm
                 title="撤销开放时段"
@@ -218,10 +250,20 @@ export default function AdminSeatSlotsPage() {
               <Button
                 size="small"
                 danger
-                loading={releasingId === record.id}
-                onClick={() => setReleaseTargetId(record.id)}
+                loading={actionLoadingId === record.id}
+                onClick={() => openReasonAction('release', record.id)}
               >
                 释放
+              </Button>
+            ) : null}
+            {canRestore ? (
+              <Button
+                size="small"
+                type="primary"
+                loading={actionLoadingId === record.id}
+                onClick={() => openReasonAction('restore', record.id)}
+              >
+                恢复
               </Button>
             ) : null}
           </Space>
@@ -328,24 +370,36 @@ export default function AdminSeatSlotsPage() {
 
       <Table rowKey="id" loading={loading} dataSource={slots} columns={columns} pagination={false} />
       <Modal
-        title="释放占用时段"
-        open={releaseTargetId !== null}
-        okText="释放"
+        title={
+          reasonAction?.type === 'release'
+            ? '释放占用时段'
+            : reasonAction?.type === 'mark-abnormal'
+              ? '标记异常占用'
+              : '恢复异常时段'
+        }
+        open={reasonAction !== null}
+        okText={
+          reasonAction?.type === 'release'
+            ? '释放'
+            : reasonAction?.type === 'mark-abnormal'
+              ? '标记'
+              : '恢复'
+        }
         cancelText="取消"
-        confirmLoading={releasingId !== null}
-        onOk={releaseSlot}
+        confirmLoading={actionLoadingId !== null}
+        onOk={runReasonAction}
         onCancel={() => {
-          setReleaseTargetId(null);
-          setReleaseReason('');
+          setReasonAction(null);
+          setReason('');
         }}
       >
         <Input.TextArea
           rows={4}
           maxLength={255}
           showCount
-          value={releaseReason}
-          placeholder="填写释放原因，例如：学生离座超时、管理员现场确认空座"
-          onChange={(event) => setReleaseReason(event.target.value)}
+          value={reason}
+          placeholder="填写原因，例如：设备故障、现场确认空座、清洁维护完成"
+          onChange={(event) => setReason(event.target.value)}
         />
       </Modal>
     </div>

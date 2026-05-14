@@ -11,7 +11,8 @@ public record SeatSlotResponse(
         LocalTime startTime,
         LocalTime endTime,
         String status,
-        Long reservedBy
+        Long reservedBy,
+        Long reservationId
 ) {
 
     public static SeatSlotResponse from(SeatSlot slot) {
@@ -23,7 +24,8 @@ public record SeatSlotResponse(
                 slot.getStartTime(),
                 slot.getEndTime(),
                 slot.getStatus(),
-                slot.getReservedBy()
+                slot.getReservedBy(),
+                slot.getReservationId()
         );
     }
 }

@@ -17,6 +17,13 @@ export type AdminSeatSlotReleaseResult = {
   reservation: ReservationResult;
 };
 
+export type AdminSeatSlotStatusResult = {
+  seatSlotId: number;
+  changedBy: number;
+  reason: string;
+  seatSlotStatus: string;
+};
+
 export type CheckinPayload = {
   checkinCode: string;
 };

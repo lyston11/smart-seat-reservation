@@ -81,6 +81,32 @@ curl -X DELETE http://localhost:18080/api/seat-slots/1 \
 
 只有 `AVAILABLE` 且没有绑定预约的时段可以撤销。
 
+管理员标记空闲时段为异常占用：
+
+```bash
+curl -X POST http://localhost:18080/api/admin/seat-slots/1/abnormal \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: 替换为管理员 token" \
+  -d '{
+    "reason": "设备故障，暂不开放"
+  }'
+```
+
+只有 `AVAILABLE` 且没有绑定预约的时段可以直接标记异常。
+
+管理员恢复异常时段：
+
+```bash
+curl -X POST http://localhost:18080/api/admin/seat-slots/1/restore \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: 替换为管理员 token" \
+  -d '{
+    "reason": "维护完成，恢复开放"
+  }'
+```
+
+只有未绑定预约的 `ABNORMAL` 时段可以直接恢复为空闲。已绑定预约的异常时段应走管理员释放流程。
+
 管理员释放已预约或使用中的座位时段：
 
 ```bash
@@ -92,7 +118,7 @@ curl -X POST http://localhost:18080/api/admin/seat-slots/1/release \
   }'
 ```
 
-释放成功后座位时段回到 `AVAILABLE`，关联预约会标记为 `ADMIN_RELEASED`，释放原因会写入 `audit_logs`。
+释放、标记异常和恢复操作都会写入 `audit_logs`。
 
 ## 4. 区域和座位资源
 
@@ -300,6 +326,7 @@ curl "http://localhost:18080/api/admin/dashboard?date=2026-05-14" \
 - 座位管理页新增、编辑、停用、启用座位资源。
 - 开放时段页按区域、座位、日期和多个时间段模板批量发布可预约资源。
 - 开放时段页撤销未被预约的空闲时段。
+- 开放时段页填写原因后标记异常占用和恢复异常时段。
 - 开放时段页填写原因后释放已预约、使用中或异常占用的座位时段。
 - 占用看板页查询区域利用率和统计卡片。
 

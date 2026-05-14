@@ -94,6 +94,68 @@ public class AdminSeatSlotService {
         );
     }
 
+    @Transactional
+    public AdminSeatSlotStatusResponse markAbnormal(
+            Long seatSlotId,
+            AdminSeatSlotStatusRequest request,
+            Long adminUserId
+    ) {
+        LocalDateTime now = LocalDateTime.now();
+        String reason = request.reason().trim();
+        SeatSlot slot = requireSeatSlot(seatSlotId);
+        if (!SeatSlotStatus.AVAILABLE.equals(slot.getStatus())
+                || slot.getReservedBy() != null
+                || slot.getReservationId() != null) {
+            throw new BusinessException("SEAT_SLOT_NOT_MARKABLE_ABNORMAL", "Only free seat slots can be marked abnormal");
+        }
+
+        int slotRows = seatSlotMapper.markAvailableSlotAbnormal(slot.getId(), now);
+        if (slotRows != 1) {
+            throw new BusinessException("SEAT_SLOT_MARK_ABNORMAL_FAILED", "Seat slot cannot be marked abnormal");
+        }
+
+        seatSlotCacheService.evict(slot.getAreaId(), slot.getSlotDate());
+        auditService.record(
+                adminUserId,
+                AuditAction.ADMIN_MARK_SEAT_SLOT_ABNORMAL,
+                "SEAT_SLOT",
+                slot.getId(),
+                reason
+        );
+        return new AdminSeatSlotStatusResponse(slot.getId(), adminUserId, reason, SeatSlotStatus.ABNORMAL);
+    }
+
+    @Transactional
+    public AdminSeatSlotStatusResponse restoreAbnormal(
+            Long seatSlotId,
+            AdminSeatSlotStatusRequest request,
+            Long adminUserId
+    ) {
+        LocalDateTime now = LocalDateTime.now();
+        String reason = request.reason().trim();
+        SeatSlot slot = requireSeatSlot(seatSlotId);
+        if (!SeatSlotStatus.ABNORMAL.equals(slot.getStatus())
+                || slot.getReservedBy() != null
+                || slot.getReservationId() != null) {
+            throw new BusinessException("SEAT_SLOT_NOT_RESTORABLE", "Only abnormal free seat slots can be restored");
+        }
+
+        int slotRows = seatSlotMapper.restoreAbnormalSlot(slot.getId(), now);
+        if (slotRows != 1) {
+            throw new BusinessException("SEAT_SLOT_RESTORE_FAILED", "Seat slot cannot be restored");
+        }
+
+        seatSlotCacheService.evict(slot.getAreaId(), slot.getSlotDate());
+        auditService.record(
+                adminUserId,
+                AuditAction.ADMIN_RESTORE_SEAT_SLOT,
+                "SEAT_SLOT",
+                slot.getId(),
+                reason
+        );
+        return new AdminSeatSlotStatusResponse(slot.getId(), adminUserId, reason, SeatSlotStatus.AVAILABLE);
+    }
+
     private SeatSlot requireSeatSlot(Long seatSlotId) {
         SeatSlot slot = seatSlotMapper.selectById(seatSlotId);
         if (slot == null) {

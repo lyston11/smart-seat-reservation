@@ -28,6 +28,7 @@ export type SeatSlot = {
   endTime: string;
   status: SeatSlotStatus;
   reservedBy: number | null;
+  reservationId: number | null;
 };
 
 export type PublishSeatSlotsResult = {
