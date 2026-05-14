@@ -55,6 +55,21 @@ public class SeatSlotService {
         );
     }
 
+    @Transactional
+    public SeatSlotResponse cancelSeatSlot(Long seatSlotId) {
+        SeatSlot slot = requireSeatSlot(seatSlotId);
+        if (!SeatSlotStatus.AVAILABLE.equals(slot.getStatus())) {
+            throw new BusinessException("SEAT_SLOT_NOT_CANCELABLE", "Seat slot cannot be cancelled");
+        }
+
+        int deletedRows = seatSlotMapper.deleteAvailableSlot(seatSlotId);
+        if (deletedRows != 1) {
+            throw new BusinessException("SEAT_SLOT_CANCEL_FAILED", "Seat slot cannot be cancelled");
+        }
+
+        return SeatSlotResponse.from(slot);
+    }
+
     private List<Long> normalizeSeatIds(List<Long> seatIds) {
         Set<Long> uniqueSeatIds = new LinkedHashSet<>(seatIds);
         if (uniqueSeatIds.size() > MAX_BATCH_SEATS) {
@@ -102,5 +117,13 @@ public class SeatSlotService {
             throw new BusinessException("SEAT_NOT_ACTIVE", "Seat is not active");
         }
         return seat;
+    }
+
+    private SeatSlot requireSeatSlot(Long seatSlotId) {
+        SeatSlot slot = seatSlotMapper.selectById(seatSlotId);
+        if (slot == null) {
+            throw new BusinessException("SEAT_SLOT_NOT_FOUND", "Seat slot not found");
+        }
+        return slot;
     }
 }

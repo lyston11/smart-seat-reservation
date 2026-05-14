@@ -322,3 +322,93 @@
 - 时段相关业务逻辑以后优先放入 `SeatSlotService`，不要再让 Controller 直接访问 Mapper。
 - 发布开放时段采用幂等风格，重复发布同一 seat/date/time 会跳过而不是抛错。
 - 新增座位后需要通过开放时段页发布时段，学生端才会看到可预约资源。
+
+## 2026-05-14
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-merged-development
+- 目标: 继续补齐管理员开放时段生命周期，支持撤销误发布但尚未被预约的开放时段。
+
+### 本次改动
+- 后端新增 `DELETE /api/seat-slots/{seatSlotId}`，用于撤销开放时段。
+- 撤销逻辑继续放在 `SeatSlotService`，Controller 只负责参数接收和响应封装。
+- Mapper 新增条件删除，只允许删除 `AVAILABLE`、未绑定预约人、未绑定预约记录的时段。
+- 前端开放时段列表新增“撤销”操作，并对非空闲状态禁用按钮。
+- 撤销前增加确认弹窗，降低误操作风险。
+- 更新 API 手测示例，补充撤销开放时段说明。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotController.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotMapper.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotService.java
+- docs/API_EXAMPLES.md
+- docs/dev-logs/lyston11.md
+- frontend/src/api/seatSlots.ts
+- frontend/src/pages/AdminSeatSlotsPage.tsx
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `npm run test`，前端测试通过。
+- 已重启后端到 `http://localhost:18080`，确认最新接口加载成功。
+- 已通过接口冒烟验证：先发布 2026-05-16 18:00-20:00 的临时时段，再调用撤销接口，最终列表中不再存在该时段。
+
+### 遗留问题
+- 撤销接口当前采用物理删除空闲时段；后续如需要完整审计轨迹，可扩展 `seat_slots.status` 或新增操作日志。
+- 已预约或使用中的时段暂不支持管理员强制撤销，后续应设计异常占用释放流程。
+- 管理员鉴权仍待接入，撤销接口后续需要限制到管理员角色。
+
+### 对其他成员的影响
+- 撤销开放时段只适用于尚未被预约的 `AVAILABLE` 时段。
+- 不要绕过 `SeatSlotService` 直接删除时段，避免破坏预约状态一致性。
+- 后续若引入时段审计，需要同步改造撤销逻辑和管理员页面文案。
+
+## 2026-05-14
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-merged-development
+- 目标: 增加管理员异常释放能力，补齐座位时段被预约或使用后的人工处理闭环。
+
+### 本次改动
+- 新增 `admin` 模块，提供管理员座位时段释放 Controller / Service / Request / Response。
+- 新增 `POST /api/admin/seat-slots/{seatSlotId}/release`，支持释放 `RESERVED`、`USING`、`ABNORMAL` 时段。
+- 新增预约状态 `ADMIN_RELEASED`，区分学生主动取消、超时过期和管理员人工释放。
+- 新增签到记录动作 `ADMIN_RELEASE`，记录管理员释放操作。
+- 座位时段释放后回到 `AVAILABLE`，并清空 `reserved_by` 和 `reservation_id`。
+- 前端开放时段页对已预约、使用中、异常占用状态展示“释放”操作。
+- 前端“我的预约”页面新增 `ADMIN_RELEASED` 状态展示。
+- 更新 API 手测示例，补充管理员释放接口说明。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/admin/
+- backend/src/main/java/com/lyston/smartseat/checkin/CheckinAction.java
+- backend/src/main/java/com/lyston/smartseat/reservation/ReservationMapper.java
+- backend/src/main/java/com/lyston/smartseat/reservation/ReservationStatus.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotMapper.java
+- docs/API_EXAMPLES.md
+- docs/dev-logs/lyston11.md
+- frontend/src/api/seatSlots.ts
+- frontend/src/pages/AdminSeatSlotsPage.tsx
+- frontend/src/pages/MyReservationsPage.tsx
+- frontend/src/types/reservation.ts
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `npm run test`，前端测试通过。
+- 已重启后端到 `http://localhost:18080`，确认最新接口加载成功。
+- 已完成管理员释放冒烟：发布 2026-05-17 18:00-20:00 临时时段，用户 1 预约后由管理员 2 释放，座位时段恢复 `AVAILABLE`，预约状态变为 `ADMIN_RELEASED`。
+
+### 遗留问题
+- 当前管理员释放只校验传入 `adminUserId` 非空，后续登录鉴权完成后需要从当前管理员会话读取。
+- 释放原因目前未记录，后续可扩展请求体增加 `reason` 字段并写入审计日志。
+- `ABNORMAL` 状态目前还没有前端标记入口，后续可以补异常占用标记和恢复流程。
+
+### 对其他成员的影响
+- 管理员释放属于独立 admin 模块，后续管理员动作优先放入 `backend/src/main/java/com/lyston/smartseat/admin/`。
+- 学生端预约历史需要识别 `ADMIN_RELEASED`，不要把它当作普通取消或过期。
+- 座位时段释放后会重新开放，前端应重新拉取时段列表，避免显示旧状态。

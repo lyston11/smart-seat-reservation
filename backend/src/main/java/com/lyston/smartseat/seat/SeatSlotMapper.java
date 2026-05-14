@@ -51,6 +51,32 @@ public interface SeatSlotMapper extends BaseMapper<SeatSlot> {
     );
 
     @Update("""
+            DELETE FROM seat_slots
+            WHERE id = #{seatSlotId}
+              AND status = 'AVAILABLE'
+              AND reserved_by IS NULL
+              AND reservation_id IS NULL
+            """)
+    int deleteAvailableSlot(@Param("seatSlotId") Long seatSlotId);
+
+    @Update("""
+            UPDATE seat_slots
+            SET status = 'AVAILABLE',
+                reserved_by = NULL,
+                reservation_id = NULL,
+                version = version + 1,
+                updated_at = #{now}
+            WHERE id = #{seatSlotId}
+              AND status IN ('RESERVED', 'USING', 'ABNORMAL')
+              AND reservation_id = #{reservationId}
+            """)
+    int adminReleaseOccupiedSlot(
+            @Param("seatSlotId") Long seatSlotId,
+            @Param("reservationId") Long reservationId,
+            @Param("now") LocalDateTime now
+    );
+
+    @Update("""
             UPDATE seat_slots
             SET status = 'RESERVED',
                 reserved_by = #{userId},

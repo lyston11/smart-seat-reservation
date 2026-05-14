@@ -38,6 +38,26 @@ curl -X POST http://localhost:18080/api/seat-slots/publish \
 
 重复发布相同座位、日期和时间段时不会报错，会返回 `skippedCount` 说明跳过数量。
 
+撤销未被预约的开放时段：
+
+```bash
+curl -X DELETE http://localhost:18080/api/seat-slots/1
+```
+
+只有 `AVAILABLE` 且没有绑定预约的时段可以撤销。已预约或使用中的时段需要先走预约取消、签退或异常处理流程。
+
+管理员释放已预约或使用中的座位时段：
+
+```bash
+curl -X POST http://localhost:18080/api/admin/seat-slots/1/release \
+  -H "Content-Type: application/json" \
+  -d '{
+    "adminUserId": 2
+  }'
+```
+
+该接口用于管理员处理异常占用或人工释放。释放成功后座位时段回到 `AVAILABLE`，关联预约会标记为 `ADMIN_RELEASED`。
+
 ## 3. 查询区域和座位资源
 
 查询所有区域：
@@ -214,6 +234,8 @@ curl "http://localhost:18080/api/admin/dashboard?date=2026-05-14"
 - 座位管理页查询区域座位。
 - 座位管理页新增、编辑、停用、启用座位资源。
 - 开放时段页按区域、座位、日期和时间段批量发布可预约资源。
+- 开放时段页撤销未被预约的空闲时段。
+- 开放时段页释放已预约、使用中或异常占用的座位时段。
 - 占用看板页查询区域利用率和统计卡片。
 
 本地启动前端后访问：

@@ -10,6 +10,7 @@ const statusColor: Record<string, string> = {
   CHECKED_OUT: 'green',
   CANCELLED: 'default',
   EXPIRED: 'red',
+  ADMIN_RELEASED: 'purple',
 };
 
 const statusText: Record<string, string> = {
@@ -18,6 +19,7 @@ const statusText: Record<string, string> = {
   CHECKED_OUT: '已签退',
   CANCELLED: '已取消',
   EXPIRED: '已过期',
+  ADMIN_RELEASED: '管理员释放',
 };
 
 export default function MyReservationsPage() {

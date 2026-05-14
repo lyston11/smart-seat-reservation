@@ -1,9 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, DatePicker, Form, Select, TimePicker, message, Table, Tag } from 'antd';
+import {
+  Button,
+  DatePicker,
+  Form,
+  InputNumber,
+  Popconfirm,
+  Select,
+  Space,
+  TimePicker,
+  message,
+  Table,
+  Tag,
+} from 'antd';
 import type { TableColumnsType } from 'antd';
 import dayjs from 'dayjs';
 import { listAreas } from '../api/areas';
-import { listSeatSlots, publishSeatSlots } from '../api/seatSlots';
+import {
+  adminReleaseSeatSlot,
+  cancelSeatSlot,
+  listSeatSlots,
+  publishSeatSlots,
+} from '../api/seatSlots';
 import { listSeats } from '../api/seats';
 import type { Area, Seat, SeatSlot, SeatSlotStatus } from '../types/seat';
 
@@ -34,9 +51,12 @@ export default function AdminSeatSlotsPage() {
   const [seats, setSeats] = useState<Seat[]>([]);
   const [slots, setSlots] = useState<SeatSlot[]>([]);
   const [areaId, setAreaId] = useState(1);
+  const [adminUserId, setAdminUserId] = useState(2);
   const [slotDate, setSlotDate] = useState(dayjs());
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
+  const [releasingId, setReleasingId] = useState<number | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
 
   const dateText = useMemo(() => slotDate.format('YYYY-MM-DD'), [slotDate]);
@@ -95,6 +115,32 @@ export default function AdminSeatSlotsPage() {
     }
   }
 
+  async function cancelSlot(slotId: number) {
+    setCancellingId(slotId);
+    try {
+      await cancelSeatSlot(slotId);
+      messageApi.success('开放时段已撤销');
+      await loadSlots();
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '撤销失败');
+    } finally {
+      setCancellingId(null);
+    }
+  }
+
+  async function releaseSlot(slotId: number) {
+    setReleasingId(slotId);
+    try {
+      await adminReleaseSeatSlot(slotId, adminUserId);
+      messageApi.success('座位时段已释放');
+      await loadSlots();
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '释放失败');
+    } finally {
+      setReleasingId(null);
+    }
+  }
+
   useEffect(() => {
     form.setFieldsValue({
       areaId,
@@ -128,6 +174,45 @@ export default function AdminSeatSlotsPage() {
       render: (status: SeatSlotStatus) => <Tag color={statusColor[status]}>{statusText[status]}</Tag>,
     },
     { title: '预约人', dataIndex: 'reservedBy', width: 120, render: (value) => value ?? '-' },
+    {
+      title: '操作',
+      width: 180,
+      render: (_, record) => {
+        const canCancel = record.status === 'AVAILABLE';
+        const canRelease = record.status === 'RESERVED' || record.status === 'USING' || record.status === 'ABNORMAL';
+
+        return (
+          <Space>
+            {canCancel ? (
+              <Popconfirm
+                title="撤销开放时段"
+                description="只能撤销尚未被预约的空闲时段。"
+                okText="撤销"
+                cancelText="取消"
+                onConfirm={() => cancelSlot(record.id)}
+              >
+                <Button size="small" danger loading={cancellingId === record.id}>
+                  撤销
+                </Button>
+              </Popconfirm>
+            ) : null}
+            {canRelease ? (
+              <Popconfirm
+                title="释放占用时段"
+                description="释放后该座位时段会回到空闲状态，关联预约会标记为管理员释放。"
+                okText="释放"
+                cancelText="取消"
+                onConfirm={() => releaseSlot(record.id)}
+              >
+                <Button size="small" danger loading={releasingId === record.id}>
+                  释放
+                </Button>
+              </Popconfirm>
+            ) : null}
+          </Space>
+        );
+      },
+    },
   ];
 
   return (
@@ -188,6 +273,13 @@ export default function AdminSeatSlotsPage() {
             <Button loading={loading} onClick={loadSlots}>
               查询时段
             </Button>
+          </Form.Item>
+          <Form.Item label="管理员">
+            <InputNumber
+              min={1}
+              value={adminUserId}
+              onChange={(value) => setAdminUserId(value ?? 2)}
+            />
           </Form.Item>
         </Form>
       </div>

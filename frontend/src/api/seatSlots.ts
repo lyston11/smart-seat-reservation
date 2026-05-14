@@ -1,5 +1,9 @@
 import { request } from './http';
-import type { CheckinPayload, ReservationResult } from '../types/reservation';
+import type {
+  AdminSeatSlotReleaseResult,
+  CheckinPayload,
+  ReservationResult,
+} from '../types/reservation';
 import type { PublishSeatSlotsResult, SeatSlot } from '../types/seat';
 
 export type PublishSeatSlotsPayload = {
@@ -19,6 +23,19 @@ export function publishSeatSlots(payload: PublishSeatSlotsPayload) {
   return request<PublishSeatSlotsResult>('/api/seat-slots/publish', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export function cancelSeatSlot(seatSlotId: number) {
+  return request<SeatSlot>(`/api/seat-slots/${seatSlotId}`, {
+    method: 'DELETE',
+  });
+}
+
+export function adminReleaseSeatSlot(seatSlotId: number, adminUserId: number) {
+  return request<AdminSeatSlotReleaseResult>(`/api/admin/seat-slots/${seatSlotId}/release`, {
+    method: 'POST',
+    body: JSON.stringify({ adminUserId }),
   });
 }
 

@@ -71,6 +71,19 @@ public interface ReservationMapper extends BaseMapper<Reservation> {
             @Param("now") LocalDateTime now
     );
 
+    @Update("""
+            UPDATE reservations
+            SET status = 'ADMIN_RELEASED',
+                checked_out_at = CASE WHEN status = 'CHECKED_IN' THEN #{now} ELSE checked_out_at END,
+                updated_at = #{now}
+            WHERE id = #{reservationId}
+              AND status IN ('RESERVED', 'CHECKED_IN')
+            """)
+    int markAdminReleased(
+            @Param("reservationId") Long reservationId,
+            @Param("now") LocalDateTime now
+    );
+
     @Select("""
             SELECT id, user_id, seat_id, seat_slot_id, status, checkin_code, reserved_at,
                    checked_in_at, checked_out_at, expires_at, created_at, updated_at

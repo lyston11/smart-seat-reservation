@@ -8,6 +8,14 @@ export type ReservationResult = {
   expiresAt: string;
 };
 
+export type AdminSeatSlotReleaseResult = {
+  seatSlotId: number;
+  reservationId: number;
+  releasedBy: number;
+  seatSlotStatus: string;
+  reservation: ReservationResult;
+};
+
 export type CheckinPayload = {
   userId: number;
   checkinCode: string;
