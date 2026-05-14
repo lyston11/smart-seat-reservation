@@ -27,4 +27,11 @@ public interface SeatMapper extends BaseMapper<Seat> {
             @Param("seatNo") String seatNo,
             @Param("excludedSeatId") Long excludedSeatId
     );
+
+    @Select("""
+            SELECT COUNT(*)
+            FROM seats
+            WHERE area_id = #{areaId}
+            """)
+    int countByAreaId(@Param("areaId") Long areaId);
 }

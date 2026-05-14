@@ -12,11 +12,11 @@ export type AdminSeatSlotReleaseResult = {
   seatSlotId: number;
   reservationId: number;
   releasedBy: number;
+  reason: string;
   seatSlotStatus: string;
   reservation: ReservationResult;
 };
 
 export type CheckinPayload = {
-  userId: number;
   checkinCode: string;
 };

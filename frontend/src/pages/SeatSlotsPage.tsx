@@ -28,7 +28,6 @@ const statusColor: Record<SeatSlotStatus, string> = {
 
 export default function SeatSlotsPage() {
   const [areaId, setAreaId] = useState(1);
-  const [userId, setUserId] = useState(1);
   const [date, setDate] = useState(dayjs());
   const [slots, setSlots] = useState<SeatSlot[]>([]);
   const [activeReservation, setActiveReservation] = useState<ReservationResult | null>(null);
@@ -54,7 +53,7 @@ export default function SeatSlotsPage() {
   async function reserve(slotId: number) {
     setReservingId(slotId);
     try {
-      const reservation = await createReservation(slotId, userId);
+      const reservation = await createReservation(slotId);
       setActiveReservation(reservation);
       setCheckinCode(reservation.checkinCode);
       messageApi.success('预约成功');
@@ -76,10 +75,10 @@ export default function SeatSlotsPage() {
     try {
       const reservation =
         action === 'check-in'
-          ? await checkInReservation(activeReservation.reservationId, { userId, checkinCode })
+          ? await checkInReservation(activeReservation.reservationId, { checkinCode })
           : action === 'check-out'
-            ? await checkOutReservation(activeReservation.reservationId, userId)
-            : await cancelReservation(activeReservation.reservationId, userId);
+            ? await checkOutReservation(activeReservation.reservationId)
+            : await cancelReservation(activeReservation.reservationId);
 
       setActiveReservation(reservation);
       messageApi.success('操作成功');
@@ -141,9 +140,6 @@ export default function SeatSlotsPage() {
         <Form layout="inline">
           <Form.Item label="区域">
             <InputNumber min={1} value={areaId} onChange={(value) => setAreaId(value ?? 1)} />
-          </Form.Item>
-          <Form.Item label="用户">
-            <InputNumber min={1} value={userId} onChange={(value) => setUserId(value ?? 1)} />
           </Form.Item>
           <Form.Item label="日期">
             <DatePicker value={date} onChange={(value) => setDate(value ?? dayjs())} />

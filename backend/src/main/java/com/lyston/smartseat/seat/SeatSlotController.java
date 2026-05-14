@@ -1,6 +1,8 @@
 package com.lyston.smartseat.seat;
 
+import com.lyston.smartseat.auth.RequireRole;
 import com.lyston.smartseat.common.ApiResponse;
+import com.lyston.smartseat.user.UserRole;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
@@ -33,6 +35,7 @@ public class SeatSlotController {
     }
 
     @PostMapping("/publish")
+    @RequireRole(UserRole.ADMIN)
     public ApiResponse<PublishSeatSlotsResponse> publishSeatSlots(
             @Valid @RequestBody PublishSeatSlotsRequest request
     ) {
@@ -40,6 +43,7 @@ public class SeatSlotController {
     }
 
     @DeleteMapping("/{seatSlotId}")
+    @RequireRole(UserRole.ADMIN)
     public ApiResponse<SeatSlotResponse> cancelSeatSlot(@PathVariable Long seatSlotId) {
         return ApiResponse.ok(seatSlotService.cancelSeatSlot(seatSlotId));
     }

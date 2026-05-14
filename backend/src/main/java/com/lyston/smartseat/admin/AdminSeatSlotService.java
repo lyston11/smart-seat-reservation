@@ -1,5 +1,8 @@
 package com.lyston.smartseat.admin;
 
+import com.lyston.smartseat.audit.AuditAction;
+import com.lyston.smartseat.audit.AuditService;
+import com.lyston.smartseat.cache.SeatSlotCacheService;
 import com.lyston.smartseat.checkin.CheckinAction;
 import com.lyston.smartseat.checkin.CheckinRecord;
 import com.lyston.smartseat.checkin.CheckinRecordMapper;
@@ -27,23 +30,31 @@ public class AdminSeatSlotService {
     private final SeatSlotMapper seatSlotMapper;
     private final ReservationMapper reservationMapper;
     private final CheckinRecordMapper checkinRecordMapper;
+    private final AuditService auditService;
+    private final SeatSlotCacheService seatSlotCacheService;
 
     public AdminSeatSlotService(
             SeatSlotMapper seatSlotMapper,
             ReservationMapper reservationMapper,
-            CheckinRecordMapper checkinRecordMapper
+            CheckinRecordMapper checkinRecordMapper,
+            AuditService auditService,
+            SeatSlotCacheService seatSlotCacheService
     ) {
         this.seatSlotMapper = seatSlotMapper;
         this.reservationMapper = reservationMapper;
         this.checkinRecordMapper = checkinRecordMapper;
+        this.auditService = auditService;
+        this.seatSlotCacheService = seatSlotCacheService;
     }
 
     @Transactional
     public AdminSeatSlotReleaseResponse releaseSeatSlot(
             Long seatSlotId,
-            AdminSeatSlotReleaseRequest request
+            AdminSeatSlotReleaseRequest request,
+            Long adminUserId
     ) {
         LocalDateTime now = LocalDateTime.now();
+        String reason = request.reason().trim();
         SeatSlot slot = requireSeatSlot(seatSlotId);
         if (!RELEASABLE_SLOT_STATUSES.contains(slot.getStatus())) {
             throw new BusinessException("SEAT_SLOT_NOT_RELEASABLE", "Seat slot cannot be released by admin");
@@ -63,12 +74,21 @@ public class AdminSeatSlotService {
             throw new BusinessException("SEAT_SLOT_ADMIN_RELEASE_FAILED", "Seat slot cannot be released by admin");
         }
 
-        recordAdminRelease(reservation, request.adminUserId(), now);
+        seatSlotCacheService.evict(slot.getAreaId(), slot.getSlotDate());
+        recordAdminRelease(reservation, adminUserId, now);
+        auditService.record(
+                adminUserId,
+                AuditAction.ADMIN_RELEASE_SEAT_SLOT,
+                "SEAT_SLOT",
+                slot.getId(),
+                reason
+        );
         Reservation updatedReservation = requireReservation(reservation.getId());
         return new AdminSeatSlotReleaseResponse(
                 slot.getId(),
                 reservation.getId(),
-                request.adminUserId(),
+                adminUserId,
+                reason,
                 SeatSlotStatus.AVAILABLE,
                 ReservationResponse.from(updatedReservation)
         );

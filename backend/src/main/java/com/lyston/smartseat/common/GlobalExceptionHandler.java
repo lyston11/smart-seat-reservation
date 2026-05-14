@@ -1,5 +1,8 @@
 package com.lyston.smartseat.common;
 
+import com.lyston.smartseat.auth.AuthException;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -14,6 +17,13 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleBusinessException(BusinessException exception) {
         return ApiResponse.fail(exception.getCode(), exception.getMessage());
+    }
+
+    @ExceptionHandler(AuthException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthException(AuthException exception) {
+        return ResponseEntity
+                .status(HttpStatusCode.valueOf(exception.getStatus()))
+                .body(ApiResponse.fail(exception.getCode(), exception.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

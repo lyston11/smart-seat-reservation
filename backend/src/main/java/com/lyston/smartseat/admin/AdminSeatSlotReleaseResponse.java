@@ -6,6 +6,7 @@ public record AdminSeatSlotReleaseResponse(
         Long seatSlotId,
         Long reservationId,
         Long releasedBy,
+        String reason,
         String seatSlotStatus,
         ReservationResponse reservation
 ) {

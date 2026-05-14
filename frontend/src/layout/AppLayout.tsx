@@ -1,17 +1,22 @@
-import { Layout, Menu, Typography } from 'antd';
+import { Button, Layout, Menu, Space, Tag, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   CalendarCheck,
   ClipboardList,
   LayoutDashboard,
+  Layers,
   MapPinned,
   Timer,
 } from 'lucide-react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { logout } from '../api/auth';
+import { getStoredUser } from '../api/http';
 
 const { Header, Sider, Content } = Layout;
 
-const menuItems: MenuProps['items'] = [
+type MenuItem = Required<MenuProps>['items'][number];
+
+const studentMenuItems: MenuItem[] = [
   {
     key: '/student/seats',
     icon: <MapPinned size={18} />,
@@ -21,6 +26,14 @@ const menuItems: MenuProps['items'] = [
     key: '/student/reservations',
     icon: <CalendarCheck size={18} />,
     label: <Link to="/student/reservations">我的预约</Link>,
+  },
+];
+
+const adminMenuItems: MenuItem[] = [
+  {
+    key: '/admin/areas',
+    icon: <Layers size={18} />,
+    label: <Link to="/admin/areas">区域管理</Link>,
   },
   {
     key: '/admin/seats',
@@ -42,6 +55,7 @@ const menuItems: MenuProps['items'] = [
 const pageTitles: Record<string, string> = {
   '/student/seats': '学生选座',
   '/student/reservations': '我的预约',
+  '/admin/areas': '区域管理',
   '/admin/seats': '座位管理',
   '/admin/seat-slots': '开放时段',
   '/admin/dashboard': '占用看板',
@@ -49,7 +63,15 @@ const pageTitles: Record<string, string> = {
 
 export default function AppLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const user = getStoredUser();
   const selectedKey = pageTitles[location.pathname] ? location.pathname : '/student/seats';
+  const menuItems = user?.role === 'ADMIN' ? [...studentMenuItems, ...adminMenuItems] : studentMenuItems;
+
+  async function signOut() {
+    await logout();
+    navigate('/login', { replace: true });
+  }
 
   return (
     <Layout className="app-shell">
@@ -65,6 +87,15 @@ export default function AppLayout() {
           <Typography.Title level={3} className="page-title">
             {pageTitles[selectedKey]}
           </Typography.Title>
+          <Space>
+            <Tag color={user?.role === 'ADMIN' ? 'purple' : 'blue'}>
+              {user?.role === 'ADMIN' ? '管理员' : '学生'}
+            </Tag>
+            <Typography.Text>{user?.name}</Typography.Text>
+            <Button size="small" onClick={signOut}>
+              退出
+            </Button>
+          </Space>
         </Header>
         <Content className="app-content">
           <Outlet />

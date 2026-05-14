@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Form, InputNumber, message, Table, Tag } from 'antd';
+import { Button, Form, message, Table, Tag } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { listUserReservations } from '../api/seatSlots';
 import type { ReservationResult } from '../types/reservation';
@@ -23,7 +23,6 @@ const statusText: Record<string, string> = {
 };
 
 export default function MyReservationsPage() {
-  const [userId, setUserId] = useState(1);
   const [reservations, setReservations] = useState<ReservationResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
@@ -31,13 +30,13 @@ export default function MyReservationsPage() {
   const loadReservations = useCallback(async () => {
     setLoading(true);
     try {
-      setReservations(await listUserReservations(userId));
+      setReservations(await listUserReservations());
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '加载预约记录失败');
     } finally {
       setLoading(false);
     }
-  }, [messageApi, userId]);
+  }, [messageApi]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -67,9 +66,6 @@ export default function MyReservationsPage() {
       {contextHolder}
       <div className="toolbar">
         <Form layout="inline">
-          <Form.Item label="用户">
-            <InputNumber min={1} value={userId} onChange={(value) => setUserId(value ?? 1)} />
-          </Form.Item>
           <Form.Item>
             <Button type="primary" loading={loading} onClick={loadReservations}>
               查询预约

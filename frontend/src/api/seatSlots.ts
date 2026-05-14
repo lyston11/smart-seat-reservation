@@ -4,13 +4,14 @@ import type {
   CheckinPayload,
   ReservationResult,
 } from '../types/reservation';
-import type { PublishSeatSlotsResult, SeatSlot } from '../types/seat';
+import type { PublishSeatSlotPeriod, PublishSeatSlotsResult, SeatSlot } from '../types/seat';
 
 export type PublishSeatSlotsPayload = {
   areaId: number;
   slotDate: string;
-  startTime: string;
-  endTime: string;
+  startTime?: string;
+  endTime?: string;
+  periods?: PublishSeatSlotPeriod[];
   seatIds: number[];
 };
 
@@ -32,22 +33,22 @@ export function cancelSeatSlot(seatSlotId: number) {
   });
 }
 
-export function adminReleaseSeatSlot(seatSlotId: number, adminUserId: number) {
+export function adminReleaseSeatSlot(seatSlotId: number, reason: string) {
   return request<AdminSeatSlotReleaseResult>(`/api/admin/seat-slots/${seatSlotId}/release`, {
     method: 'POST',
-    body: JSON.stringify({ adminUserId }),
+    body: JSON.stringify({ reason }),
   });
 }
 
-export function listUserReservations(userId: number, limit = 50) {
-  const params = new URLSearchParams({ userId: String(userId), limit: String(limit) });
+export function listUserReservations(limit = 50) {
+  const params = new URLSearchParams({ limit: String(limit) });
   return request<ReservationResult[]>(`/api/reservations?${params.toString()}`);
 }
 
-export function createReservation(seatSlotId: number, userId: number) {
+export function createReservation(seatSlotId: number) {
   return request<ReservationResult>('/api/reservations', {
     method: 'POST',
-    body: JSON.stringify({ seatSlotId, userId }),
+    body: JSON.stringify({ seatSlotId }),
   });
 }
 
@@ -58,16 +59,16 @@ export function checkInReservation(reservationId: number, payload: CheckinPayloa
   });
 }
 
-export function checkOutReservation(reservationId: number, userId: number) {
+export function checkOutReservation(reservationId: number) {
   return request<ReservationResult>(`/api/reservations/${reservationId}/check-out`, {
     method: 'POST',
-    body: JSON.stringify({ userId }),
+    body: JSON.stringify({}),
   });
 }
 
-export function cancelReservation(reservationId: number, userId: number) {
+export function cancelReservation(reservationId: number) {
   return request<ReservationResult>(`/api/reservations/${reservationId}/cancel`, {
     method: 'POST',
-    body: JSON.stringify({ userId }),
+    body: JSON.stringify({}),
   });
 }

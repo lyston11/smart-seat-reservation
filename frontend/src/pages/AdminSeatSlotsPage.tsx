@@ -3,7 +3,8 @@ import {
   Button,
   DatePicker,
   Form,
-  InputNumber,
+  Input,
+  Modal,
   Popconfirm,
   Select,
   Space,
@@ -27,7 +28,7 @@ import type { Area, Seat, SeatSlot, SeatSlotStatus } from '../types/seat';
 type PublishFormValues = {
   areaId: number;
   slotDate: dayjs.Dayjs;
-  timeRange: [dayjs.Dayjs, dayjs.Dayjs];
+  timeRanges: [dayjs.Dayjs, dayjs.Dayjs][];
   seatIds: number[];
 };
 
@@ -51,12 +52,13 @@ export default function AdminSeatSlotsPage() {
   const [seats, setSeats] = useState<Seat[]>([]);
   const [slots, setSlots] = useState<SeatSlot[]>([]);
   const [areaId, setAreaId] = useState(1);
-  const [adminUserId, setAdminUserId] = useState(2);
   const [slotDate, setSlotDate] = useState(dayjs());
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [releasingId, setReleasingId] = useState<number | null>(null);
+  const [releaseReason, setReleaseReason] = useState('');
+  const [releaseTargetId, setReleaseTargetId] = useState<number | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
 
   const dateText = useMemo(() => slotDate.format('YYYY-MM-DD'), [slotDate]);
@@ -95,13 +97,16 @@ export default function AdminSeatSlotsPage() {
 
   async function publishSlots() {
     const values = await form.validateFields();
+    const timeRanges = values.timeRanges.filter(Boolean);
     setPublishing(true);
     try {
       const result = await publishSeatSlots({
         areaId: values.areaId,
         slotDate: values.slotDate.format('YYYY-MM-DD'),
-        startTime: values.timeRange[0].format('HH:mm:ss'),
-        endTime: values.timeRange[1].format('HH:mm:ss'),
+        periods: timeRanges.map((range) => ({
+          startTime: range[0].format('HH:mm:ss'),
+          endTime: range[1].format('HH:mm:ss'),
+        })),
         seatIds: values.seatIds,
       });
       messageApi.success(`已发布 ${result.createdCount} 个时段，跳过 ${result.skippedCount} 个重复时段`);
@@ -128,11 +133,21 @@ export default function AdminSeatSlotsPage() {
     }
   }
 
-  async function releaseSlot(slotId: number) {
+  async function releaseSlot() {
+    if (!releaseTargetId) {
+      return;
+    }
+    if (!releaseReason.trim()) {
+      messageApi.warning('请填写释放原因');
+      return;
+    }
+    const slotId = releaseTargetId;
     setReleasingId(slotId);
     try {
-      await adminReleaseSeatSlot(slotId, adminUserId);
+      await adminReleaseSeatSlot(slotId, releaseReason.trim());
       messageApi.success('座位时段已释放');
+      setReleaseTargetId(null);
+      setReleaseReason('');
       await loadSlots();
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '释放失败');
@@ -145,7 +160,10 @@ export default function AdminSeatSlotsPage() {
     form.setFieldsValue({
       areaId,
       slotDate,
-      timeRange: [dayjs('08:00:00', 'HH:mm:ss'), dayjs('10:00:00', 'HH:mm:ss')],
+      timeRanges: [
+        [dayjs('08:00:00', 'HH:mm:ss'), dayjs('10:00:00', 'HH:mm:ss')],
+        [dayjs('10:00:00', 'HH:mm:ss'), dayjs('12:00:00', 'HH:mm:ss')],
+      ],
     });
   }, [areaId, form, slotDate]);
 
@@ -197,17 +215,14 @@ export default function AdminSeatSlotsPage() {
               </Popconfirm>
             ) : null}
             {canRelease ? (
-              <Popconfirm
-                title="释放占用时段"
-                description="释放后该座位时段会回到空闲状态，关联预约会标记为管理员释放。"
-                okText="释放"
-                cancelText="取消"
-                onConfirm={() => releaseSlot(record.id)}
+              <Button
+                size="small"
+                danger
+                loading={releasingId === record.id}
+                onClick={() => setReleaseTargetId(record.id)}
               >
-                <Button size="small" danger loading={releasingId === record.id}>
-                  释放
-                </Button>
-              </Popconfirm>
+                释放
+              </Button>
             ) : null}
           </Space>
         );
@@ -246,10 +261,44 @@ export default function AdminSeatSlotsPage() {
           </Form.Item>
           <Form.Item
             label="时间"
-            name="timeRange"
-            rules={[{ required: true, message: '请选择开放时间段' }]}
+            required
           >
-            <TimePicker.RangePicker format="HH:mm" minuteStep={30} />
+            <Form.List
+              name="timeRanges"
+              rules={[
+                {
+                  validator: async (_, value) => {
+                    if (!value || value.length === 0) {
+                      throw new Error('请选择开放时间段');
+                    }
+                  },
+                },
+              ]}
+            >
+              {(fields, { add, remove }, { errors }) => (
+                <Space className="period-list" align="start" wrap>
+                  {fields.map((field) => (
+                    <Space key={field.key} align="baseline">
+                      <Form.Item
+                        {...field}
+                        rules={[{ required: true, message: '请选择时间段' }]}
+                      >
+                        <TimePicker.RangePicker format="HH:mm" minuteStep={30} />
+                      </Form.Item>
+                      {fields.length > 1 ? (
+                        <Button size="small" onClick={() => remove(field.name)}>
+                          删除
+                        </Button>
+                      ) : null}
+                    </Space>
+                  ))}
+                  <Button onClick={() => add([dayjs('14:00', 'HH:mm'), dayjs('16:00', 'HH:mm')])}>
+                    添加时间段
+                  </Button>
+                  <Form.ErrorList errors={errors} />
+                </Space>
+              )}
+            </Form.List>
           </Form.Item>
           <Form.Item
             label="座位"
@@ -274,17 +323,31 @@ export default function AdminSeatSlotsPage() {
               查询时段
             </Button>
           </Form.Item>
-          <Form.Item label="管理员">
-            <InputNumber
-              min={1}
-              value={adminUserId}
-              onChange={(value) => setAdminUserId(value ?? 2)}
-            />
-          </Form.Item>
         </Form>
       </div>
 
       <Table rowKey="id" loading={loading} dataSource={slots} columns={columns} pagination={false} />
+      <Modal
+        title="释放占用时段"
+        open={releaseTargetId !== null}
+        okText="释放"
+        cancelText="取消"
+        confirmLoading={releasingId !== null}
+        onOk={releaseSlot}
+        onCancel={() => {
+          setReleaseTargetId(null);
+          setReleaseReason('');
+        }}
+      >
+        <Input.TextArea
+          rows={4}
+          maxLength={255}
+          showCount
+          value={releaseReason}
+          placeholder="填写释放原因，例如：学生离座超时、管理员现场确认空座"
+          onChange={(event) => setReleaseReason(event.target.value)}
+        />
+      </Modal>
     </div>
   );
 }

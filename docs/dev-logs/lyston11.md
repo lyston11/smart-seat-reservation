@@ -412,3 +412,62 @@
 - 管理员释放属于独立 admin 模块，后续管理员动作优先放入 `backend/src/main/java/com/lyston/smartseat/admin/`。
 - 学生端预约历史需要识别 `ADMIN_RELEASED`，不要把它当作普通取消或过期。
 - 座位时段释放后会重新开放，前端应重新拉取时段列表，避免显示旧状态。
+
+## 2026-05-14
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-merged-development
+- 目标: 继续按工程化架构推进登录/角色权限、区域 CRUD、开放时段模板、管理员释放审计、Redis 缓存限流和关键业务测试。
+
+### 本次改动
+- 新增 `auth` 模块，提供演示登录、退出、当前用户接口和 `X-Auth-Token` 请求头会话。
+- 新增 `user` 模块，封装用户实体、角色常量、用户查询和用户响应结构。
+- 新增 `RequireRole` 注解、MVC 拦截器和当前用户参数解析器，对学生端和管理员端接口做角色限制。
+- 学生预约、签到、签退、取消和我的预约接口改为从登录态读取当前学生，不再从请求体或查询参数传 `userId`。
+- 管理员释放接口改为从登录态读取管理员，并要求填写 `reason`。
+- 新增 `audit` 模块和 `audit_logs` 迁移表，管理员释放、区域创建、区域更新、区域状态变更会记录审计日志。
+- 新增 `cache` 模块，接入座位时段 Redis 缓存和预约接口短窗口限流；座位状态变化后失效对应区域日期缓存。
+- 区域管理从只读扩展为新增、编辑、启用、停用，并补充区域名称唯一校验和停用前忙碌时段保护。
+- 开放时段发布支持 `periods` 多时间段模板，一次可以给多个座位生成多个开放时段。
+- 前端新增登录页、区域管理页；侧边栏按角色展示管理入口；请求层自动携带 `X-Auth-Token`。
+- 前端学生页和我的预约页移除手填用户 ID；开放时段页移除手填管理员 ID，释放时弹窗填写原因。
+- 更新 API 手测文档，所有受保护接口示例统一展示 token 请求头。
+- 新增后端业务单测，覆盖预约原子更新失败、预约成功缓存失效、签退状态流转、管理员释放审计。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/auth/
+- backend/src/main/java/com/lyston/smartseat/user/
+- backend/src/main/java/com/lyston/smartseat/audit/
+- backend/src/main/java/com/lyston/smartseat/cache/
+- backend/src/main/java/com/lyston/smartseat/area/
+- backend/src/main/java/com/lyston/smartseat/reservation/
+- backend/src/main/java/com/lyston/smartseat/seat/
+- backend/src/main/java/com/lyston/smartseat/admin/
+- backend/src/main/resources/db/migration/V3__add_audit_logs.sql
+- backend/src/test/java/com/lyston/smartseat/reservation/
+- backend/src/test/java/com/lyston/smartseat/admin/
+- frontend/src/api/
+- frontend/src/layout/
+- frontend/src/pages/
+- frontend/src/types/
+- docs/API_EXAMPLES.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端测试通过，当前共 5 个测试。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端测试通过。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 当前登录是课程项目演示级 token 登录，没有密码、加密和刷新 token；后续如做正式系统需要接入真实认证。
+- Redis 缓存和限流已接入第一版，后续可增加缓存命中统计、限流配置化和异常监控。
+- 前端构建仍有 Vite 大 chunk 提醒，后续可通过路由懒加载拆包。
+- `ABNORMAL` 状态仍缺少管理员主动标记入口，后续可补异常占用标记和恢复流程。
+
+### 对其他成员的影响
+- 受保护接口后续都需要带 `X-Auth-Token`，不要再从前端传 `userId` 或 `adminUserId` 模拟身份。
+- 管理员接口应继续使用 `@RequireRole(UserRole.ADMIN)` 限制权限。
+- 学生接口应继续从 `CurrentUser` 读取当前用户，业务层仍保留状态和所有权校验。
+- 新增会影响座位状态的功能时，需要同步失效 `SeatSlotCacheService` 对应区域日期缓存。

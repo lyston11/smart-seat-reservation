@@ -4,11 +4,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
 afterEach(() => {
+  window.localStorage.clear();
   vi.unstubAllGlobals();
 });
 
 describe('App', () => {
   it('renders student seat page title', () => {
+    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
+    window.localStorage.setItem(
+      'smart-seat-auth-user',
+      JSON.stringify({ id: 1, name: 'Demo Student', studentNo: '20260001', role: 'STUDENT' }),
+    );
+
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({

@@ -1,8 +1,9 @@
 package com.lyston.smartseat.admin;
 
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 public record AdminSeatSlotReleaseRequest(
-        @NotNull Long adminUserId
+        @NotBlank @Size(max = 255) String reason
 ) {
 }

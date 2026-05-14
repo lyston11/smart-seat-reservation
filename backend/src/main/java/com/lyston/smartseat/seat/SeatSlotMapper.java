@@ -38,6 +38,14 @@ public interface SeatSlotMapper extends BaseMapper<SeatSlot> {
     @Select("""
             SELECT COUNT(*)
             FROM seat_slots
+            WHERE area_id = #{areaId}
+              AND status IN ('RESERVED', 'USING', 'ABNORMAL')
+            """)
+    int countBusySlotsByAreaId(@Param("areaId") Long areaId);
+
+    @Select("""
+            SELECT COUNT(*)
+            FROM seat_slots
             WHERE seat_id = #{seatId}
               AND slot_date = #{slotDate}
               AND start_time = #{startTime}

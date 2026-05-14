@@ -1,6 +1,8 @@
 package com.lyston.smartseat.seat;
 
+import com.lyston.smartseat.auth.RequireRole;
 import com.lyston.smartseat.common.ApiResponse;
+import com.lyston.smartseat.user.UserRole;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/seats")
+@RequireRole(UserRole.ADMIN)
 public class SeatController {
 
     private final SeatService seatService;

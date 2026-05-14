@@ -3,8 +3,10 @@ export type Area = {
   name: string;
   floor: string | null;
   description: string | null;
-  status: string;
+  status: AreaStatus;
 };
+
+export type AreaStatus = 'ACTIVE' | 'INACTIVE';
 
 export type Seat = {
   id: number;
@@ -32,4 +34,9 @@ export type PublishSeatSlotsResult = {
   createdCount: number;
   skippedCount: number;
   createdSlots: SeatSlot[];
+};
+
+export type PublishSeatSlotPeriod = {
+  startTime: string;
+  endTime: string;
 };

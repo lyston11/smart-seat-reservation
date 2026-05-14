@@ -2,6 +2,7 @@ package com.lyston.smartseat.area;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.util.List;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 public interface AreaMapper extends BaseMapper<Area> {
@@ -12,4 +13,12 @@ public interface AreaMapper extends BaseMapper<Area> {
             ORDER BY id
             """)
     List<Area> findAllOrderById();
+
+    @Select("""
+            SELECT COUNT(*)
+            FROM areas
+            WHERE name = #{name}
+              AND (#{excludedAreaId} IS NULL OR id <> #{excludedAreaId})
+            """)
+    int countDuplicateName(@Param("name") String name, @Param("excludedAreaId") Long excludedAreaId);
 }
