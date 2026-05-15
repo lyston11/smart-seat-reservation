@@ -27,6 +27,7 @@ class ReservationServiceTest {
     private ReservationRateLimiterFake reservationRateLimiter;
     private SeatSlotCacheServiceFake seatSlotCacheService;
     private ReservationRuleProperties reservationRuleProperties;
+    private ReservationRuleServiceFake reservationRuleService;
     private ReservationService reservationService;
 
     @BeforeEach
@@ -37,13 +38,14 @@ class ReservationServiceTest {
         reservationRateLimiter = new ReservationRateLimiterFake();
         seatSlotCacheService = new SeatSlotCacheServiceFake();
         reservationRuleProperties = new ReservationRuleProperties();
+        reservationRuleService = new ReservationRuleServiceFake(reservationRuleProperties);
         reservationService = new ReservationService(
                 seatSlotMapper.proxy(),
                 reservationMapper.proxy(),
                 checkinRecordMapper.proxy(),
                 reservationRateLimiter,
                 seatSlotCacheService,
-                reservationRuleProperties
+                reservationRuleService
         );
     }
 
@@ -303,6 +305,20 @@ class ReservationServiceTest {
         public void evict(Long areaId, LocalDate date) {
             evictedAreaId = areaId;
             evictedDate = date;
+        }
+    }
+
+    private static final class ReservationRuleServiceFake extends ReservationRuleService {
+        private final ReservationRuleProperties properties;
+
+        ReservationRuleServiceFake(ReservationRuleProperties properties) {
+            super(null, properties, null);
+            this.properties = properties;
+        }
+
+        @Override
+        public ReservationRuleResponse getRules() {
+            return ReservationRuleResponse.from(properties);
         }
     }
 

@@ -20,9 +20,10 @@ public class AuditLogService {
             AuditAction.AREA_CREATE,
             AuditAction.AREA_UPDATE,
             AuditAction.AREA_STATUS_UPDATE,
+            AuditAction.RESERVATION_RULE_UPDATE,
             AREA_CHANGE
     );
-    private static final Set<String> SUPPORTED_TARGET_TYPES = Set.of("SEAT_SLOT", "AREA");
+    private static final Set<String> SUPPORTED_TARGET_TYPES = Set.of("SEAT_SLOT", "AREA", "RESERVATION_RULE");
     private static final List<String> AREA_CHANGE_ACTIONS = List.of(
             AuditAction.AREA_CREATE,
             AuditAction.AREA_UPDATE,

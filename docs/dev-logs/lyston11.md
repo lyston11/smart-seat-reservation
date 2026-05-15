@@ -706,3 +706,52 @@
 ### 对其他成员的影响
 - 修改预约规则优先调整 `smart-seat.reservation-rules`，不要在服务层重新写硬编码数字。
 - 学生端规则提示依赖 `/api/reservations/rules`，该接口字段变更时需要同步更新前端类型。
+
+## 2026-05-15
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-admin-audit-dashboard
+- 目标: 继续把预约规则从配置文件升级为管理员可维护能力，形成后台规则管理闭环。
+
+### 本次改动
+- 新增 `reservation_rules` 表和 `V6__add_reservation_rules.sql` 迁移，初始化默认规则。
+- 新增 `ReservationRule`、`ReservationRuleMapper`、`ReservationRuleService` 和更新请求对象。
+- `/api/reservations/rules` 改为优先读取数据库规则，数据库缺失时回退到配置默认值。
+- 新增管理员更新预约规则接口 `PUT /api/reservations/rules`。
+- 预约创建继续通过规则服务读取当前规则，因此管理员更新后会影响后续预约校验和签到过期时间。
+- 规则更新写入审计日志，动作 `RESERVATION_RULE_UPDATE`，目标类型 `RESERVATION_RULE`。
+- 审计日志筛选支持预约规则变更动作和目标类型。
+- 前端新增管理员“预约规则”页面，可查看和维护签到宽限、提前预约天数、每日活跃预约上限。
+- 管理员菜单和路由新增 `/admin/reservation-rules`。
+- 补充规则服务单测，覆盖默认配置回退、规则更新和审计写入。
+- 更新 API 手测文档，补充管理员更新预约规则示例。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/audit/
+- backend/src/main/java/com/lyston/smartseat/reservation/
+- backend/src/main/resources/db/migration/V6__add_reservation_rules.sql
+- backend/src/test/java/com/lyston/smartseat/reservation/
+- frontend/src/App.tsx
+- frontend/src/api/seatSlots.ts
+- frontend/src/layout/AppLayout.tsx
+- frontend/src/pages/AdminReservationRulesPage.tsx
+- frontend/src/pages/AdminAuditLogsPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/types/reservation.ts
+- docs/API_EXAMPLES.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 24 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端测试通过。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 规则页面当前只有单行全局规则，后续如要支持不同区域/楼层差异化规则，可将规则表扩展出 `area_id` 维度。
+- 规则更新审计原因目前固定为 `update rules`，后续可在页面加“变更原因”输入框。
+
+### 对其他成员的影响
+- 预约规则现在优先以数据库 `reservation_rules` 为准，配置项只作为兜底默认值。
+- 新增影响预约策略的代码时，应通过 `ReservationRuleService` 读取规则。

@@ -8,6 +8,7 @@ public final class AuditAction {
     public static final String AREA_CREATE = "AREA_CREATE";
     public static final String AREA_UPDATE = "AREA_UPDATE";
     public static final String AREA_STATUS_UPDATE = "AREA_STATUS_UPDATE";
+    public static final String RESERVATION_RULE_UPDATE = "RESERVATION_RULE_UPDATE";
 
     private AuditAction() {
     }

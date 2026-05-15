@@ -23,6 +23,7 @@ const actionLabels: Record<string, string> = {
   AREA_UPDATE: '更新区域',
   AREA_STATUS_UPDATE: '区域状态变更',
   AREA_CHANGE: '区域变更',
+  RESERVATION_RULE_UPDATE: '预约规则变更',
 };
 
 const actionOptions = [
@@ -30,11 +31,13 @@ const actionOptions = [
   { label: '标记异常', value: 'ADMIN_MARK_SEAT_SLOT_ABNORMAL' },
   { label: '恢复异常', value: 'ADMIN_RESTORE_SEAT_SLOT' },
   { label: '区域变更', value: 'AREA_CHANGE' },
+  { label: '预约规则变更', value: 'RESERVATION_RULE_UPDATE' },
 ];
 
 const targetTypeOptions = [
   { label: '座位时段', value: 'SEAT_SLOT' },
   { label: '区域', value: 'AREA' },
+  { label: '预约规则', value: 'RESERVATION_RULE' },
 ];
 
 export default function AdminAuditLogsPage() {

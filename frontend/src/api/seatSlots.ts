@@ -65,6 +65,16 @@ export function getReservationRules() {
   return request<ReservationRule>('/api/reservations/rules');
 }
 
+export function updateReservationRules(payload: Pick<
+  ReservationRule,
+  'checkinGraceMinutes' | 'maxAdvanceDays' | 'dailyActiveReservationLimit'
+>) {
+  return request<ReservationRule>('/api/reservations/rules', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
 export function createReservation(seatSlotId: number) {
   return request<ReservationResult>('/api/reservations', {
     method: 'POST',

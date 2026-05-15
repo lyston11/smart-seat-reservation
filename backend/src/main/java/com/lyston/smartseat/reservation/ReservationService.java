@@ -23,7 +23,7 @@ public class ReservationService {
     private final CheckinRecordMapper checkinRecordMapper;
     private final ReservationRateLimiter reservationRateLimiter;
     private final SeatSlotCacheService seatSlotCacheService;
-    private final ReservationRuleProperties reservationRuleProperties;
+    private final ReservationRuleService reservationRuleService;
 
     public ReservationService(
             SeatSlotMapper seatSlotMapper,
@@ -31,24 +31,25 @@ public class ReservationService {
             CheckinRecordMapper checkinRecordMapper,
             ReservationRateLimiter reservationRateLimiter,
             SeatSlotCacheService seatSlotCacheService,
-            ReservationRuleProperties reservationRuleProperties
+            ReservationRuleService reservationRuleService
     ) {
         this.seatSlotMapper = seatSlotMapper;
         this.reservationMapper = reservationMapper;
         this.checkinRecordMapper = checkinRecordMapper;
         this.reservationRateLimiter = reservationRateLimiter;
         this.seatSlotCacheService = seatSlotCacheService;
-        this.reservationRuleProperties = reservationRuleProperties;
+        this.reservationRuleService = reservationRuleService;
     }
 
     @Transactional
     public ReservationResponse createReservation(CreateReservationRequest request, Long userId) {
         reservationRateLimiter.check(userId);
         LocalDateTime now = LocalDateTime.now();
+        ReservationRuleResponse rules = reservationRuleService.getRules();
         SeatSlot slot = requireSeatSlot(request.seatSlotId());
-        ensureSlotIsReservableByTime(slot, now);
+        ensureSlotIsReservableByTime(slot, now, rules);
         ensureNoActiveOverlap(userId, slot);
-        ensureDailyActiveLimit(userId, slot.getSlotDate());
+        ensureDailyActiveLimit(userId, slot.getSlotDate(), rules);
 
         int affectedRows = seatSlotMapper.reserveAvailableSlot(request.seatSlotId(), userId, now);
         if (affectedRows != 1) {
@@ -62,7 +63,7 @@ public class ReservationService {
         reservation.setStatus(ReservationStatus.RESERVED);
         reservation.setCheckinCode(generateCheckinCode());
         reservation.setReservedAt(now);
-        reservation.setExpiresAt(now.plusMinutes(reservationRuleProperties.getCheckinGraceMinutes()));
+        reservation.setExpiresAt(now.plusMinutes(rules.checkinGraceMinutes()));
         reservationMapper.insert(reservation);
 
         int attachedRows = seatSlotMapper.attachReservation(slot.getId(), reservation.getId(), userId, now);
@@ -223,8 +224,8 @@ public class ReservationService {
         return slot;
     }
 
-    private void ensureSlotIsReservableByTime(SeatSlot slot, LocalDateTime now) {
-        LocalDate latestReservableDate = now.toLocalDate().plusDays(reservationRuleProperties.getMaxAdvanceDays());
+    private void ensureSlotIsReservableByTime(SeatSlot slot, LocalDateTime now, ReservationRuleResponse rules) {
+        LocalDate latestReservableDate = now.toLocalDate().plusDays(rules.maxAdvanceDays());
         if (slot.getSlotDate().isAfter(latestReservableDate)) {
             throw new BusinessException("SEAT_SLOT_TOO_FAR_AHEAD", "Seat slot is beyond the reservation window");
         }
@@ -249,8 +250,8 @@ public class ReservationService {
         }
     }
 
-    private void ensureDailyActiveLimit(Long userId, LocalDate slotDate) {
-        int limit = reservationRuleProperties.getDailyActiveReservationLimit();
+    private void ensureDailyActiveLimit(Long userId, LocalDate slotDate, ReservationRuleResponse rules) {
+        int limit = rules.dailyActiveReservationLimit();
         if (limit <= 0) {
             return;
         }

@@ -306,6 +306,20 @@ body {
   margin-top: 8px;
 }
 
+.rule-form {
+  max-width: 860px;
+}
+
+.rule-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.rule-form-grid .ant-input-number {
+  width: 100%;
+}
+
 @media (max-width: 860px) {
   .app-shell {
     flex-direction: column;
@@ -370,6 +384,7 @@ body {
 
   .stats-grid,
   .usage-row,
+  .rule-form-grid,
   .seat-layout-fields {
     grid-template-columns: 1fr;
   }

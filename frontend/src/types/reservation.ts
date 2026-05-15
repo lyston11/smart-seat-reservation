@@ -32,4 +32,6 @@ export type ReservationRule = {
   checkinGraceMinutes: number;
   maxAdvanceDays: number;
   dailyActiveReservationLimit: number;
+  updatedBy: number | null;
+  updatedAt: string | null;
 };

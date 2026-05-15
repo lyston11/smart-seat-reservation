@@ -248,6 +248,21 @@ curl http://localhost:18080/api/reservations/rules \
 
 返回内容包含 `checkinGraceMinutes`、`maxAdvanceDays` 和 `dailyActiveReservationLimit`。这些规则也会在学生选座页动态展示。
 
+管理员更新预约规则：
+
+```bash
+curl -X PUT http://localhost:18080/api/reservations/rules \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: 替换为管理员 token" \
+  -d '{
+    "checkinGraceMinutes": 15,
+    "maxAdvanceDays": 7,
+    "dailyActiveReservationLimit": 3
+  }'
+```
+
+规则更新后会写入审计日志，目标类型为 `RESERVATION_RULE`。
+
 ```bash
 curl -X POST http://localhost:18080/api/reservations \
   -H "Content-Type: application/json" \
@@ -365,6 +380,7 @@ curl "http://localhost:18080/api/admin/dashboard?date=2026-05-14" \
 - 开放时段页填写原因后释放已预约、使用中或异常占用的座位时段。
 - 占用看板页查询区域利用率和统计卡片。
 - 审计日志页按动作、操作人、对象和时间范围筛选管理员操作记录。
+- 预约规则页维护签到宽限、提前预约天数和每日活跃预约上限。
 
 本地启动前端后访问：
 
