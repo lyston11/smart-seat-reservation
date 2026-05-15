@@ -26,6 +26,7 @@ class ReservationServiceTest {
     private CheckinRecordMapperFake checkinRecordMapper;
     private ReservationRateLimiterFake reservationRateLimiter;
     private SeatSlotCacheServiceFake seatSlotCacheService;
+    private ReservationRuleProperties reservationRuleProperties;
     private ReservationService reservationService;
 
     @BeforeEach
@@ -35,12 +36,14 @@ class ReservationServiceTest {
         checkinRecordMapper = new CheckinRecordMapperFake();
         reservationRateLimiter = new ReservationRateLimiterFake();
         seatSlotCacheService = new SeatSlotCacheServiceFake();
+        reservationRuleProperties = new ReservationRuleProperties();
         reservationService = new ReservationService(
                 seatSlotMapper.proxy(),
                 reservationMapper.proxy(),
                 checkinRecordMapper.proxy(),
                 reservationRateLimiter,
-                seatSlotCacheService
+                seatSlotCacheService,
+                reservationRuleProperties
         );
     }
 
@@ -71,6 +74,7 @@ class ReservationServiceTest {
         assertThat(reservationRateLimiter.checkedUserId).isEqualTo(10L);
         assertThat(reservationMapper.overlapUserId).isEqualTo(10L);
         assertThat(reservationMapper.insertedReservation).isNotNull();
+        assertThat(reservationMapper.dailyLimitUserId).isEqualTo(10L);
         assertThat(seatSlotCacheService.evictedAreaId).isEqualTo(1L);
         assertThat(seatSlotCacheService.evictedDate).isEqualTo(futureDate());
     }
@@ -82,6 +86,31 @@ class ReservationServiceTest {
         assertThatThrownBy(() -> reservationService.createReservation(new CreateReservationRequest(1L), 10L))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("Past seat slots cannot be reserved");
+
+        assertThat(seatSlotMapper.reserveRows).isZero();
+        assertThat(reservationMapper.insertedReservation).isNull();
+    }
+
+    @Test
+    void createReservationShouldRejectSlotBeyondAdvanceWindow() {
+        seatSlotMapper.slot = seatSlot(LocalDate.now().plusDays(8), LocalTime.of(8, 0), LocalTime.of(10, 0));
+
+        assertThatThrownBy(() -> reservationService.createReservation(new CreateReservationRequest(1L), 10L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Seat slot is beyond the reservation window");
+
+        assertThat(seatSlotMapper.reserveRows).isZero();
+        assertThat(reservationMapper.insertedReservation).isNull();
+    }
+
+    @Test
+    void createReservationShouldRejectWhenDailyActiveLimitReached() {
+        seatSlotMapper.slot = futureSeatSlot();
+        reservationMapper.dailyActiveCount = reservationRuleProperties.getDailyActiveReservationLimit();
+
+        assertThatThrownBy(() -> reservationService.createReservation(new CreateReservationRequest(1L), 10L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("User has reached the daily active reservation limit");
 
         assertThat(seatSlotMapper.reserveRows).isZero();
         assertThat(reservationMapper.insertedReservation).isNull();
@@ -207,7 +236,9 @@ class ReservationServiceTest {
         private int markCheckedOutRows;
         private int markCancelledRows;
         private int activeOverlapCount;
+        private int dailyActiveCount;
         private Long overlapUserId;
+        private Long dailyLimitUserId;
 
         ReservationMapper proxy() {
             return ReservationServiceTest.proxy(ReservationMapper.class, (unused, method, args) -> switch (method.getName()) {
@@ -223,6 +254,10 @@ class ReservationServiceTest {
                 case "countActiveOverlappingReservations" -> {
                     overlapUserId = (Long) args[0];
                     yield activeOverlapCount;
+                }
+                case "countDailyActiveReservations" -> {
+                    dailyLimitUserId = (Long) args[0];
+                    yield dailyActiveCount;
                 }
                 default -> defaultValue(method.getReturnType());
             });

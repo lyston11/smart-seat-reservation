@@ -3,6 +3,7 @@ import type {
   AdminSeatSlotReleaseResult,
   AdminSeatSlotStatusResult,
   CheckinPayload,
+  ReservationRule,
   ReservationResult,
 } from '../types/reservation';
 import type { PublishSeatSlotPeriod, PublishSeatSlotsResult, SeatSlot } from '../types/seat';
@@ -58,6 +59,10 @@ export function adminRestoreSeatSlot(seatSlotId: number, reason: string) {
 export function listUserReservations(limit = 50) {
   const params = new URLSearchParams({ limit: String(limit) });
   return request<ReservationResult[]>(`/api/reservations?${params.toString()}`);
+}
+
+export function getReservationRules() {
+  return request<ReservationRule>('/api/reservations/rules');
 }
 
 export function createReservation(seatSlotId: number) {

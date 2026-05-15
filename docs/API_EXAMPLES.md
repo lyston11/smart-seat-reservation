@@ -239,6 +239,15 @@ curl -X PATCH http://localhost:18080/api/seats/1/status \
 
 ## 5. 创建预约
 
+查询当前预约规则：
+
+```bash
+curl http://localhost:18080/api/reservations/rules \
+  -H "X-Auth-Token: 替换为学生或管理员 token"
+```
+
+返回内容包含 `checkinGraceMinutes`、`maxAdvanceDays` 和 `dailyActiveReservationLimit`。这些规则也会在学生选座页动态展示。
+
 ```bash
 curl -X POST http://localhost:18080/api/reservations \
   -H "Content-Type: application/json" \
@@ -248,7 +257,7 @@ curl -X POST http://localhost:18080/api/reservations \
   }'
 ```
 
-后端会从登录 token 识别当前学生，不再从请求体传 `userId`。预约接口已接入 Redis 短窗口限流，并会拒绝已开始/过去时段、拒绝同一学生在重叠时间段内重复持有活跃预约。数据库条件更新仍是防超卖的最终保障：
+后端会从登录 token 识别当前学生，不再从请求体传 `userId`。预约接口已接入 Redis 短窗口限流，并会拒绝已开始/过去时段、拒绝超过提前预约天数的时段、拒绝同一学生在重叠时间段内重复持有活跃预约，也会限制每日活跃预约数量。数据库条件更新仍是防超卖的最终保障：
 
 ```sql
 UPDATE seat_slots
@@ -337,6 +346,7 @@ curl "http://localhost:18080/api/admin/dashboard?date=2026-05-14" \
 
 - 登录、退出和当前用户识别。
 - 查询座位时段。
+- 动态展示预约规则。
 - 创建预约。
 - 查询我的预约。
 - 显示预约返回的签到码。

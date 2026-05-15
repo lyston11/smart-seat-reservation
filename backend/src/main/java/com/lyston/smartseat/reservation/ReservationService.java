@@ -8,6 +8,7 @@ import com.lyston.smartseat.checkin.CheckinRecordMapper;
 import com.lyston.smartseat.common.BusinessException;
 import com.lyston.smartseat.seat.SeatSlot;
 import com.lyston.smartseat.seat.SeatSlotMapper;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -17,26 +18,27 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ReservationService {
 
-    private static final int CHECKIN_GRACE_MINUTES = 15;
-
     private final SeatSlotMapper seatSlotMapper;
     private final ReservationMapper reservationMapper;
     private final CheckinRecordMapper checkinRecordMapper;
     private final ReservationRateLimiter reservationRateLimiter;
     private final SeatSlotCacheService seatSlotCacheService;
+    private final ReservationRuleProperties reservationRuleProperties;
 
     public ReservationService(
             SeatSlotMapper seatSlotMapper,
             ReservationMapper reservationMapper,
             CheckinRecordMapper checkinRecordMapper,
             ReservationRateLimiter reservationRateLimiter,
-            SeatSlotCacheService seatSlotCacheService
+            SeatSlotCacheService seatSlotCacheService,
+            ReservationRuleProperties reservationRuleProperties
     ) {
         this.seatSlotMapper = seatSlotMapper;
         this.reservationMapper = reservationMapper;
         this.checkinRecordMapper = checkinRecordMapper;
         this.reservationRateLimiter = reservationRateLimiter;
         this.seatSlotCacheService = seatSlotCacheService;
+        this.reservationRuleProperties = reservationRuleProperties;
     }
 
     @Transactional
@@ -46,6 +48,7 @@ public class ReservationService {
         SeatSlot slot = requireSeatSlot(request.seatSlotId());
         ensureSlotIsReservableByTime(slot, now);
         ensureNoActiveOverlap(userId, slot);
+        ensureDailyActiveLimit(userId, slot.getSlotDate());
 
         int affectedRows = seatSlotMapper.reserveAvailableSlot(request.seatSlotId(), userId, now);
         if (affectedRows != 1) {
@@ -59,7 +62,7 @@ public class ReservationService {
         reservation.setStatus(ReservationStatus.RESERVED);
         reservation.setCheckinCode(generateCheckinCode());
         reservation.setReservedAt(now);
-        reservation.setExpiresAt(now.plusMinutes(CHECKIN_GRACE_MINUTES));
+        reservation.setExpiresAt(now.plusMinutes(reservationRuleProperties.getCheckinGraceMinutes()));
         reservationMapper.insert(reservation);
 
         int attachedRows = seatSlotMapper.attachReservation(slot.getId(), reservation.getId(), userId, now);
@@ -221,6 +224,10 @@ public class ReservationService {
     }
 
     private void ensureSlotIsReservableByTime(SeatSlot slot, LocalDateTime now) {
+        LocalDate latestReservableDate = now.toLocalDate().plusDays(reservationRuleProperties.getMaxAdvanceDays());
+        if (slot.getSlotDate().isAfter(latestReservableDate)) {
+            throw new BusinessException("SEAT_SLOT_TOO_FAR_AHEAD", "Seat slot is beyond the reservation window");
+        }
         LocalDateTime slotStartAt = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
         if (!slotStartAt.isAfter(now)) {
             throw new BusinessException("SEAT_SLOT_ALREADY_STARTED", "Past seat slots cannot be reserved");
@@ -238,6 +245,20 @@ public class ReservationService {
             throw new BusinessException(
                     "USER_HAS_ACTIVE_RESERVATION_IN_PERIOD",
                     "User already has an active reservation in this period"
+            );
+        }
+    }
+
+    private void ensureDailyActiveLimit(Long userId, LocalDate slotDate) {
+        int limit = reservationRuleProperties.getDailyActiveReservationLimit();
+        if (limit <= 0) {
+            return;
+        }
+        int activeCount = reservationMapper.countDailyActiveReservations(userId, slotDate);
+        if (activeCount >= limit) {
+            throw new BusinessException(
+                    "DAILY_ACTIVE_RESERVATION_LIMIT_EXCEEDED",
+                    "User has reached the daily active reservation limit"
             );
         }
     }

@@ -19,9 +19,19 @@ import org.springframework.web.bind.annotation.RestController;
 public class ReservationController {
 
     private final ReservationService reservationService;
+    private final ReservationRuleProperties reservationRuleProperties;
 
-    public ReservationController(ReservationService reservationService) {
+    public ReservationController(
+            ReservationService reservationService,
+            ReservationRuleProperties reservationRuleProperties
+    ) {
         this.reservationService = reservationService;
+        this.reservationRuleProperties = reservationRuleProperties;
+    }
+
+    @GetMapping("/rules")
+    public ApiResponse<ReservationRuleResponse> getReservationRules() {
+        return ApiResponse.ok(ReservationRuleResponse.from(reservationRuleProperties));
     }
 
     @GetMapping

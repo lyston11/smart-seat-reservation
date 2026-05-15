@@ -27,3 +27,9 @@ export type AdminSeatSlotStatusResult = {
 export type CheckinPayload = {
   checkinCode: string;
 };
+
+export type ReservationRule = {
+  checkinGraceMinutes: number;
+  maxAdvanceDays: number;
+  dailyActiveReservationLimit: number;
+};

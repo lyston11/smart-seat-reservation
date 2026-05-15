@@ -116,6 +116,20 @@ public interface ReservationMapper extends BaseMapper<Reservation> {
     );
 
     @Select("""
+            SELECT COUNT(*)
+            FROM reservations r
+            JOIN seat_slots ss
+              ON ss.id = r.seat_slot_id
+            WHERE r.user_id = #{userId}
+              AND r.status IN ('RESERVED', 'CHECKED_IN')
+              AND ss.slot_date = #{slotDate}
+            """)
+    int countDailyActiveReservations(
+            @Param("userId") Long userId,
+            @Param("slotDate") LocalDate slotDate
+    );
+
+    @Select("""
             SELECT id, user_id, seat_id, seat_slot_id, status, checkin_code, reserved_at,
                    checked_in_at, checked_out_at, expires_at, created_at, updated_at
             FROM reservations

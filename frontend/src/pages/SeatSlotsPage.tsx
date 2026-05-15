@@ -7,10 +7,11 @@ import {
   checkInReservation,
   checkOutReservation,
   createReservation,
+  getReservationRules,
   listSeatSlots,
 } from '../api/seatSlots';
 import SeatMap from '../components/SeatMap';
-import type { ReservationResult } from '../types/reservation';
+import type { ReservationResult, ReservationRule } from '../types/reservation';
 import type { Area, SeatSlot } from '../types/seat';
 
 export default function SeatSlotsPage() {
@@ -19,6 +20,7 @@ export default function SeatSlotsPage() {
   const [date, setDate] = useState(dayjs());
   const [slots, setSlots] = useState<SeatSlot[]>([]);
   const [activeReservation, setActiveReservation] = useState<ReservationResult | null>(null);
+  const [reservationRules, setReservationRules] = useState<ReservationRule | null>(null);
   const [checkinCode, setCheckinCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [reservingId, setReservingId] = useState<number | null>(null);
@@ -51,6 +53,14 @@ export default function SeatSlotsPage() {
       setLoading(false);
     }
   }, [areaId, dateText, messageApi]);
+
+  const loadRules = useCallback(async () => {
+    try {
+      setReservationRules(await getReservationRules());
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '加载预约规则失败');
+    }
+  }, [messageApi]);
 
   async function reserve(slotId: number) {
     setReservingId(slotId);
@@ -96,9 +106,10 @@ export default function SeatSlotsPage() {
     const timer = window.setTimeout(() => {
       void loadAreas();
       void loadSlots();
+      void loadRules();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadAreas, loadSlots]);
+  }, [loadAreas, loadSlots, loadRules]);
 
   return (
     <div className="page">
@@ -170,8 +181,12 @@ export default function SeatSlotsPage() {
 
       <div className="reservation-rules">
         <span>同一时间仅允许保留一个活跃预约</span>
+        <span>
+          每日最多保留 {reservationRules?.dailyActiveReservationLimit ?? '-'} 个活跃预约
+        </span>
         <span>已开始或过期时段不可预约</span>
-        <span>预约后 15 分钟内未签到将自动释放</span>
+        <span>最多可提前 {reservationRules?.maxAdvanceDays ?? '-'} 天预约</span>
+        <span>预约后 {reservationRules?.checkinGraceMinutes ?? '-'} 分钟内未签到将自动释放</span>
       </div>
 
       <SeatMap slots={slots} loading={loading} loadingSlotId={reservingId} onReserve={reserve} />
