@@ -43,14 +43,13 @@ public class ReservationService {
     public ReservationResponse createReservation(CreateReservationRequest request, Long userId) {
         reservationRateLimiter.check(userId);
         LocalDateTime now = LocalDateTime.now();
+        SeatSlot slot = requireSeatSlot(request.seatSlotId());
+        ensureSlotIsReservableByTime(slot, now);
+        ensureNoActiveOverlap(userId, slot);
+
         int affectedRows = seatSlotMapper.reserveAvailableSlot(request.seatSlotId(), userId, now);
         if (affectedRows != 1) {
             throw new BusinessException("SEAT_SLOT_NOT_AVAILABLE", "Seat slot is not available");
-        }
-
-        SeatSlot slot = seatSlotMapper.selectById(request.seatSlotId());
-        if (slot == null) {
-            throw new BusinessException("SEAT_SLOT_NOT_FOUND", "Seat slot not found");
         }
 
         Reservation reservation = new Reservation();
@@ -211,6 +210,36 @@ public class ReservationService {
             throw new BusinessException("RESERVATION_NOT_FOUND", "Reservation not found");
         }
         return reservation;
+    }
+
+    private SeatSlot requireSeatSlot(Long seatSlotId) {
+        SeatSlot slot = seatSlotMapper.selectById(seatSlotId);
+        if (slot == null) {
+            throw new BusinessException("SEAT_SLOT_NOT_FOUND", "Seat slot not found");
+        }
+        return slot;
+    }
+
+    private void ensureSlotIsReservableByTime(SeatSlot slot, LocalDateTime now) {
+        LocalDateTime slotStartAt = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
+        if (!slotStartAt.isAfter(now)) {
+            throw new BusinessException("SEAT_SLOT_ALREADY_STARTED", "Past seat slots cannot be reserved");
+        }
+    }
+
+    private void ensureNoActiveOverlap(Long userId, SeatSlot slot) {
+        int activeOverlapCount = reservationMapper.countActiveOverlappingReservations(
+                userId,
+                slot.getSlotDate(),
+                slot.getStartTime(),
+                slot.getEndTime()
+        );
+        if (activeOverlapCount > 0) {
+            throw new BusinessException(
+                    "USER_HAS_ACTIVE_RESERVATION_IN_PERIOD",
+                    "User already has an active reservation in this period"
+            );
+        }
     }
 
     private void recordAction(Long reservationId, Long userId, String action, LocalDateTime now) {

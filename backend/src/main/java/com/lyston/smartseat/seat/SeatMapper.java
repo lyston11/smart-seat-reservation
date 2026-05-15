@@ -8,10 +8,10 @@ import org.apache.ibatis.annotations.Select;
 public interface SeatMapper extends BaseMapper<Seat> {
 
     @Select("""
-            SELECT id, area_id, seat_no, status, created_at, updated_at
+            SELECT id, area_id, seat_no, row_no, column_no, display_order, status, created_at, updated_at
             FROM seats
             WHERE area_id = #{areaId}
-            ORDER BY seat_no
+            ORDER BY COALESCE(row_no, 9999), COALESCE(column_no, 9999), COALESCE(display_order, 9999), seat_no
             """)
     List<Seat> findByAreaId(@Param("areaId") Long areaId);
 

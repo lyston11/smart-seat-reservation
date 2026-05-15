@@ -111,6 +111,20 @@ body {
   padding-top: 8px;
 }
 
+.seat-layout-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.seat-layout-fields .ant-input-number {
+  width: 100%;
+}
+
+.audit-filter-select {
+  width: 180px;
+}
+
 .reservation-panel {
   display: flex;
   align-items: center;
@@ -136,6 +150,23 @@ body {
 
 .reservation-code {
   width: 420px;
+}
+
+.reservation-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -4px 0 16px;
+}
+
+.reservation-rules span {
+  padding: 4px 10px;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 12px;
+  line-height: 20px;
 }
 
 .seat-map {
@@ -271,6 +302,10 @@ body {
   font-size: 13px;
 }
 
+.usage-tags {
+  margin-top: 8px;
+}
+
 @media (max-width: 860px) {
   .app-shell {
     flex-direction: column;
@@ -312,7 +347,10 @@ body {
 
   .toolbar .ant-form-item,
   .toolbar .ant-picker,
+  .toolbar .ant-picker-range,
+  .toolbar .ant-input-number,
   .toolbar .ant-btn,
+  .audit-filter-select,
   .area-select,
   .seat-select {
     width: 100%;
@@ -325,12 +363,14 @@ body {
   }
 
   .reservation-input,
-  .reservation-code {
+  .reservation-code,
+  .reservation-rules span {
     width: 100%;
   }
 
   .stats-grid,
-  .usage-row {
+  .usage-row,
+  .seat-layout-fields {
     grid-template-columns: 1fr;
   }
 

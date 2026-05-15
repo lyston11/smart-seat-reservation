@@ -129,6 +129,10 @@ public class SeatSlotService {
 
         SeatSlot slot = new SeatSlot();
         slot.setSeatId(seat.getId());
+        slot.setSeatNo(seat.getSeatNo());
+        slot.setRowNo(seat.getRowNo());
+        slot.setColumnNo(seat.getColumnNo());
+        slot.setDisplayOrder(seat.getDisplayOrder());
         slot.setAreaId(request.areaId());
         slot.setSlotDate(request.slotDate());
         slot.setStartTime(period.startTime());

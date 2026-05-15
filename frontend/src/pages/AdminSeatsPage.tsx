@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Form, Input, message, Modal, Popconfirm, Select, Space, Table, Tag } from 'antd';
+import { Button, Form, Input, InputNumber, message, Modal, Popconfirm, Select, Space, Table, Tag } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { listAreas } from '../api/areas';
 import { createSeat, listSeats, updateSeat, updateSeatStatus } from '../api/seats';
@@ -8,6 +8,9 @@ import type { Area, Seat, SeatStatus } from '../types/seat';
 type SeatFormValues = {
   areaId: number;
   seatNo: string;
+  rowNo?: number;
+  columnNo?: number;
+  displayOrder?: number;
   status: SeatStatus;
 };
 
@@ -66,6 +69,9 @@ export default function AdminSeatsPage() {
     form.setFieldsValue({
       areaId: seat.areaId,
       seatNo: seat.seatNo,
+      rowNo: seat.rowNo ?? undefined,
+      columnNo: seat.columnNo ?? undefined,
+      displayOrder: seat.displayOrder ?? undefined,
       status: seat.status as SeatStatus,
     });
     setModalOpen(true);
@@ -79,7 +85,13 @@ export default function AdminSeatsPage() {
         await updateSeat(editingSeat.id, values);
         messageApi.success('座位已更新');
       } else {
-        await createSeat({ areaId: values.areaId, seatNo: values.seatNo });
+        await createSeat({
+          areaId: values.areaId,
+          seatNo: values.seatNo,
+          rowNo: values.rowNo,
+          columnNo: values.columnNo,
+          displayOrder: values.displayOrder,
+        });
         messageApi.success('座位已新增');
       }
       setAreaId(values.areaId);
@@ -117,6 +129,13 @@ export default function AdminSeatsPage() {
     { title: '座位 ID', dataIndex: 'id', width: 120 },
     { title: '区域 ID', dataIndex: 'areaId', width: 120 },
     { title: '座位编号', dataIndex: 'seatNo', width: 180 },
+    {
+      title: '布局位置',
+      width: 160,
+      render: (_, record) =>
+        record.rowNo && record.columnNo ? `第 ${record.rowNo} 排 / 第 ${record.columnNo} 列` : '-',
+    },
+    { title: '展示顺序', dataIndex: 'displayOrder', width: 120, render: (value) => value ?? '-' },
     {
       title: '资源状态',
       dataIndex: 'status',
@@ -212,6 +231,17 @@ export default function AdminSeatsPage() {
           >
             <Input placeholder="例如 A-005" />
           </Form.Item>
+          <div className="seat-layout-fields">
+            <Form.Item label="行号" name="rowNo">
+              <InputNumber min={1} precision={0} placeholder="1" />
+            </Form.Item>
+            <Form.Item label="列号" name="columnNo">
+              <InputNumber min={1} precision={0} placeholder="1" />
+            </Form.Item>
+            <Form.Item label="展示顺序" name="displayOrder">
+              <InputNumber min={1} precision={0} placeholder="自动" />
+            </Form.Item>
+          </div>
           {editingSeat ? (
             <Form.Item
               label="资源状态"

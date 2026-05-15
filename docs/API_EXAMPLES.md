@@ -128,6 +128,15 @@ curl "http://localhost:18080/api/admin/audit-logs?limit=50" \
   -H "X-Auth-Token: 替换为管理员 token"
 ```
 
+按动作、操作人、目标类型和时间范围筛选审计日志：
+
+```bash
+curl "http://localhost:18080/api/admin/audit-logs?action=AREA_CHANGE&actorUserId=2&targetType=AREA&startAt=2026-05-15T08:00:00&endAt=2026-05-15T18:00:00&limit=50" \
+  -H "X-Auth-Token: 替换为管理员 token"
+```
+
+`action` 可选值包括 `ADMIN_RELEASE_SEAT_SLOT`、`ADMIN_MARK_SEAT_SLOT_ABNORMAL`、`ADMIN_RESTORE_SEAT_SLOT` 和 `AREA_CHANGE`。其中 `AREA_CHANGE` 会覆盖区域新增、编辑和状态变更三类日志。
+
 ## 4. 区域和座位资源
 
 查询所有区域：
@@ -190,7 +199,10 @@ curl -X POST http://localhost:18080/api/seats \
   -H "X-Auth-Token: 替换为管理员 token" \
   -d '{
     "areaId": 1,
-    "seatNo": "A-005"
+    "seatNo": "A-005",
+    "rowNo": 3,
+    "columnNo": 1,
+    "displayOrder": 5
   }'
 ```
 
@@ -203,6 +215,9 @@ curl -X PUT http://localhost:18080/api/seats/1 \
   -d '{
     "areaId": 1,
     "seatNo": "A-001",
+    "rowNo": 1,
+    "columnNo": 1,
+    "displayOrder": 1,
     "status": "ACTIVE"
   }'
 ```
@@ -220,6 +235,8 @@ curl -X PATCH http://localhost:18080/api/seats/1/status \
 
 区域和座位都采用逻辑停用，不做物理删除，避免破坏历史预约记录。
 
+座位资源的 `rowNo`、`columnNo` 和 `displayOrder` 用于学生端座位地图按真实行列渲染。历史数据会通过迁移自动补一个演示布局。
+
 ## 5. 创建预约
 
 ```bash
@@ -231,7 +248,7 @@ curl -X POST http://localhost:18080/api/reservations \
   }'
 ```
 
-后端会从登录 token 识别当前学生，不再从请求体传 `userId`。预约接口已接入 Redis 短窗口限流，数据库条件更新仍是防超卖的最终保障：
+后端会从登录 token 识别当前学生，不再从请求体传 `userId`。预约接口已接入 Redis 短窗口限流，并会拒绝已开始/过去时段、拒绝同一学生在重叠时间段内重复持有活跃预约。数据库条件更新仍是防超卖的最终保障：
 
 ```sql
 UPDATE seat_slots
@@ -312,7 +329,7 @@ curl "http://localhost:18080/api/admin/dashboard?date=2026-05-14" \
   -H "X-Auth-Token: 替换为管理员 token"
 ```
 
-返回内容包含总时段、空闲、已预约、使用中、异常占用、活跃预约数，以及各区域利用率。
+返回内容包含总时段、空闲、待签到、使用中、异常占用、活跃预约数、已签到人数，以及按利用率排序的区域排行榜。
 
 ## 12. 前端联调说明
 
@@ -337,6 +354,7 @@ curl "http://localhost:18080/api/admin/dashboard?date=2026-05-14" \
 - 开放时段页填写原因后标记异常占用和恢复异常时段。
 - 开放时段页填写原因后释放已预约、使用中或异常占用的座位时段。
 - 占用看板页查询区域利用率和统计卡片。
+- 审计日志页按动作、操作人、对象和时间范围筛选管理员操作记录。
 
 本地启动前端后访问：
 

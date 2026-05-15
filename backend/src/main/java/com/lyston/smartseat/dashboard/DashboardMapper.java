@@ -35,6 +35,7 @@ public interface DashboardMapper {
                 COUNT(ss.id) AS totalSlots,
                 COALESCE(SUM(CASE WHEN ss.status = 'RESERVED' THEN 1 ELSE 0 END), 0) AS reservedSlots,
                 COALESCE(SUM(CASE WHEN ss.status = 'USING' THEN 1 ELSE 0 END), 0) AS usingSlots,
+                COALESCE(SUM(CASE WHEN ss.status = 'ABNORMAL' THEN 1 ELSE 0 END), 0) AS abnormalSlots,
                 CASE
                     WHEN COUNT(ss.id) = 0 THEN 0
                     ELSE ROUND(
@@ -52,7 +53,7 @@ public interface DashboardMapper {
              AND ss.slot_date = #{date}
             WHERE a.status = 'ACTIVE'
             GROUP BY a.id, a.name
-            ORDER BY a.id
+            ORDER BY usageRate DESC, usingSlots DESC, reservedSlots DESC, a.id
             """)
     List<AreaUsageSummary> summarizeAreaUsage(@Param("date") LocalDate date);
 }

@@ -1,7 +1,9 @@
 package com.lyston.smartseat.reservation;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -94,6 +96,24 @@ public interface ReservationMapper extends BaseMapper<Reservation> {
             LIMIT #{limit}
             """)
     List<Reservation> findExpiredReservations(@Param("now") LocalDateTime now, @Param("limit") int limit);
+
+    @Select("""
+            SELECT COUNT(*)
+            FROM reservations r
+            JOIN seat_slots ss
+              ON ss.id = r.seat_slot_id
+            WHERE r.user_id = #{userId}
+              AND r.status IN ('RESERVED', 'CHECKED_IN')
+              AND ss.slot_date = #{slotDate}
+              AND ss.start_time < #{endTime}
+              AND ss.end_time > #{startTime}
+            """)
+    int countActiveOverlappingReservations(
+            @Param("userId") Long userId,
+            @Param("slotDate") LocalDate slotDate,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime
+    );
 
     @Select("""
             SELECT id, user_id, seat_id, seat_slot_id, status, checkin_code, reserved_at,

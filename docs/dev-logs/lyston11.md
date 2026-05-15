@@ -611,3 +611,56 @@
 - 登录接口请求体现在需要 `studentNo` 和 `password`。
 - 前端座位地图依赖 `seatNo`，后端座位时段响应不要删除该字段。
 - 管理员新页面仍需挂在 `RoleRoute allowedRoles={['ADMIN']}` 下。
+
+## 2026-05-15
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-admin-audit-dashboard
+- 目标: 继续开发审计日志筛选、占用看板增强、真实座位地图行列布局和预约规则增强。
+
+### 本次改动
+- 审计日志接口新增筛选条件：动作、操作人、目标类型、开始时间、结束时间和返回条数。
+- 审计动作支持 `AREA_CHANGE` 聚合筛选，一次覆盖区域新增、编辑和状态变更。
+- 前端审计日志页新增筛选表单，可按管理员操作维度追溯释放、标异常、恢复和区域变更。
+- 管理员占用看板新增异常占用、活跃预约、已签到人数、待签到和整体占用率卡片。
+- 区域利用率列表升级为排行榜，后端按利用率排序并返回区域异常占用数量。
+- `seats` 新增 `row_no`、`column_no`、`display_order` 字段，迁移为演示数据补默认布局。
+- 座位管理页支持维护行号、列号和展示顺序；学生端座位地图按行列渲染真实座位布局。
+- 座位时段查询和批量发布响应补充座位布局字段，保持前后端响应一致。
+- 预约创建新增规则：不能预约已开始或过去时段；同一学生在重叠时间内只能有一个活跃预约。
+- 学生端选座页展示预约规则提示，便于比赛演示说明业务严谨性。
+- 补充后端单测，覆盖审计筛选、时间范围校验、过去时段拒绝和重叠预约拒绝。
+- 更新 API 手测文档，补充审计筛选、座位布局字段和预约规则说明。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/audit/
+- backend/src/main/java/com/lyston/smartseat/dashboard/
+- backend/src/main/java/com/lyston/smartseat/reservation/
+- backend/src/main/java/com/lyston/smartseat/seat/
+- backend/src/main/resources/db/migration/V5__add_seat_layout_fields.sql
+- backend/src/test/java/com/lyston/smartseat/audit/AuditLogServiceTest.java
+- backend/src/test/java/com/lyston/smartseat/reservation/ReservationServiceTest.java
+- frontend/src/api/
+- frontend/src/components/SeatMap.tsx
+- frontend/src/pages/
+- frontend/src/styles/main.css
+- frontend/src/types/
+- docs/API_EXAMPLES.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 20 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端测试通过。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 预约规则目前覆盖“同一时间只能一个活跃预约”和“不能预约过去时段”，后续可继续增加预约提前天数、每日预约次数上限等策略。
+- 座位地图已有行列布局，但还不是完整 CAD/平面图级别，后续可继续增加区域障碍物、通道和座位朝向。
+- 看板数据当前按日期实时查询，后续可接入缓存或定时汇总提升大数据量场景性能。
+
+### 对其他成员的影响
+- 新增座位时建议维护 `rowNo`、`columnNo` 和 `displayOrder`，否则学生端会退回自动网格位置。
+- 新增管理员动作时，应同步扩展审计动作常量、筛选选项和审计页面文案。
+- 后续调整预约创建逻辑时，要保留重叠预约校验和过去时段校验，避免业务规则回退。

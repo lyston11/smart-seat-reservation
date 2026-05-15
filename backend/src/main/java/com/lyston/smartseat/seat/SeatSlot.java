@@ -15,6 +15,12 @@ public class SeatSlot {
     private Long seatId;
     @TableField(exist = false)
     private String seatNo;
+    @TableField(exist = false)
+    private Integer rowNo;
+    @TableField(exist = false)
+    private Integer columnNo;
+    @TableField(exist = false)
+    private Integer displayOrder;
     private Long areaId;
     private LocalDate slotDate;
     private LocalTime startTime;
@@ -48,6 +54,30 @@ public class SeatSlot {
 
     public void setSeatNo(String seatNo) {
         this.seatNo = seatNo;
+    }
+
+    public Integer getRowNo() {
+        return rowNo;
+    }
+
+    public void setRowNo(Integer rowNo) {
+        this.rowNo = rowNo;
+    }
+
+    public Integer getColumnNo() {
+        return columnNo;
+    }
+
+    public void setColumnNo(Integer columnNo) {
+        this.columnNo = columnNo;
+    }
+
+    public Integer getDisplayOrder() {
+        return displayOrder;
+    }
+
+    public void setDisplayOrder(Integer displayOrder) {
+        this.displayOrder = displayOrder;
     }
 
     public Long getAreaId() {

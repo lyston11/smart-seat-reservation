@@ -11,6 +11,9 @@ public class Seat {
     private Long id;
     private Long areaId;
     private String seatNo;
+    private Integer rowNo;
+    private Integer columnNo;
+    private Integer displayOrder;
     private String status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -37,6 +40,30 @@ public class Seat {
 
     public void setSeatNo(String seatNo) {
         this.seatNo = seatNo;
+    }
+
+    public Integer getRowNo() {
+        return rowNo;
+    }
+
+    public void setRowNo(Integer rowNo) {
+        this.rowNo = rowNo;
+    }
+
+    public Integer getColumnNo() {
+        return columnNo;
+    }
+
+    public void setColumnNo(Integer columnNo) {
+        this.columnNo = columnNo;
+    }
+
+    public Integer getDisplayOrder() {
+        return displayOrder;
+    }
+
+    public void setDisplayOrder(Integer displayOrder) {
+        this.displayOrder = displayOrder;
     }
 
     public String getStatus() {

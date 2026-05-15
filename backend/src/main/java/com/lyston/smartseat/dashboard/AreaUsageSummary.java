@@ -7,6 +7,7 @@ public class AreaUsageSummary {
     private long totalSlots;
     private long reservedSlots;
     private long usingSlots;
+    private long abnormalSlots;
     private double usageRate;
 
     public Long getAreaId() {
@@ -47,6 +48,14 @@ public class AreaUsageSummary {
 
     public void setUsingSlots(long usingSlots) {
         this.usingSlots = usingSlots;
+    }
+
+    public long getAbnormalSlots() {
+        return abnormalSlots;
+    }
+
+    public void setAbnormalSlots(long abnormalSlots) {
+        this.abnormalSlots = abnormalSlots;
     }
 
     public double getUsageRate() {

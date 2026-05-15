@@ -168,6 +168,12 @@ export default function SeatSlotsPage() {
         </Space>
       </div>
 
+      <div className="reservation-rules">
+        <span>同一时间仅允许保留一个活跃预约</span>
+        <span>已开始或过期时段不可预约</span>
+        <span>预约后 15 分钟内未签到将自动释放</span>
+      </div>
+
       <SeatMap slots={slots} loading={loading} loadingSlotId={reservingId} onReserve={reserve} />
     </div>
   );

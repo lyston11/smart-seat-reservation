@@ -12,6 +12,9 @@ export type Seat = {
   id: number;
   areaId: number;
   seatNo: string;
+  rowNo: number | null;
+  columnNo: number | null;
+  displayOrder: number | null;
   status: string;
 };
 
@@ -23,6 +26,9 @@ export type SeatSlot = {
   id: number;
   seatId: number;
   seatNo: string | null;
+  rowNo: number | null;
+  columnNo: number | null;
+  displayOrder: number | null;
   areaId: number;
   slotDate: string;
   startTime: string;

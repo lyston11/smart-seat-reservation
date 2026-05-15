@@ -38,6 +38,9 @@ public class SeatService {
         Seat seat = new Seat();
         seat.setAreaId(areaId);
         seat.setSeatNo(seatNo);
+        seat.setRowNo(request.rowNo());
+        seat.setColumnNo(request.columnNo());
+        seat.setDisplayOrder(resolveDisplayOrder(request.displayOrder(), areaId));
         seat.setStatus(SeatStatus.ACTIVE);
         seat.setCreatedAt(now);
         seat.setUpdatedAt(now);
@@ -59,6 +62,9 @@ public class SeatService {
 
         seat.setAreaId(areaId);
         seat.setSeatNo(seatNo);
+        seat.setRowNo(request.rowNo() == null ? seat.getRowNo() : request.rowNo());
+        seat.setColumnNo(request.columnNo() == null ? seat.getColumnNo() : request.columnNo());
+        seat.setDisplayOrder(request.displayOrder() == null ? seat.getDisplayOrder() : request.displayOrder());
         seat.setStatus(status);
         seat.setUpdatedAt(LocalDateTime.now());
         seatMapper.updateById(seat);
@@ -81,6 +87,13 @@ public class SeatService {
 
     private String normalizeSeatNo(String seatNo) {
         return seatNo.trim();
+    }
+
+    private Integer resolveDisplayOrder(Integer displayOrder, Long areaId) {
+        if (displayOrder != null) {
+            return displayOrder;
+        }
+        return seatMapper.countByAreaId(areaId) + 1;
     }
 
     private String normalizeStatus(String status) {

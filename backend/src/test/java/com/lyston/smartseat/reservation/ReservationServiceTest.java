@@ -13,6 +13,7 @@ import com.lyston.smartseat.seat.SeatSlotMapper;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,7 @@ class ReservationServiceTest {
     @Test
     void createReservationShouldFailWhenAtomicReserveAffectsNoRows() {
         seatSlotMapper.reserveRows = 0;
+        seatSlotMapper.slot = futureSeatSlot();
 
         assertThatThrownBy(() -> reservationService.createReservation(new CreateReservationRequest(1L), 10L))
                 .isInstanceOf(BusinessException.class)
@@ -58,7 +60,7 @@ class ReservationServiceTest {
     void createReservationShouldReserveSlotAttachReservationAndEvictCache() {
         seatSlotMapper.reserveRows = 1;
         seatSlotMapper.attachRows = 1;
-        seatSlotMapper.slot = seatSlot();
+        seatSlotMapper.slot = futureSeatSlot();
 
         ReservationResponse response = reservationService.createReservation(new CreateReservationRequest(1L), 10L);
 
@@ -67,9 +69,35 @@ class ReservationServiceTest {
         assertThat(response.userId()).isEqualTo(10L);
         assertThat(response.status()).isEqualTo(ReservationStatus.RESERVED);
         assertThat(reservationRateLimiter.checkedUserId).isEqualTo(10L);
+        assertThat(reservationMapper.overlapUserId).isEqualTo(10L);
         assertThat(reservationMapper.insertedReservation).isNotNull();
         assertThat(seatSlotCacheService.evictedAreaId).isEqualTo(1L);
-        assertThat(seatSlotCacheService.evictedDate).isEqualTo(LocalDate.of(2026, 5, 20));
+        assertThat(seatSlotCacheService.evictedDate).isEqualTo(futureDate());
+    }
+
+    @Test
+    void createReservationShouldRejectPastSlot() {
+        seatSlotMapper.slot = pastSeatSlot();
+
+        assertThatThrownBy(() -> reservationService.createReservation(new CreateReservationRequest(1L), 10L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Past seat slots cannot be reserved");
+
+        assertThat(seatSlotMapper.reserveRows).isZero();
+        assertThat(reservationMapper.insertedReservation).isNull();
+    }
+
+    @Test
+    void createReservationShouldRejectOverlappingActiveReservation() {
+        seatSlotMapper.slot = futureSeatSlot();
+        reservationMapper.activeOverlapCount = 1;
+
+        assertThatThrownBy(() -> reservationService.createReservation(new CreateReservationRequest(1L), 10L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("User already has an active reservation in this period");
+
+        assertThat(seatSlotMapper.reserveRows).isZero();
+        assertThat(reservationMapper.insertedReservation).isNull();
     }
 
     @Test
@@ -77,14 +105,14 @@ class ReservationServiceTest {
         reservationMapper.reservation = reservation();
         reservationMapper.markCheckedOutRows = 1;
         seatSlotMapper.releaseUsingRows = 1;
-        seatSlotMapper.slot = seatSlot();
+        seatSlotMapper.slot = futureSeatSlot();
 
         ReservationResponse response = reservationService.checkOut(100L, 10L);
 
         assertThat(response.reservationId()).isEqualTo(100L);
         assertThat(checkinRecordMapper.insertedRecord).isNotNull();
         assertThat(seatSlotCacheService.evictedAreaId).isEqualTo(1L);
-        assertThat(seatSlotCacheService.evictedDate).isEqualTo(LocalDate.of(2026, 5, 20));
+        assertThat(seatSlotCacheService.evictedDate).isEqualTo(futureDate());
     }
 
     @Test
@@ -104,7 +132,7 @@ class ReservationServiceTest {
         reservationMapper.reservation = reservation();
         reservationMapper.markCancelledRows = 1;
         seatSlotMapper.releaseReservedRows = 1;
-        seatSlotMapper.slot = seatSlot();
+        seatSlotMapper.slot = futureSeatSlot();
 
         ReservationResponse response = reservationService.cancel(100L, 10L);
 
@@ -114,14 +142,26 @@ class ReservationServiceTest {
         assertThat(seatSlotCacheService.evictedAreaId).isEqualTo(1L);
     }
 
-    private SeatSlot seatSlot() {
+    private LocalDate futureDate() {
+        return LocalDate.now().plusDays(7);
+    }
+
+    private SeatSlot futureSeatSlot() {
+        return seatSlot(futureDate(), LocalTime.of(8, 0), LocalTime.of(10, 0));
+    }
+
+    private SeatSlot pastSeatSlot() {
+        return seatSlot(LocalDateTime.now().minusDays(1).toLocalDate(), LocalTime.of(8, 0), LocalTime.of(10, 0));
+    }
+
+    private SeatSlot seatSlot(LocalDate slotDate, LocalTime startTime, LocalTime endTime) {
         SeatSlot slot = new SeatSlot();
         slot.setId(1L);
         slot.setSeatId(2L);
         slot.setAreaId(1L);
-        slot.setSlotDate(LocalDate.of(2026, 5, 20));
-        slot.setStartTime(LocalTime.of(8, 0));
-        slot.setEndTime(LocalTime.of(10, 0));
+        slot.setSlotDate(slotDate);
+        slot.setStartTime(startTime);
+        slot.setEndTime(endTime);
         return slot;
     }
 
@@ -166,6 +206,8 @@ class ReservationServiceTest {
         private int markCheckedInRows;
         private int markCheckedOutRows;
         private int markCancelledRows;
+        private int activeOverlapCount;
+        private Long overlapUserId;
 
         ReservationMapper proxy() {
             return ReservationServiceTest.proxy(ReservationMapper.class, (unused, method, args) -> switch (method.getName()) {
@@ -178,6 +220,10 @@ class ReservationServiceTest {
                 case "markCheckedIn" -> markCheckedInRows;
                 case "markCheckedOut" -> markCheckedOutRows;
                 case "markCancelled" -> markCancelledRows;
+                case "countActiveOverlappingReservations" -> {
+                    overlapUserId = (Long) args[0];
+                    yield activeOverlapCount;
+                }
                 default -> defaultValue(method.getReturnType());
             });
         }

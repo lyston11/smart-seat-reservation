@@ -1,8 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, message, Table, Tag } from 'antd';
+import { Button, DatePicker, Form, InputNumber, message, Select, Table, Tag } from 'antd';
 import type { TableColumnsType } from 'antd';
+import type { Dayjs } from 'dayjs';
 import { listAuditLogs } from '../api/audit';
-import type { AuditLog } from '../types/audit';
+import type { AuditLog, AuditLogQuery } from '../types/audit';
+
+const { RangePicker } = DatePicker;
+
+type AuditFilterValues = {
+  action?: string;
+  actorUserId?: number;
+  targetType?: string;
+  timeRange?: [Dayjs, Dayjs];
+  limit?: number;
+};
 
 const actionLabels: Record<string, string> = {
   ADMIN_RELEASE_SEAT_SLOT: '管理员释放',
@@ -11,17 +22,31 @@ const actionLabels: Record<string, string> = {
   AREA_CREATE: '新增区域',
   AREA_UPDATE: '更新区域',
   AREA_STATUS_UPDATE: '区域状态变更',
+  AREA_CHANGE: '区域变更',
 };
 
+const actionOptions = [
+  { label: '管理员释放', value: 'ADMIN_RELEASE_SEAT_SLOT' },
+  { label: '标记异常', value: 'ADMIN_MARK_SEAT_SLOT_ABNORMAL' },
+  { label: '恢复异常', value: 'ADMIN_RESTORE_SEAT_SLOT' },
+  { label: '区域变更', value: 'AREA_CHANGE' },
+];
+
+const targetTypeOptions = [
+  { label: '座位时段', value: 'SEAT_SLOT' },
+  { label: '区域', value: 'AREA' },
+];
+
 export default function AdminAuditLogsPage() {
+  const [form] = Form.useForm<AuditFilterValues>();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
-  const loadLogs = useCallback(async () => {
+  const loadLogs = useCallback(async (query: AuditLogQuery = {}) => {
     setLoading(true);
     try {
-      setLogs(await listAuditLogs());
+      setLogs(await listAuditLogs(query));
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '加载审计日志失败');
     } finally {
@@ -35,6 +60,23 @@ export default function AdminAuditLogsPage() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [loadLogs]);
+
+  async function applyFilters() {
+    const values = await form.validateFields();
+    await loadLogs({
+      action: values.action,
+      actorUserId: values.actorUserId,
+      targetType: values.targetType,
+      startAt: values.timeRange?.[0]?.startOf('minute').format('YYYY-MM-DDTHH:mm:ss'),
+      endAt: values.timeRange?.[1]?.endOf('minute').format('YYYY-MM-DDTHH:mm:ss'),
+      limit: values.limit ?? 50,
+    });
+  }
+
+  function resetFilters() {
+    form.resetFields();
+    void loadLogs();
+  }
 
   const columns: TableColumnsType<AuditLog> = [
     { title: '日志 ID', dataIndex: 'id', width: 100 },
@@ -63,9 +105,31 @@ export default function AdminAuditLogsPage() {
     <div className="page">
       {contextHolder}
       <div className="toolbar">
-        <Button type="primary" loading={loading} onClick={loadLogs}>
-          刷新日志
-        </Button>
+        <Form form={form} layout="inline" initialValues={{ limit: 50 }}>
+          <Form.Item label="动作" name="action">
+            <Select allowClear className="audit-filter-select" options={actionOptions} placeholder="全部动作" />
+          </Form.Item>
+          <Form.Item label="操作人" name="actorUserId">
+            <InputNumber min={1} precision={0} placeholder="用户 ID" />
+          </Form.Item>
+          <Form.Item label="对象" name="targetType">
+            <Select allowClear className="audit-filter-select" options={targetTypeOptions} placeholder="全部对象" />
+          </Form.Item>
+          <Form.Item label="时间" name="timeRange">
+            <RangePicker showTime />
+          </Form.Item>
+          <Form.Item label="条数" name="limit">
+            <InputNumber min={1} max={100} precision={0} />
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" loading={loading} onClick={applyFilters}>
+              筛选
+            </Button>
+          </Form.Item>
+          <Form.Item>
+            <Button onClick={resetFilters}>重置</Button>
+          </Form.Item>
+        </Form>
       </div>
       <Table rowKey="id" loading={loading} dataSource={logs} columns={columns} pagination={false} />
     </div>
