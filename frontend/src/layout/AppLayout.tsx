@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Layers,
   MapPinned,
+  ShieldCheck,
   Timer,
 } from 'lucide-react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -50,6 +51,11 @@ const adminMenuItems: MenuItem[] = [
     icon: <LayoutDashboard size={18} />,
     label: <Link to="/admin/dashboard">占用看板</Link>,
   },
+  {
+    key: '/admin/audit-logs',
+    icon: <ShieldCheck size={18} />,
+    label: <Link to="/admin/audit-logs">审计日志</Link>,
+  },
 ];
 
 const pageTitles: Record<string, string> = {
@@ -59,6 +65,7 @@ const pageTitles: Record<string, string> = {
   '/admin/seats': '座位管理',
   '/admin/seat-slots': '开放时段',
   '/admin/dashboard': '占用看板',
+  '/admin/audit-logs': '审计日志',
 };
 
 export default function AppLayout() {

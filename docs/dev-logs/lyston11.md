@@ -561,3 +561,53 @@
 - 新增学生端选座展示建议继续复用 `SeatMap`，避免回到页面内堆表格逻辑。
 - 新增管理员时段操作按钮时优先扩展 `AdminSeatSlotActions`。
 - 管理员新页面路由应挂在 `RoleRoute allowedRoles={['ADMIN']}` 下。
+
+## 2026-05-15
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-seat-map-audit-hardening
+- 目标: 从最新 `main` 创建新分支，继续补齐真实座位编号、审计日志页面、登录加固、座位地图平面化和关键测试。
+
+### 本次改动
+- 后端座位时段查询返回 `seatNo`，前端座位地图优先显示 `A-001` 等真实座位编号。
+- 学生端 `SeatMap` 增加入口、采光窗、服务台和网格背景，视觉上更接近平面座位图。
+- 新增管理员审计日志查询接口 `/api/admin/audit-logs`，支持按 `limit` 查询最近日志并限制最大 100 条。
+- 新增前端审计日志页面和管理员菜单入口，展示操作人、动作、对象、原因和时间。
+- 登录请求增加 `password` 字段，演示账号分别使用学生密码 `123456`、管理员密码 `admin`。
+- 新增数据库迁移 `V4__add_user_password_hash.sql`，为已有用户补充密码哈希。
+- 补充后端单测，覆盖登录密码校验、审计日志查询 limit、Redis 缓存/限流降级、签到失败和取消流转。
+- 更新 API 示例文档，补充登录密码、`seatNo` 和审计日志查询说明。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/audit/
+- backend/src/main/java/com/lyston/smartseat/auth/
+- backend/src/main/java/com/lyston/smartseat/seat/
+- backend/src/main/java/com/lyston/smartseat/user/
+- backend/src/main/resources/db/migration/V4__add_user_password_hash.sql
+- backend/src/test/java/com/lyston/smartseat/
+- frontend/src/App.tsx
+- frontend/src/api/
+- frontend/src/components/SeatMap.tsx
+- frontend/src/layout/AppLayout.tsx
+- frontend/src/pages/
+- frontend/src/styles/main.css
+- frontend/src/types/
+- docs/API_EXAMPLES.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 16 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端测试通过。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 当前密码使用 SHA-256 演示级哈希，比赛演示够用；正式系统建议改为 BCrypt/Argon2 并增加密码修改、重置和刷新 token。
+- 审计日志页面目前是最近日志列表，后续可增加动作、操作人、目标对象和时间范围筛选。
+- 座位地图已经更接近平面图，但还没有真实坐标；后续可为座位增加行列或坐标字段。
+
+### 对其他成员的影响
+- 登录接口请求体现在需要 `studentNo` 和 `password`。
+- 前端座位地图依赖 `seatNo`，后端座位时段响应不要删除该字段。
+- 管理员新页面仍需挂在 `RoleRoute allowedRoles={['ADMIN']}` 下。

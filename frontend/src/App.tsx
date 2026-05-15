@@ -6,6 +6,7 @@ import AppLayout from './layout/AppLayout';
 import RoleRoute from './router/RoleRoute';
 
 const AdminAreasPage = lazy(() => import('./pages/AdminAreasPage'));
+const AdminAuditLogsPage = lazy(() => import('./pages/AdminAuditLogsPage'));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 const AdminSeatSlotsPage = lazy(() => import('./pages/AdminSeatSlotsPage'));
 const AdminSeatsPage = lazy(() => import('./pages/AdminSeatsPage'));
@@ -36,6 +37,7 @@ export default function App() {
               <Route path="/admin/seats" element={<AdminSeatsPage />} />
               <Route path="/admin/seat-slots" element={<AdminSeatSlotsPage />} />
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+              <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/student/seats" replace />} />

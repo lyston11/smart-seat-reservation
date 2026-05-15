@@ -12,7 +12,7 @@ import org.apache.ibatis.annotations.Update;
 public interface SeatSlotMapper extends BaseMapper<SeatSlot> {
 
     @Select("""
-            SELECT ss.id, ss.seat_id, ss.area_id, ss.slot_date, ss.start_time, ss.end_time, ss.status,
+            SELECT ss.id, ss.seat_id, s.seat_no, ss.area_id, ss.slot_date, ss.start_time, ss.end_time, ss.status,
                    ss.reserved_by, ss.reservation_id, ss.version, ss.created_at, ss.updated_at
             FROM seat_slots ss
             JOIN seats s

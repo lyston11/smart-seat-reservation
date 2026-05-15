@@ -4,8 +4,12 @@ import com.lyston.smartseat.common.BusinessException;
 import com.lyston.smartseat.user.User;
 import com.lyston.smartseat.user.UserMapper;
 import com.lyston.smartseat.user.UserResponse;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 import java.util.UUID;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -29,6 +33,9 @@ public class AuthService {
         User user = userMapper.findByStudentNo(studentNo);
         if (user == null) {
             throw new BusinessException("USER_NOT_FOUND", "User not found");
+        }
+        if (!matchesPassword(request.password(), user.getPasswordHash())) {
+            throw new BusinessException("AUTH_BAD_CREDENTIALS", "Invalid student number or password");
         }
 
         String token = UUID.randomUUID().toString().replace("-", "");
@@ -65,5 +72,22 @@ public class AuthService {
 
     private String sessionKey(String token) {
         return SESSION_KEY_PREFIX + token;
+    }
+
+    private boolean matchesPassword(String rawPassword, String storedHash) {
+        if (storedHash == null || storedHash.isBlank()) {
+            return false;
+        }
+        return hashPassword(rawPassword.trim()).equalsIgnoreCase(storedHash);
+    }
+
+    private String hashPassword(String rawPassword) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] bytes = digest.digest(rawPassword.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(bytes);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 algorithm is unavailable", exception);
+        }
     }
 }

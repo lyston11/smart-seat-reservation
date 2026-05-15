@@ -1,5 +1,6 @@
 package com.lyston.smartseat.seat;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDate;
@@ -12,6 +13,8 @@ public class SeatSlot {
     @TableId
     private Long id;
     private Long seatId;
+    @TableField(exist = false)
+    private String seatNo;
     private Long areaId;
     private LocalDate slotDate;
     private LocalTime startTime;
@@ -37,6 +40,14 @@ public class SeatSlot {
 
     public void setSeatId(Long seatId) {
         this.seatId = seatId;
+    }
+
+    public String getSeatNo() {
+        return seatNo;
+    }
+
+    public void setSeatNo(String seatNo) {
+        this.seatNo = seatNo;
     }
 
     public Long getAreaId() {

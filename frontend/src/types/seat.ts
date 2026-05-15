@@ -22,6 +22,7 @@ export type SeatSlotStatus = 'AVAILABLE' | 'RESERVED' | 'USING' | 'ABNORMAL';
 export type SeatSlot = {
   id: number;
   seatId: number;
+  seatNo: string | null;
   areaId: number;
   slotDate: string;
   startTime: string;

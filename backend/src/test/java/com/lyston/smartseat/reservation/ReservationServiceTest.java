@@ -87,6 +87,33 @@ class ReservationServiceTest {
         assertThat(seatSlotCacheService.evictedDate).isEqualTo(LocalDate.of(2026, 5, 20));
     }
 
+    @Test
+    void checkInShouldFailWhenCodeOrOwnershipDoesNotMatch() {
+        reservationMapper.reservation = reservation();
+        reservationMapper.markCheckedInRows = 0;
+
+        assertThatThrownBy(() -> reservationService.checkIn(100L, new CheckinRequest("bad-code"), 10L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Reservation cannot be checked in");
+
+        assertThat(seatSlotMapper.markUsingRows).isZero();
+    }
+
+    @Test
+    void cancelShouldReleaseReservedSlotAndRecordAction() {
+        reservationMapper.reservation = reservation();
+        reservationMapper.markCancelledRows = 1;
+        seatSlotMapper.releaseReservedRows = 1;
+        seatSlotMapper.slot = seatSlot();
+
+        ReservationResponse response = reservationService.cancel(100L, 10L);
+
+        assertThat(response.reservationId()).isEqualTo(100L);
+        assertThat(checkinRecordMapper.insertedRecord).isNotNull();
+        assertThat(checkinRecordMapper.insertedRecord.getAction()).isEqualTo("CANCEL");
+        assertThat(seatSlotCacheService.evictedAreaId).isEqualTo(1L);
+    }
+
     private SeatSlot seatSlot() {
         SeatSlot slot = new SeatSlot();
         slot.setId(1L);
@@ -113,13 +140,20 @@ class ReservationServiceTest {
         private SeatSlot slot;
         private int reserveRows;
         private int attachRows;
+        private int markUsingRows;
         private int releaseUsingRows;
+        private int releaseReservedRows;
 
         SeatSlotMapper proxy() {
             return ReservationServiceTest.proxy(SeatSlotMapper.class, (unused, method, args) -> switch (method.getName()) {
                 case "reserveAvailableSlot" -> reserveRows;
                 case "attachReservation" -> attachRows;
+                case "markUsing" -> {
+                    markUsingRows++;
+                    yield markUsingRows == 1 ? 0 : markUsingRows;
+                }
                 case "releaseUsingSlot" -> releaseUsingRows;
+                case "releaseReservedSlot" -> releaseReservedRows;
                 case "selectById" -> slot;
                 default -> defaultValue(method.getReturnType());
             });
@@ -129,7 +163,9 @@ class ReservationServiceTest {
     private static final class ReservationMapperFake {
         private Reservation reservation;
         private Reservation insertedReservation;
+        private int markCheckedInRows;
         private int markCheckedOutRows;
+        private int markCancelledRows;
 
         ReservationMapper proxy() {
             return ReservationServiceTest.proxy(ReservationMapper.class, (unused, method, args) -> switch (method.getName()) {
@@ -139,7 +175,9 @@ class ReservationServiceTest {
                     yield 1;
                 }
                 case "selectById" -> reservation;
+                case "markCheckedIn" -> markCheckedInRows;
                 case "markCheckedOut" -> markCheckedOutRows;
+                case "markCancelled" -> markCancelledRows;
                 default -> defaultValue(method.getReturnType());
             });
         }

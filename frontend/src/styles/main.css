@@ -168,20 +168,61 @@ body {
   font-size: 13px;
 }
 
+.seat-room-layout {
+  position: relative;
+  padding: 36px 16px 42px;
+  background:
+    linear-gradient(90deg, rgba(229, 231, 235, 0.55) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(229, 231, 235, 0.55) 1px, transparent 1px),
+    #fbfbfa;
+  background-size: 42px 42px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.seat-room-feature {
+  position: absolute;
+  min-width: 56px;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #6b7280;
+  font-size: 12px;
+  text-align: center;
+}
+
+.seat-room-door {
+  left: 18px;
+  top: 10px;
+}
+
+.seat-room-window {
+  right: 18px;
+  top: 10px;
+}
+
+.seat-room-desk {
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
 .seat-map-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 12px;
 }
 
 .seat-map-cell.ant-btn {
-  height: 76px;
+  height: 82px;
   padding: 10px;
   display: grid;
-  justify-items: start;
+  justify-items: center;
   align-content: space-between;
   border-color: #d1d5db;
-  text-align: left;
+  text-align: center;
 }
 
 .seat-map-cell span {
@@ -299,7 +340,7 @@ body {
   }
 
   .seat-map-grid {
-    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
   }
 
   .seat-map-cell.ant-btn {

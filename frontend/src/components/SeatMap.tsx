@@ -14,7 +14,7 @@ function byTimeAndSeat(left: SeatSlot, right: SeatSlot) {
   if (timeCompare !== 0) {
     return timeCompare;
   }
-  return left.seatId - right.seatId;
+  return (left.seatNo ?? String(left.seatId)).localeCompare(right.seatNo ?? String(right.seatId));
 }
 
 function groupSlots(slots: SeatSlot[]) {
@@ -55,26 +55,31 @@ export default function SeatMap({ slots, loading = false, loadingSlotId, onReser
             <strong>{group.timeRange}</strong>
             <span>{group.items.length} 个开放座位</span>
           </div>
-          <div className="seat-map-grid">
-            {group.items.map((slot) => {
-              const disabled = slot.status !== 'AVAILABLE';
-              const label = `座位 ${slot.seatId}`;
-              const title = `${label} · ${seatSlotStatusText[slot.status]}`;
+          <div className="seat-room-layout">
+            <div className="seat-room-feature seat-room-door">入口</div>
+            <div className="seat-room-feature seat-room-window">采光窗</div>
+            <div className="seat-map-grid">
+              {group.items.map((slot) => {
+                const disabled = slot.status !== 'AVAILABLE';
+                const label = slot.seatNo ?? `座位 ${slot.seatId}`;
+                const title = `${label} · ${seatSlotStatusText[slot.status]}`;
 
-              return (
-                <Tooltip title={title} key={slot.id}>
-                  <Button
-                    className={`seat-map-cell seat-map-cell-${slot.status.toLowerCase()}`}
-                    disabled={disabled}
-                    loading={loadingSlotId === slot.id}
-                    onClick={() => onReserve(slot.id)}
-                  >
-                    <span>{label}</span>
-                    <Tag color={seatSlotStatusColor[slot.status]}>{seatSlotStatusText[slot.status]}</Tag>
-                  </Button>
-                </Tooltip>
-              );
-            })}
+                return (
+                  <Tooltip title={title} key={slot.id}>
+                    <Button
+                      className={`seat-map-cell seat-map-cell-${slot.status.toLowerCase()}`}
+                      disabled={disabled}
+                      loading={loadingSlotId === slot.id}
+                      onClick={() => onReserve(slot.id)}
+                    >
+                      <span>{label}</span>
+                      <Tag color={seatSlotStatusColor[slot.status]}>{seatSlotStatusText[slot.status]}</Tag>
+                    </Button>
+                  </Tooltip>
+                );
+              })}
+            </div>
+            <div className="seat-room-feature seat-room-desk">服务台</div>
           </div>
         </section>
       ))}

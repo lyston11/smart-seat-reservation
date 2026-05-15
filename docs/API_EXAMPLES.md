@@ -16,8 +16,8 @@ curl http://localhost:18080/api/health
 
 演示账号：
 
-- 学生：`20260001`
-- 管理员：`admin`
+- 学生：`20260001`，密码：`123456`
+- 管理员：`admin`，密码：`admin`
 
 登录：
 
@@ -25,7 +25,8 @@ curl http://localhost:18080/api/health
 curl -X POST http://localhost:18080/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "studentNo": "20260001"
+    "studentNo": "20260001",
+    "password": "123456"
   }'
 ```
 
@@ -51,7 +52,7 @@ curl "http://localhost:18080/api/seat-slots?areaId=1&date=2026-05-14" \
   -H "X-Auth-Token: 替换为学生或管理员 token"
 ```
 
-返回中的 `id` 是后续预约使用的 `seatSlotId`。
+返回中的 `id` 是后续预约使用的 `seatSlotId`，`seatNo` 是前端座位地图展示的真实座位编号。
 
 管理员按模板批量发布开放时段：
 
@@ -119,6 +120,13 @@ curl -X POST http://localhost:18080/api/admin/seat-slots/1/release \
 ```
 
 释放、标记异常和恢复操作都会写入 `audit_logs`。
+
+查询最近审计日志：
+
+```bash
+curl "http://localhost:18080/api/admin/audit-logs?limit=50" \
+  -H "X-Auth-Token: 替换为管理员 token"
+```
 
 ## 4. 区域和座位资源
 
