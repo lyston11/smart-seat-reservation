@@ -561,3 +561,197 @@
 - 新增学生端选座展示建议继续复用 `SeatMap`，避免回到页面内堆表格逻辑。
 - 新增管理员时段操作按钮时优先扩展 `AdminSeatSlotActions`。
 - 管理员新页面路由应挂在 `RoleRoute allowedRoles={['ADMIN']}` 下。
+
+## 2026-05-15
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-seat-map-audit-hardening
+- 目标: 从最新 `main` 创建新分支，继续补齐真实座位编号、审计日志页面、登录加固、座位地图平面化和关键测试。
+
+### 本次改动
+- 后端座位时段查询返回 `seatNo`，前端座位地图优先显示 `A-001` 等真实座位编号。
+- 学生端 `SeatMap` 增加入口、采光窗、服务台和网格背景，视觉上更接近平面座位图。
+- 新增管理员审计日志查询接口 `/api/admin/audit-logs`，支持按 `limit` 查询最近日志并限制最大 100 条。
+- 新增前端审计日志页面和管理员菜单入口，展示操作人、动作、对象、原因和时间。
+- 登录请求增加 `password` 字段，演示账号分别使用学生密码 `123456`、管理员密码 `admin`。
+- 新增数据库迁移 `V4__add_user_password_hash.sql`，为已有用户补充密码哈希。
+- 补充后端单测，覆盖登录密码校验、审计日志查询 limit、Redis 缓存/限流降级、签到失败和取消流转。
+- 更新 API 示例文档，补充登录密码、`seatNo` 和审计日志查询说明。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/audit/
+- backend/src/main/java/com/lyston/smartseat/auth/
+- backend/src/main/java/com/lyston/smartseat/seat/
+- backend/src/main/java/com/lyston/smartseat/user/
+- backend/src/main/resources/db/migration/V4__add_user_password_hash.sql
+- backend/src/test/java/com/lyston/smartseat/
+- frontend/src/App.tsx
+- frontend/src/api/
+- frontend/src/components/SeatMap.tsx
+- frontend/src/layout/AppLayout.tsx
+- frontend/src/pages/
+- frontend/src/styles/main.css
+- frontend/src/types/
+- docs/API_EXAMPLES.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 16 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端测试通过。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 当前密码使用 SHA-256 演示级哈希，比赛演示够用；正式系统建议改为 BCrypt/Argon2 并增加密码修改、重置和刷新 token。
+- 审计日志页面目前是最近日志列表，后续可增加动作、操作人、目标对象和时间范围筛选。
+- 座位地图已经更接近平面图，但还没有真实坐标；后续可为座位增加行列或坐标字段。
+
+### 对其他成员的影响
+- 登录接口请求体现在需要 `studentNo` 和 `password`。
+- 前端座位地图依赖 `seatNo`，后端座位时段响应不要删除该字段。
+- 管理员新页面仍需挂在 `RoleRoute allowedRoles={['ADMIN']}` 下。
+
+## 2026-05-15
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-admin-audit-dashboard
+- 目标: 继续开发审计日志筛选、占用看板增强、真实座位地图行列布局和预约规则增强。
+
+### 本次改动
+- 审计日志接口新增筛选条件：动作、操作人、目标类型、开始时间、结束时间和返回条数。
+- 审计动作支持 `AREA_CHANGE` 聚合筛选，一次覆盖区域新增、编辑和状态变更。
+- 前端审计日志页新增筛选表单，可按管理员操作维度追溯释放、标异常、恢复和区域变更。
+- 管理员占用看板新增异常占用、活跃预约、已签到人数、待签到和整体占用率卡片。
+- 区域利用率列表升级为排行榜，后端按利用率排序并返回区域异常占用数量。
+- `seats` 新增 `row_no`、`column_no`、`display_order` 字段，迁移为演示数据补默认布局。
+- 座位管理页支持维护行号、列号和展示顺序；学生端座位地图按行列渲染真实座位布局。
+- 座位时段查询和批量发布响应补充座位布局字段，保持前后端响应一致。
+- 预约创建新增规则：不能预约已开始或过去时段；同一学生在重叠时间内只能有一个活跃预约。
+- 学生端选座页展示预约规则提示，便于比赛演示说明业务严谨性。
+- 补充后端单测，覆盖审计筛选、时间范围校验、过去时段拒绝和重叠预约拒绝。
+- 更新 API 手测文档，补充审计筛选、座位布局字段和预约规则说明。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/audit/
+- backend/src/main/java/com/lyston/smartseat/dashboard/
+- backend/src/main/java/com/lyston/smartseat/reservation/
+- backend/src/main/java/com/lyston/smartseat/seat/
+- backend/src/main/resources/db/migration/V5__add_seat_layout_fields.sql
+- backend/src/test/java/com/lyston/smartseat/audit/AuditLogServiceTest.java
+- backend/src/test/java/com/lyston/smartseat/reservation/ReservationServiceTest.java
+- frontend/src/api/
+- frontend/src/components/SeatMap.tsx
+- frontend/src/pages/
+- frontend/src/styles/main.css
+- frontend/src/types/
+- docs/API_EXAMPLES.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 20 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端测试通过。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 预约规则目前覆盖“同一时间只能一个活跃预约”和“不能预约过去时段”，后续可继续增加预约提前天数、每日预约次数上限等策略。
+- 座位地图已有行列布局，但还不是完整 CAD/平面图级别，后续可继续增加区域障碍物、通道和座位朝向。
+- 看板数据当前按日期实时查询，后续可接入缓存或定时汇总提升大数据量场景性能。
+
+### 对其他成员的影响
+- 新增座位时建议维护 `rowNo`、`columnNo` 和 `displayOrder`，否则学生端会退回自动网格位置。
+- 新增管理员动作时，应同步扩展审计动作常量、筛选选项和审计页面文案。
+- 后续调整预约创建逻辑时，要保留重叠预约校验和过去时段校验，避免业务规则回退。
+
+## 2026-05-15
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-admin-audit-dashboard
+- 目标: 继续增强预约规则，把签到宽限、提前预约天数和每日活跃预约上限配置化，并在前端动态展示。
+
+### 本次改动
+- 新增 `ReservationRuleProperties`，通过 `smart-seat.reservation-rules` 配置预约规则。
+- 新增 `GET /api/reservations/rules`，前端可读取当前规则用于展示。
+- 预约创建使用配置化签到宽限时间计算 `expiresAt`，不再硬编码 15 分钟。
+- 预约创建新增最大提前预约天数校验，默认最多提前 7 天。
+- 预约创建新增每日活跃预约数量上限，默认同一学生每天最多保留 3 个活跃预约。
+- 前端学生选座页改为从接口加载预约规则，动态展示签到宽限、提前预约天数和每日上限。
+- 补充后端单测，覆盖超过提前预约窗口和触发每日活跃预约上限的拒绝逻辑。
+- 更新 API 手测文档，补充预约规则查询和规则说明。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/SmartSeatApplication.java
+- backend/src/main/java/com/lyston/smartseat/reservation/
+- backend/src/main/resources/application.yml
+- backend/src/test/java/com/lyston/smartseat/reservation/ReservationServiceTest.java
+- frontend/src/api/seatSlots.ts
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/types/reservation.ts
+- docs/API_EXAMPLES.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 22 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端测试通过。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 规则目前通过配置文件和环境变量控制，后续如果比赛展示需要“后台调整规则”，可扩展为数据库配置和管理员规则管理页面。
+- 每日上限当前统计 `RESERVED` 和 `CHECKED_IN`，后续如果增加排队/暂存状态，需要同步调整统计口径。
+
+### 对其他成员的影响
+- 修改预约规则优先调整 `smart-seat.reservation-rules`，不要在服务层重新写硬编码数字。
+- 学生端规则提示依赖 `/api/reservations/rules`，该接口字段变更时需要同步更新前端类型。
+
+## 2026-05-15
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-admin-audit-dashboard
+- 目标: 继续把预约规则从配置文件升级为管理员可维护能力，形成后台规则管理闭环。
+
+### 本次改动
+- 新增 `reservation_rules` 表和 `V6__add_reservation_rules.sql` 迁移，初始化默认规则。
+- 新增 `ReservationRule`、`ReservationRuleMapper`、`ReservationRuleService` 和更新请求对象。
+- `/api/reservations/rules` 改为优先读取数据库规则，数据库缺失时回退到配置默认值。
+- 新增管理员更新预约规则接口 `PUT /api/reservations/rules`。
+- 预约创建继续通过规则服务读取当前规则，因此管理员更新后会影响后续预约校验和签到过期时间。
+- 规则更新写入审计日志，动作 `RESERVATION_RULE_UPDATE`，目标类型 `RESERVATION_RULE`。
+- 审计日志筛选支持预约规则变更动作和目标类型。
+- 前端新增管理员“预约规则”页面，可查看和维护签到宽限、提前预约天数、每日活跃预约上限。
+- 管理员菜单和路由新增 `/admin/reservation-rules`。
+- 补充规则服务单测，覆盖默认配置回退、规则更新和审计写入。
+- 更新 API 手测文档，补充管理员更新预约规则示例。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/audit/
+- backend/src/main/java/com/lyston/smartseat/reservation/
+- backend/src/main/resources/db/migration/V6__add_reservation_rules.sql
+- backend/src/test/java/com/lyston/smartseat/reservation/
+- frontend/src/App.tsx
+- frontend/src/api/seatSlots.ts
+- frontend/src/layout/AppLayout.tsx
+- frontend/src/pages/AdminReservationRulesPage.tsx
+- frontend/src/pages/AdminAuditLogsPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/types/reservation.ts
+- docs/API_EXAMPLES.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 24 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端测试通过。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 规则页面当前只有单行全局规则，后续如要支持不同区域/楼层差异化规则，可将规则表扩展出 `area_id` 维度。
+- 规则更新审计原因目前固定为 `update rules`，后续可在页面加“变更原因”输入框。
+
+### 对其他成员的影响
+- 预约规则现在优先以数据库 `reservation_rules` 为准，配置项只作为兜底默认值。
+- 新增影响预约策略的代码时，应通过 `ReservationRuleService` 读取规则。

@@ -14,6 +14,7 @@ export type AreaUsageSummary = {
   totalSlots: number;
   reservedSlots: number;
   usingSlots: number;
+  abnormalSlots: number;
   usageRate: number;
 };
 

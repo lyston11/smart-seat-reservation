@@ -13,6 +13,7 @@ import com.lyston.smartseat.seat.SeatSlotMapper;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,8 @@ class ReservationServiceTest {
     private CheckinRecordMapperFake checkinRecordMapper;
     private ReservationRateLimiterFake reservationRateLimiter;
     private SeatSlotCacheServiceFake seatSlotCacheService;
+    private ReservationRuleProperties reservationRuleProperties;
+    private ReservationRuleServiceFake reservationRuleService;
     private ReservationService reservationService;
 
     @BeforeEach
@@ -34,18 +37,22 @@ class ReservationServiceTest {
         checkinRecordMapper = new CheckinRecordMapperFake();
         reservationRateLimiter = new ReservationRateLimiterFake();
         seatSlotCacheService = new SeatSlotCacheServiceFake();
+        reservationRuleProperties = new ReservationRuleProperties();
+        reservationRuleService = new ReservationRuleServiceFake(reservationRuleProperties);
         reservationService = new ReservationService(
                 seatSlotMapper.proxy(),
                 reservationMapper.proxy(),
                 checkinRecordMapper.proxy(),
                 reservationRateLimiter,
-                seatSlotCacheService
+                seatSlotCacheService,
+                reservationRuleService
         );
     }
 
     @Test
     void createReservationShouldFailWhenAtomicReserveAffectsNoRows() {
         seatSlotMapper.reserveRows = 0;
+        seatSlotMapper.slot = futureSeatSlot();
 
         assertThatThrownBy(() -> reservationService.createReservation(new CreateReservationRequest(1L), 10L))
                 .isInstanceOf(BusinessException.class)
@@ -58,7 +65,7 @@ class ReservationServiceTest {
     void createReservationShouldReserveSlotAttachReservationAndEvictCache() {
         seatSlotMapper.reserveRows = 1;
         seatSlotMapper.attachRows = 1;
-        seatSlotMapper.slot = seatSlot();
+        seatSlotMapper.slot = futureSeatSlot();
 
         ReservationResponse response = reservationService.createReservation(new CreateReservationRequest(1L), 10L);
 
@@ -67,9 +74,61 @@ class ReservationServiceTest {
         assertThat(response.userId()).isEqualTo(10L);
         assertThat(response.status()).isEqualTo(ReservationStatus.RESERVED);
         assertThat(reservationRateLimiter.checkedUserId).isEqualTo(10L);
+        assertThat(reservationMapper.overlapUserId).isEqualTo(10L);
         assertThat(reservationMapper.insertedReservation).isNotNull();
+        assertThat(reservationMapper.dailyLimitUserId).isEqualTo(10L);
         assertThat(seatSlotCacheService.evictedAreaId).isEqualTo(1L);
-        assertThat(seatSlotCacheService.evictedDate).isEqualTo(LocalDate.of(2026, 5, 20));
+        assertThat(seatSlotCacheService.evictedDate).isEqualTo(futureDate());
+    }
+
+    @Test
+    void createReservationShouldRejectPastSlot() {
+        seatSlotMapper.slot = pastSeatSlot();
+
+        assertThatThrownBy(() -> reservationService.createReservation(new CreateReservationRequest(1L), 10L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Past seat slots cannot be reserved");
+
+        assertThat(seatSlotMapper.reserveRows).isZero();
+        assertThat(reservationMapper.insertedReservation).isNull();
+    }
+
+    @Test
+    void createReservationShouldRejectSlotBeyondAdvanceWindow() {
+        seatSlotMapper.slot = seatSlot(LocalDate.now().plusDays(8), LocalTime.of(8, 0), LocalTime.of(10, 0));
+
+        assertThatThrownBy(() -> reservationService.createReservation(new CreateReservationRequest(1L), 10L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Seat slot is beyond the reservation window");
+
+        assertThat(seatSlotMapper.reserveRows).isZero();
+        assertThat(reservationMapper.insertedReservation).isNull();
+    }
+
+    @Test
+    void createReservationShouldRejectWhenDailyActiveLimitReached() {
+        seatSlotMapper.slot = futureSeatSlot();
+        reservationMapper.dailyActiveCount = reservationRuleProperties.getDailyActiveReservationLimit();
+
+        assertThatThrownBy(() -> reservationService.createReservation(new CreateReservationRequest(1L), 10L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("User has reached the daily active reservation limit");
+
+        assertThat(seatSlotMapper.reserveRows).isZero();
+        assertThat(reservationMapper.insertedReservation).isNull();
+    }
+
+    @Test
+    void createReservationShouldRejectOverlappingActiveReservation() {
+        seatSlotMapper.slot = futureSeatSlot();
+        reservationMapper.activeOverlapCount = 1;
+
+        assertThatThrownBy(() -> reservationService.createReservation(new CreateReservationRequest(1L), 10L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("User already has an active reservation in this period");
+
+        assertThat(seatSlotMapper.reserveRows).isZero();
+        assertThat(reservationMapper.insertedReservation).isNull();
     }
 
     @Test
@@ -77,24 +136,63 @@ class ReservationServiceTest {
         reservationMapper.reservation = reservation();
         reservationMapper.markCheckedOutRows = 1;
         seatSlotMapper.releaseUsingRows = 1;
-        seatSlotMapper.slot = seatSlot();
+        seatSlotMapper.slot = futureSeatSlot();
 
         ReservationResponse response = reservationService.checkOut(100L, 10L);
 
         assertThat(response.reservationId()).isEqualTo(100L);
         assertThat(checkinRecordMapper.insertedRecord).isNotNull();
         assertThat(seatSlotCacheService.evictedAreaId).isEqualTo(1L);
-        assertThat(seatSlotCacheService.evictedDate).isEqualTo(LocalDate.of(2026, 5, 20));
+        assertThat(seatSlotCacheService.evictedDate).isEqualTo(futureDate());
     }
 
-    private SeatSlot seatSlot() {
+    @Test
+    void checkInShouldFailWhenCodeOrOwnershipDoesNotMatch() {
+        reservationMapper.reservation = reservation();
+        reservationMapper.markCheckedInRows = 0;
+
+        assertThatThrownBy(() -> reservationService.checkIn(100L, new CheckinRequest("bad-code"), 10L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Reservation cannot be checked in");
+
+        assertThat(seatSlotMapper.markUsingRows).isZero();
+    }
+
+    @Test
+    void cancelShouldReleaseReservedSlotAndRecordAction() {
+        reservationMapper.reservation = reservation();
+        reservationMapper.markCancelledRows = 1;
+        seatSlotMapper.releaseReservedRows = 1;
+        seatSlotMapper.slot = futureSeatSlot();
+
+        ReservationResponse response = reservationService.cancel(100L, 10L);
+
+        assertThat(response.reservationId()).isEqualTo(100L);
+        assertThat(checkinRecordMapper.insertedRecord).isNotNull();
+        assertThat(checkinRecordMapper.insertedRecord.getAction()).isEqualTo("CANCEL");
+        assertThat(seatSlotCacheService.evictedAreaId).isEqualTo(1L);
+    }
+
+    private LocalDate futureDate() {
+        return LocalDate.now().plusDays(7);
+    }
+
+    private SeatSlot futureSeatSlot() {
+        return seatSlot(futureDate(), LocalTime.of(8, 0), LocalTime.of(10, 0));
+    }
+
+    private SeatSlot pastSeatSlot() {
+        return seatSlot(LocalDateTime.now().minusDays(1).toLocalDate(), LocalTime.of(8, 0), LocalTime.of(10, 0));
+    }
+
+    private SeatSlot seatSlot(LocalDate slotDate, LocalTime startTime, LocalTime endTime) {
         SeatSlot slot = new SeatSlot();
         slot.setId(1L);
         slot.setSeatId(2L);
         slot.setAreaId(1L);
-        slot.setSlotDate(LocalDate.of(2026, 5, 20));
-        slot.setStartTime(LocalTime.of(8, 0));
-        slot.setEndTime(LocalTime.of(10, 0));
+        slot.setSlotDate(slotDate);
+        slot.setStartTime(startTime);
+        slot.setEndTime(endTime);
         return slot;
     }
 
@@ -113,13 +211,20 @@ class ReservationServiceTest {
         private SeatSlot slot;
         private int reserveRows;
         private int attachRows;
+        private int markUsingRows;
         private int releaseUsingRows;
+        private int releaseReservedRows;
 
         SeatSlotMapper proxy() {
             return ReservationServiceTest.proxy(SeatSlotMapper.class, (unused, method, args) -> switch (method.getName()) {
                 case "reserveAvailableSlot" -> reserveRows;
                 case "attachReservation" -> attachRows;
+                case "markUsing" -> {
+                    markUsingRows++;
+                    yield markUsingRows == 1 ? 0 : markUsingRows;
+                }
                 case "releaseUsingSlot" -> releaseUsingRows;
+                case "releaseReservedSlot" -> releaseReservedRows;
                 case "selectById" -> slot;
                 default -> defaultValue(method.getReturnType());
             });
@@ -129,7 +234,13 @@ class ReservationServiceTest {
     private static final class ReservationMapperFake {
         private Reservation reservation;
         private Reservation insertedReservation;
+        private int markCheckedInRows;
         private int markCheckedOutRows;
+        private int markCancelledRows;
+        private int activeOverlapCount;
+        private int dailyActiveCount;
+        private Long overlapUserId;
+        private Long dailyLimitUserId;
 
         ReservationMapper proxy() {
             return ReservationServiceTest.proxy(ReservationMapper.class, (unused, method, args) -> switch (method.getName()) {
@@ -139,7 +250,17 @@ class ReservationServiceTest {
                     yield 1;
                 }
                 case "selectById" -> reservation;
+                case "markCheckedIn" -> markCheckedInRows;
                 case "markCheckedOut" -> markCheckedOutRows;
+                case "markCancelled" -> markCancelledRows;
+                case "countActiveOverlappingReservations" -> {
+                    overlapUserId = (Long) args[0];
+                    yield activeOverlapCount;
+                }
+                case "countDailyActiveReservations" -> {
+                    dailyLimitUserId = (Long) args[0];
+                    yield dailyActiveCount;
+                }
                 default -> defaultValue(method.getReturnType());
             });
         }
@@ -184,6 +305,20 @@ class ReservationServiceTest {
         public void evict(Long areaId, LocalDate date) {
             evictedAreaId = areaId;
             evictedDate = date;
+        }
+    }
+
+    private static final class ReservationRuleServiceFake extends ReservationRuleService {
+        private final ReservationRuleProperties properties;
+
+        ReservationRuleServiceFake(ReservationRuleProperties properties) {
+            super(null, properties, null);
+            this.properties = properties;
+        }
+
+        @Override
+        public ReservationRuleResponse getRules() {
+            return ReservationRuleResponse.from(properties);
         }
     }
 

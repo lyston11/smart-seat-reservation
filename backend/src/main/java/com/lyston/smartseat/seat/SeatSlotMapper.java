@@ -12,7 +12,8 @@ import org.apache.ibatis.annotations.Update;
 public interface SeatSlotMapper extends BaseMapper<SeatSlot> {
 
     @Select("""
-            SELECT ss.id, ss.seat_id, ss.area_id, ss.slot_date, ss.start_time, ss.end_time, ss.status,
+            SELECT ss.id, ss.seat_id, s.seat_no, s.row_no, s.column_no, s.display_order,
+                   ss.area_id, ss.slot_date, ss.start_time, ss.end_time, ss.status,
                    ss.reserved_by, ss.reservation_id, ss.version, ss.created_at, ss.updated_at
             FROM seat_slots ss
             JOIN seats s
@@ -23,7 +24,8 @@ public interface SeatSlotMapper extends BaseMapper<SeatSlot> {
              AND a.status = 'ACTIVE'
             WHERE ss.area_id = #{areaId}
               AND ss.slot_date = #{slotDate}
-            ORDER BY ss.start_time, s.seat_no
+            ORDER BY ss.start_time, COALESCE(s.row_no, 9999), COALESCE(s.column_no, 9999),
+                     COALESCE(s.display_order, 9999), s.seat_no
             """)
     List<SeatSlot> findByAreaAndDate(@Param("areaId") Long areaId, @Param("slotDate") LocalDate slotDate);
 

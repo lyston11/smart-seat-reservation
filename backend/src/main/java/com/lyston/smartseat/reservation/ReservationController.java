@@ -9,6 +9,7 @@ import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,9 +20,28 @@ import org.springframework.web.bind.annotation.RestController;
 public class ReservationController {
 
     private final ReservationService reservationService;
+    private final ReservationRuleService reservationRuleService;
 
-    public ReservationController(ReservationService reservationService) {
+    public ReservationController(
+            ReservationService reservationService,
+            ReservationRuleService reservationRuleService
+    ) {
         this.reservationService = reservationService;
+        this.reservationRuleService = reservationRuleService;
+    }
+
+    @GetMapping("/rules")
+    public ApiResponse<ReservationRuleResponse> getReservationRules() {
+        return ApiResponse.ok(reservationRuleService.getRules());
+    }
+
+    @PutMapping("/rules")
+    @RequireRole(UserRole.ADMIN)
+    public ApiResponse<ReservationRuleResponse> updateReservationRules(
+            @Valid @RequestBody UpdateReservationRuleRequest request,
+            CurrentUser currentUser
+    ) {
+        return ApiResponse.ok(reservationRuleService.updateRules(request, currentUser.id()));
     }
 
     @GetMapping

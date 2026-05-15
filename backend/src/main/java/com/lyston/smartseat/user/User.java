@@ -11,6 +11,7 @@ public class User {
     private Long id;
     private String name;
     private String studentNo;
+    private String passwordHash;
     private String role;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -37,6 +38,14 @@ public class User {
 
     public void setStudentNo(String studentNo) {
         this.studentNo = studentNo;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
     }
 
     public String getRole() {

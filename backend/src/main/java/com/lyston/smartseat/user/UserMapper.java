@@ -7,7 +7,7 @@ import org.apache.ibatis.annotations.Select;
 public interface UserMapper extends BaseMapper<User> {
 
     @Select("""
-            SELECT id, name, student_no, role, created_at, updated_at
+            SELECT id, name, student_no, password_hash, role, created_at, updated_at
             FROM users
             WHERE student_no = #{studentNo}
             """)

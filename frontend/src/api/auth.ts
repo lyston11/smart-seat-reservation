@@ -1,10 +1,10 @@
 import { request, setAuthSession } from './http';
 import type { CurrentUser, LoginResult } from '../types/auth';
 
-export function login(studentNo: string) {
+export function login(studentNo: string, password: string) {
   return request<LoginResult>('/api/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ studentNo }),
+    body: JSON.stringify({ studentNo, password }),
   });
 }
 

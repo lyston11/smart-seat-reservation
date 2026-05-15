@@ -4,6 +4,9 @@ public record SeatResponse(
         Long id,
         Long areaId,
         String seatNo,
+        Integer rowNo,
+        Integer columnNo,
+        Integer displayOrder,
         String status
 ) {
 
@@ -12,6 +15,9 @@ public record SeatResponse(
                 seat.getId(),
                 seat.getAreaId(),
                 seat.getSeatNo(),
+                seat.getRowNo(),
+                seat.getColumnNo(),
+                seat.getDisplayOrder(),
                 seat.getStatus()
         );
     }

@@ -38,3 +38,7 @@ management:
 smart-seat:
   reservation-expiration:
     fixed-delay-ms: ${RESERVATION_EXPIRATION_DELAY_MS:60000}
+  reservation-rules:
+    checkin-grace-minutes: ${RESERVATION_CHECKIN_GRACE_MINUTES:15}
+    max-advance-days: ${RESERVATION_MAX_ADVANCE_DAYS:7}
+    daily-active-reservation-limit: ${RESERVATION_DAILY_ACTIVE_LIMIT:3}

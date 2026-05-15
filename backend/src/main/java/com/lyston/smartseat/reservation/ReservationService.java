@@ -8,6 +8,7 @@ import com.lyston.smartseat.checkin.CheckinRecordMapper;
 import com.lyston.smartseat.common.BusinessException;
 import com.lyston.smartseat.seat.SeatSlot;
 import com.lyston.smartseat.seat.SeatSlotMapper;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -17,40 +18,42 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ReservationService {
 
-    private static final int CHECKIN_GRACE_MINUTES = 15;
-
     private final SeatSlotMapper seatSlotMapper;
     private final ReservationMapper reservationMapper;
     private final CheckinRecordMapper checkinRecordMapper;
     private final ReservationRateLimiter reservationRateLimiter;
     private final SeatSlotCacheService seatSlotCacheService;
+    private final ReservationRuleService reservationRuleService;
 
     public ReservationService(
             SeatSlotMapper seatSlotMapper,
             ReservationMapper reservationMapper,
             CheckinRecordMapper checkinRecordMapper,
             ReservationRateLimiter reservationRateLimiter,
-            SeatSlotCacheService seatSlotCacheService
+            SeatSlotCacheService seatSlotCacheService,
+            ReservationRuleService reservationRuleService
     ) {
         this.seatSlotMapper = seatSlotMapper;
         this.reservationMapper = reservationMapper;
         this.checkinRecordMapper = checkinRecordMapper;
         this.reservationRateLimiter = reservationRateLimiter;
         this.seatSlotCacheService = seatSlotCacheService;
+        this.reservationRuleService = reservationRuleService;
     }
 
     @Transactional
     public ReservationResponse createReservation(CreateReservationRequest request, Long userId) {
         reservationRateLimiter.check(userId);
         LocalDateTime now = LocalDateTime.now();
+        ReservationRuleResponse rules = reservationRuleService.getRules();
+        SeatSlot slot = requireSeatSlot(request.seatSlotId());
+        ensureSlotIsReservableByTime(slot, now, rules);
+        ensureNoActiveOverlap(userId, slot);
+        ensureDailyActiveLimit(userId, slot.getSlotDate(), rules);
+
         int affectedRows = seatSlotMapper.reserveAvailableSlot(request.seatSlotId(), userId, now);
         if (affectedRows != 1) {
             throw new BusinessException("SEAT_SLOT_NOT_AVAILABLE", "Seat slot is not available");
-        }
-
-        SeatSlot slot = seatSlotMapper.selectById(request.seatSlotId());
-        if (slot == null) {
-            throw new BusinessException("SEAT_SLOT_NOT_FOUND", "Seat slot not found");
         }
 
         Reservation reservation = new Reservation();
@@ -60,7 +63,7 @@ public class ReservationService {
         reservation.setStatus(ReservationStatus.RESERVED);
         reservation.setCheckinCode(generateCheckinCode());
         reservation.setReservedAt(now);
-        reservation.setExpiresAt(now.plusMinutes(CHECKIN_GRACE_MINUTES));
+        reservation.setExpiresAt(now.plusMinutes(rules.checkinGraceMinutes()));
         reservationMapper.insert(reservation);
 
         int attachedRows = seatSlotMapper.attachReservation(slot.getId(), reservation.getId(), userId, now);
@@ -211,6 +214,54 @@ public class ReservationService {
             throw new BusinessException("RESERVATION_NOT_FOUND", "Reservation not found");
         }
         return reservation;
+    }
+
+    private SeatSlot requireSeatSlot(Long seatSlotId) {
+        SeatSlot slot = seatSlotMapper.selectById(seatSlotId);
+        if (slot == null) {
+            throw new BusinessException("SEAT_SLOT_NOT_FOUND", "Seat slot not found");
+        }
+        return slot;
+    }
+
+    private void ensureSlotIsReservableByTime(SeatSlot slot, LocalDateTime now, ReservationRuleResponse rules) {
+        LocalDate latestReservableDate = now.toLocalDate().plusDays(rules.maxAdvanceDays());
+        if (slot.getSlotDate().isAfter(latestReservableDate)) {
+            throw new BusinessException("SEAT_SLOT_TOO_FAR_AHEAD", "Seat slot is beyond the reservation window");
+        }
+        LocalDateTime slotStartAt = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
+        if (!slotStartAt.isAfter(now)) {
+            throw new BusinessException("SEAT_SLOT_ALREADY_STARTED", "Past seat slots cannot be reserved");
+        }
+    }
+
+    private void ensureNoActiveOverlap(Long userId, SeatSlot slot) {
+        int activeOverlapCount = reservationMapper.countActiveOverlappingReservations(
+                userId,
+                slot.getSlotDate(),
+                slot.getStartTime(),
+                slot.getEndTime()
+        );
+        if (activeOverlapCount > 0) {
+            throw new BusinessException(
+                    "USER_HAS_ACTIVE_RESERVATION_IN_PERIOD",
+                    "User already has an active reservation in this period"
+            );
+        }
+    }
+
+    private void ensureDailyActiveLimit(Long userId, LocalDate slotDate, ReservationRuleResponse rules) {
+        int limit = rules.dailyActiveReservationLimit();
+        if (limit <= 0) {
+            return;
+        }
+        int activeCount = reservationMapper.countDailyActiveReservations(userId, slotDate);
+        if (activeCount >= limit) {
+            throw new BusinessException(
+                    "DAILY_ACTIVE_RESERVATION_LIMIT_EXCEEDED",
+                    "User has reached the daily active reservation limit"
+            );
+        }
     }
 
     private void recordAction(Long reservationId, Long userId, String action, LocalDateTime now) {

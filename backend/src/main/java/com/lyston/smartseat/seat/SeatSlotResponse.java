@@ -6,6 +6,10 @@ import java.time.LocalTime;
 public record SeatSlotResponse(
         Long id,
         Long seatId,
+        String seatNo,
+        Integer rowNo,
+        Integer columnNo,
+        Integer displayOrder,
         Long areaId,
         LocalDate slotDate,
         LocalTime startTime,
@@ -19,6 +23,10 @@ public record SeatSlotResponse(
         return new SeatSlotResponse(
                 slot.getId(),
                 slot.getSeatId(),
+                slot.getSeatNo(),
+                slot.getRowNo(),
+                slot.getColumnNo(),
+                slot.getDisplayOrder(),
                 slot.getAreaId(),
                 slot.getSlotDate(),
                 slot.getStartTime(),

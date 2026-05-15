@@ -9,11 +9,17 @@ export function listSeats(areaId: number) {
 export type CreateSeatPayload = {
   areaId: number;
   seatNo: string;
+  rowNo?: number;
+  columnNo?: number;
+  displayOrder?: number;
 };
 
 export type UpdateSeatPayload = {
   areaId: number;
   seatNo: string;
+  rowNo?: number;
+  columnNo?: number;
+  displayOrder?: number;
   status: SeatStatus;
 };
 

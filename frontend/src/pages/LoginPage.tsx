@@ -6,11 +6,12 @@ import { setAuthSession } from '../api/http';
 
 type LoginFormValues = {
   studentNo: string;
+  password: string;
 };
 
 const demoAccounts = [
-  { label: '学生演示账号', value: '20260001' },
-  { label: '管理员演示账号', value: 'admin' },
+  { label: '学生演示账号', value: '20260001', password: '123456' },
+  { label: '管理员演示账号', value: 'admin', password: 'admin' },
 ];
 
 export default function LoginPage() {
@@ -23,7 +24,7 @@ export default function LoginPage() {
     const values = await form.validateFields();
     setLoading(true);
     try {
-      const session = await login(values.studentNo);
+      const session = await login(values.studentNo, values.password);
       setAuthSession(session);
       messageApi.success('登录成功');
       navigate(session.user.role === 'ADMIN' ? '/admin/dashboard' : '/student/seats', { replace: true });
@@ -44,14 +45,17 @@ export default function LoginPage() {
           form={form}
           layout="vertical"
           className="login-form"
-          initialValues={{ studentNo: '20260001' }}
+          initialValues={{ studentNo: '20260001', password: '123456' }}
         >
           <Form.Item label="演示账号">
             <Radio.Group
               optionType="button"
               buttonStyle="solid"
               options={demoAccounts}
-              onChange={(event) => form.setFieldValue('studentNo', event.target.value)}
+              onChange={(event) => {
+                const account = demoAccounts.find((item) => item.value === event.target.value);
+                form.setFieldsValue({ studentNo: event.target.value, password: account?.password ?? '' });
+              }}
               defaultValue="20260001"
             />
           </Form.Item>
@@ -61,6 +65,13 @@ export default function LoginPage() {
             rules={[{ required: true, message: '请输入学号或账号' }]}
           >
             <Input placeholder="学生 20260001 / 管理员 admin" />
+          </Form.Item>
+          <Form.Item
+            label="密码"
+            name="password"
+            rules={[{ required: true, message: '请输入密码' }]}
+          >
+            <Input.Password placeholder="学生 123456 / 管理员 admin" />
           </Form.Item>
           <Button type="primary" block loading={loading} onClick={submit}>
             登录
