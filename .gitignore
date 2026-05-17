@@ -24,6 +24,7 @@ frontend/.vite/
 
 # Local prototype backup kept outside formal app structure
 prototype/
+.worktrees/
 
 # Logs
 *.log
