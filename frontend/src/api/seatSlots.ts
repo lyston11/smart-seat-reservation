@@ -5,6 +5,7 @@ import type {
   CheckinPayload,
   ReservationRule,
   ReservationResult,
+  TableCheckinPayload,
 } from '../types/reservation';
 import type { PublishSeatSlotPeriod, PublishSeatSlotsResult, SeatSlot } from '../types/seat';
 
@@ -84,6 +85,13 @@ export function createReservation(seatSlotId: number) {
 
 export function checkInReservation(reservationId: number, payload: CheckinPayload) {
   return request<ReservationResult>(`/api/reservations/${reservationId}/check-in`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function tableCheckInReservation(payload: TableCheckinPayload) {
+  return request<ReservationResult>('/api/reservations/table-check-in', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
