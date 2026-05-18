@@ -159,6 +159,68 @@ class ReservationServiceTest {
     }
 
     @Test
+    void tableCheckInShouldCheckInMatchingReservationForCurrentUserAndTableToken() {
+        Reservation reservation = reservedReservation();
+        reservationMapper.reservation = reservation;
+        reservationMapper.tableCheckinReservation = reservation;
+        reservationMapper.markCheckedInRows = 1;
+        seatSlotMapper.markUsingRows = 1;
+        seatSlotMapper.slot = futureSeatSlot();
+
+        ReservationResponse response = reservationService.tableCheckIn(
+                new TableCheckinRequest("table-token", "code"),
+                10L
+        );
+
+        assertThat(response.reservationId()).isEqualTo(100L);
+        assertThat(response.status()).isEqualTo(ReservationStatus.CHECKED_IN);
+        assertThat(reservationMapper.tableCheckinUserId).isEqualTo(10L);
+        assertThat(reservationMapper.tableCheckinToken).isEqualTo("table-token");
+        assertThat(reservationMapper.tableCheckinCode).isEqualTo("code");
+        assertThat(seatSlotMapper.markUsingCalls).isEqualTo(1);
+        assertThat(reservationMapper.markCheckedInReservationId).isEqualTo(100L);
+        assertThat(reservationMapper.markCheckedInUserId).isEqualTo(10L);
+        assertThat(reservationMapper.markCheckedInCheckinCode).isEqualTo("code");
+        assertThat(seatSlotMapper.markUsingSeatSlotId).isEqualTo(1L);
+        assertThat(seatSlotMapper.markUsingReservationId).isEqualTo(100L);
+        assertThat(seatSlotMapper.markUsingUserId).isEqualTo(10L);
+        assertThat(checkinRecordMapper.insertedRecord).isNotNull();
+        assertThat(checkinRecordMapper.insertedRecord.getAction()).isEqualTo("CHECK_IN");
+        assertThat(seatSlotCacheService.evictedAreaId).isEqualTo(1L);
+        assertThat(seatSlotCacheService.evictedDate).isEqualTo(futureDate());
+    }
+
+    @Test
+    void tableCheckInShouldFailWhenNoReservationMatchesTableTokenOrCode() {
+        assertThatThrownBy(() -> reservationService.tableCheckIn(
+                new TableCheckinRequest("wrong-table", "bad-code"),
+                10L
+        ))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("No matching reservation for this table");
+
+        assertThat(seatSlotMapper.markUsingRows).isZero();
+        assertThat(checkinRecordMapper.insertedRecord).isNull();
+    }
+
+    @Test
+    void tableCheckInShouldFailWhenReservationIsExpired() {
+        Reservation reservation = reservedReservation();
+        reservation.setExpiresAt(LocalDateTime.now().minusMinutes(1));
+        reservationMapper.tableCheckinReservation = reservation;
+
+        assertThatThrownBy(() -> reservationService.tableCheckIn(
+                new TableCheckinRequest("table-token", "code"),
+                10L
+        ))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Reservation has expired");
+
+        assertThat(seatSlotMapper.markUsingRows).isZero();
+        assertThat(checkinRecordMapper.insertedRecord).isNull();
+    }
+
+    @Test
     void cancelShouldReleaseReservedSlotAndRecordAction() {
         reservationMapper.reservation = reservation();
         reservationMapper.markCancelledRows = 1;
@@ -204,6 +266,13 @@ class ReservationServiceTest {
         reservation.setSeatSlotId(1L);
         reservation.setStatus(ReservationStatus.CHECKED_IN);
         reservation.setCheckinCode("code");
+        reservation.setExpiresAt(LocalDateTime.now().plusMinutes(10));
+        return reservation;
+    }
+
+    private Reservation reservedReservation() {
+        Reservation reservation = reservation();
+        reservation.setStatus(ReservationStatus.RESERVED);
         return reservation;
     }
 
@@ -212,6 +281,10 @@ class ReservationServiceTest {
         private int reserveRows;
         private int attachRows;
         private int markUsingRows;
+        private int markUsingCalls;
+        private Long markUsingSeatSlotId;
+        private Long markUsingReservationId;
+        private Long markUsingUserId;
         private int releaseUsingRows;
         private int releaseReservedRows;
 
@@ -220,8 +293,11 @@ class ReservationServiceTest {
                 case "reserveAvailableSlot" -> reserveRows;
                 case "attachReservation" -> attachRows;
                 case "markUsing" -> {
-                    markUsingRows++;
-                    yield markUsingRows == 1 ? 0 : markUsingRows;
+                    markUsingCalls++;
+                    markUsingSeatSlotId = (Long) args[0];
+                    markUsingReservationId = (Long) args[1];
+                    markUsingUserId = (Long) args[2];
+                    yield markUsingRows;
                 }
                 case "releaseUsingSlot" -> releaseUsingRows;
                 case "releaseReservedSlot" -> releaseReservedRows;
@@ -233,6 +309,7 @@ class ReservationServiceTest {
 
     private static final class ReservationMapperFake {
         private Reservation reservation;
+        private Reservation tableCheckinReservation;
         private Reservation insertedReservation;
         private int markCheckedInRows;
         private int markCheckedOutRows;
@@ -241,6 +318,12 @@ class ReservationServiceTest {
         private int dailyActiveCount;
         private Long overlapUserId;
         private Long dailyLimitUserId;
+        private Long tableCheckinUserId;
+        private String tableCheckinToken;
+        private String tableCheckinCode;
+        private Long markCheckedInReservationId;
+        private Long markCheckedInUserId;
+        private String markCheckedInCheckinCode;
 
         ReservationMapper proxy() {
             return ReservationServiceTest.proxy(ReservationMapper.class, (unused, method, args) -> switch (method.getName()) {
@@ -250,7 +333,22 @@ class ReservationServiceTest {
                     yield 1;
                 }
                 case "selectById" -> reservation;
-                case "markCheckedIn" -> markCheckedInRows;
+                case "findReservedForTableCheckin" -> {
+                    tableCheckinUserId = (Long) args[0];
+                    tableCheckinToken = (String) args[1];
+                    tableCheckinCode = (String) args[2];
+                    yield tableCheckinReservation;
+                }
+                case "markCheckedIn" -> {
+                    markCheckedInReservationId = (Long) args[0];
+                    markCheckedInUserId = (Long) args[1];
+                    markCheckedInCheckinCode = (String) args[2];
+                    if (markCheckedInRows == 1 && reservation != null) {
+                        reservation.setStatus(ReservationStatus.CHECKED_IN);
+                        reservation.setCheckedInAt((LocalDateTime) args[3]);
+                    }
+                    yield markCheckedInRows;
+                }
                 case "markCheckedOut" -> markCheckedOutRows;
                 case "markCancelled" -> markCancelledRows;
                 case "countActiveOverlappingReservations" -> {

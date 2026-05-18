@@ -72,6 +72,15 @@ public class ReservationController {
         return ApiResponse.ok(reservationService.checkIn(reservationId, request, currentUser.id()));
     }
 
+    @PostMapping("/table-check-in")
+    @RequireRole(UserRole.STUDENT)
+    public ApiResponse<ReservationResponse> tableCheckIn(
+            @Valid @RequestBody TableCheckinRequest request,
+            CurrentUser currentUser
+    ) {
+        return ApiResponse.ok(reservationService.tableCheckIn(request, currentUser.id()));
+    }
+
     @PostMapping("/{reservationId}/check-out")
     @RequireRole(UserRole.STUDENT)
     public ApiResponse<ReservationResponse> checkOut(

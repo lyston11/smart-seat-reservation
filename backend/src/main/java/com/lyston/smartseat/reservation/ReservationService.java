@@ -87,11 +87,36 @@ public class ReservationService {
     public ReservationResponse checkIn(Long reservationId, CheckinRequest request, Long userId) {
         LocalDateTime now = LocalDateTime.now();
         Reservation reservation = requireReservation(reservationId);
+        return completeCheckIn(reservation, request.checkinCode(), userId, now);
+    }
 
-        int reservationRows = reservationMapper.markCheckedIn(
-                reservationId,
+    @Transactional
+    public ReservationResponse tableCheckIn(TableCheckinRequest request, Long userId) {
+        LocalDateTime now = LocalDateTime.now();
+        Reservation reservation = reservationMapper.findReservedForTableCheckin(
                 userId,
-                request.checkinCode(),
+                request.tableQrToken(),
+                request.checkinCode()
+        );
+        if (reservation == null) {
+            throw new BusinessException("TABLE_CHECKIN_NOT_MATCHED", "No matching reservation for this table");
+        }
+        if (reservation.getExpiresAt() != null && reservation.getExpiresAt().isBefore(now)) {
+            throw new BusinessException("RESERVATION_EXPIRED", "Reservation has expired");
+        }
+        return completeCheckIn(reservation, request.checkinCode(), userId, now);
+    }
+
+    private ReservationResponse completeCheckIn(
+            Reservation reservation,
+            String checkinCode,
+            Long userId,
+            LocalDateTime now
+    ) {
+        int reservationRows = reservationMapper.markCheckedIn(
+                reservation.getId(),
+                userId,
+                checkinCode,
                 now
         );
         if (reservationRows != 1) {
@@ -110,7 +135,7 @@ public class ReservationService {
 
         evictReservationSlotCache(reservation);
         recordAction(reservation.getId(), userId, CheckinAction.CHECK_IN, now);
-        Reservation updated = requireReservation(reservationId);
+        Reservation updated = requireReservation(reservation.getId());
         return toResponse(updated);
     }
 

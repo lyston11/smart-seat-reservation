@@ -73,6 +73,27 @@ public interface ReservationMapper extends BaseMapper<Reservation> {
             @Param("now") LocalDateTime now
     );
 
+    @Select("""
+            SELECT r.*
+            FROM reservations r
+            JOIN seats s
+              ON s.id = r.seat_id
+            JOIN tables t
+              ON t.id = s.table_id
+            WHERE r.user_id = #{userId}
+              AND t.qr_token = #{tableQrToken}
+              AND t.status = 'ACTIVE'
+              AND r.status = 'RESERVED'
+              AND r.checkin_code = #{checkinCode}
+            ORDER BY r.reserved_at DESC
+            LIMIT 1
+            """)
+    Reservation findReservedForTableCheckin(
+            @Param("userId") Long userId,
+            @Param("tableQrToken") String tableQrToken,
+            @Param("checkinCode") String checkinCode
+    );
+
     @Update("""
             UPDATE reservations
             SET status = 'ADMIN_RELEASED',
