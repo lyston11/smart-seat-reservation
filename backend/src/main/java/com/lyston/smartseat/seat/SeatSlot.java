@@ -48,6 +48,10 @@ public class SeatSlot {
     @TableField(exist = false)
     private Integer displayOrder;
     private Long areaId;
+    @TableField(exist = false)
+    private String areaName;
+    @TableField(exist = false)
+    private String floor;
     private LocalDate slotDate;
     private LocalTime startTime;
     private LocalTime endTime;
@@ -216,6 +220,22 @@ public class SeatSlot {
 
     public void setAreaId(Long areaId) {
         this.areaId = areaId;
+    }
+
+    public String getAreaName() {
+        return areaName;
+    }
+
+    public void setAreaName(String areaName) {
+        this.areaName = areaName;
+    }
+
+    public String getFloor() {
+        return floor;
+    }
+
+    public void setFloor(String floor) {
+        this.floor = floor;
     }
 
     public LocalDate getSlotDate() {

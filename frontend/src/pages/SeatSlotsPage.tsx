@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, DatePicker, Form, Input, message, Select, Space } from 'antd';
+import { Button, Card, DatePicker, Form, Input, message, Select, Space, Statistic, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { listAreas } from '../api/areas';
 import {
@@ -14,6 +14,13 @@ import {
 import SeatMap from '../components/SeatMap';
 import type { ReservationResult, ReservationRule } from '../types/reservation';
 import type { Area, SeatSlot } from '../types/seat';
+import {
+  formatDateTime,
+  formatReservationLocation,
+  formatReservationTime,
+  reservationStatusColor,
+  reservationStatusText,
+} from '../utils/reservationDisplay';
 
 export default function SeatSlotsPage() {
   const [areas, setAreas] = useState<Area[]>([]);
@@ -39,6 +46,14 @@ export default function SeatSlotsPage() {
   const visibleSlots = useMemo(
     () => buildVisibleSlotsForSelectedTime(slots, startTimeText, endTimeText),
     [endTimeText, slots, startTimeText],
+  );
+  const availableSeatCount = useMemo(
+    () => visibleSlots.filter((slot) => slot.status === 'AVAILABLE').length,
+    [visibleSlots],
+  );
+  const occupiedSeatCount = useMemo(
+    () => visibleSlots.filter((slot) => slot.status !== 'AVAILABLE').length,
+    [visibleSlots],
   );
 
   function restoreActiveReservation(reservations: ReservationResult[]) {
@@ -219,20 +234,48 @@ export default function SeatSlotsPage() {
         </Form>
       </div>
 
+      <div className="student-summary-grid">
+        <Card>
+          <Statistic title="可预约座位" value={availableSeatCount} suffix="个" />
+        </Card>
+        <Card>
+          <Statistic title="已占用/异常" value={occupiedSeatCount} suffix="个" />
+        </Card>
+        <Card>
+          <Statistic title="当前日期" value={dateText} />
+        </Card>
+      </div>
+
       <div className="reservation-panel">
+        <div className="reservation-current">
+          <Typography.Text strong>当前预约</Typography.Text>
+          {activeReservation ? (
+            <>
+              <Space wrap>
+                <Tag color={reservationStatusColor[activeReservation.status] ?? 'default'}>
+                  {reservationStatusText[activeReservation.status] ?? activeReservation.status}
+                </Tag>
+                <Typography.Text>#{activeReservation.reservationId}</Typography.Text>
+              </Space>
+              <Typography.Text>{formatReservationLocation(activeReservation)}</Typography.Text>
+              <Typography.Text type="secondary">{formatReservationTime(activeReservation)}</Typography.Text>
+              <Typography.Text type="secondary">
+                签到截止 {formatDateTime(activeReservation.expiresAt)}
+              </Typography.Text>
+            </>
+          ) : (
+            <Typography.Text type="secondary">暂无活跃预约，选择空闲座位后会显示签到信息。</Typography.Text>
+          )}
+        </div>
         <div className="reservation-fields">
-          <Input
-            className="reservation-input"
-            addonBefore="预约"
-            value={activeReservation?.reservationId ?? ''}
-            readOnly
-          />
-          <Input
-            className="reservation-code"
-            addonBefore="签到码"
-            value={checkinCode}
-            onChange={(event) => setCheckinCode(event.target.value)}
-          />
+          <div className="reservation-code-field reservation-code">
+            <span>签到码</span>
+            <Input
+              value={checkinCode}
+              placeholder="预约成功后自动填入"
+              onChange={(event) => setCheckinCode(event.target.value)}
+            />
+          </div>
         </div>
         <Space>
           <Button

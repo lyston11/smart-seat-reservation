@@ -108,12 +108,12 @@ public interface ReservationMapper extends BaseMapper<Reservation> {
     );
 
     @Select("""
-            SELECT id, user_id, seat_id, seat_slot_id, status, checkin_code, reserved_at,
-                   checked_in_at, checked_out_at, expires_at, created_at, updated_at
-            FROM reservations
-            WHERE status = 'RESERVED'
-              AND expires_at < #{now}
-            ORDER BY expires_at
+            SELECT r.id, r.user_id, r.seat_id, r.seat_slot_id, r.status, r.checkin_code, r.reserved_at,
+                   r.checked_in_at, r.checked_out_at, r.expires_at, r.created_at, r.updated_at
+            FROM reservations r
+            WHERE r.status = 'RESERVED'
+              AND r.expires_at < #{now}
+            ORDER BY r.expires_at
             LIMIT #{limit}
             """)
     List<Reservation> findExpiredReservations(@Param("now") LocalDateTime now, @Param("limit") int limit);
@@ -151,11 +151,22 @@ public interface ReservationMapper extends BaseMapper<Reservation> {
     );
 
     @Select("""
-            SELECT id, user_id, seat_id, seat_slot_id, status, checkin_code, reserved_at,
-                   checked_in_at, checked_out_at, expires_at, created_at, updated_at
-            FROM reservations
-            WHERE user_id = #{userId}
-            ORDER BY created_at DESC, id DESC
+            SELECT r.id, r.user_id, r.seat_id, r.seat_slot_id, r.status, r.checkin_code, r.reserved_at,
+                   r.checked_in_at, r.checked_out_at, r.expires_at, r.created_at, r.updated_at,
+                   s.seat_no, s.seat_label, t.id AS table_id, t.table_no,
+                   a.id AS area_id, a.name AS area_name, a.floor,
+                   ss.slot_date, ss.start_time, ss.end_time
+            FROM reservations r
+            JOIN seat_slots ss
+              ON ss.id = r.seat_slot_id
+            JOIN seats s
+              ON s.id = r.seat_id
+            LEFT JOIN tables t
+              ON t.id = s.table_id
+            JOIN areas a
+              ON a.id = ss.area_id
+            WHERE r.user_id = #{userId}
+            ORDER BY r.created_at DESC, r.id DESC
             LIMIT #{limit}
             """)
     List<Reservation> findByUserId(@Param("userId") Long userId, @Param("limit") int limit);

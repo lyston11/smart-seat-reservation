@@ -5,6 +5,52 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 继续增强学生端，让学生首页、选座、预约管理形成完整可演示闭环。
+
+### 本次改动
+- 新增学生首页 `/student/home`，展示当前活跃预约、最近预约记录、签到宽限和可提前预约天数。
+- 登录后学生默认进入学生首页，侧边栏新增“学生首页”入口。
+- 学生选座页新增可预约/已占用统计卡片，并把当前预约从内部 ID 输入框升级为可读的座位、区域、桌号、时间和签到截止信息。
+- 我的预约页从简单表格升级为预约管理页，支持在活跃预约卡片里直接签到、签退和取消。
+- 后端预约响应补充 `seatNo`、`seatLabel`、`tableNo`、`areaName`、`floor`、`slotDate`、`startTime`、`endTime`，前端不再只能展示座位 ID 和时段 ID。
+- 抽取预约状态、时间和位置展示工具，学生端页面复用同一套中文状态和格式化逻辑。
+- 补充前端测试，覆盖学生首页活跃预约展示和我的预约页直接签到。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/reservation/
+- backend/src/main/java/com/lyston/smartseat/seat/
+- backend/src/test/java/com/lyston/smartseat/reservation/ReservationServiceTest.java
+- frontend/src/App.tsx
+- frontend/src/App.test.tsx
+- frontend/src/layout/AppLayout.tsx
+- frontend/src/pages/LoginPage.tsx
+- frontend/src/pages/StudentHomePage.tsx
+- frontend/src/pages/MyReservationsPage.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/types/reservation.ts
+- frontend/src/utils/reservationDisplay.ts
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端 3 个测试文件、12 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 43 个测试通过。
+
+### 遗留问题
+- 学生首页目前是预约概览和快捷入口，后续可继续补常用区域收藏、学习时长统计和签到提醒。
+- 我的预约页仍保留表格历史记录，后续可增加按状态/日期筛选。
+
+### 对其他成员的影响
+- `GET /api/reservations` 和预约创建/签到/签退/取消响应新增展示字段，旧字段保持兼容。
+- 前端学生端路由默认入口调整为 `/student/home`，原 `/student/seats` 仍可直接访问。
+
+## 2026-05-18
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
 - 目标: 在最新 `main` 基础上继续完善管理员桌位可视化维护能力，让桌子坐标、尺寸和旋转角度有直观预览。
 
 ### 本次改动

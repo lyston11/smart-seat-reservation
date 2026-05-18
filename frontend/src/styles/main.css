@@ -232,7 +232,7 @@ body {
 
 .reservation-panel {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   padding: 16px;
@@ -240,6 +240,12 @@ body {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
+}
+
+.reservation-current {
+  min-width: 260px;
+  display: grid;
+  gap: 6px;
 }
 
 .reservation-fields {
@@ -255,6 +261,105 @@ body {
 
 .reservation-code {
   width: 420px;
+}
+
+.reservation-code-field {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.reservation-code-field span {
+  height: 32px;
+  padding: 5px 11px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid #d9d9d9;
+  border-right: 0;
+  border-radius: 6px 0 0 6px;
+  background: #fafafa;
+  color: #4b5563;
+  font-size: 14px;
+}
+
+.reservation-code-field .ant-input {
+  border-radius: 0 6px 6px 0;
+}
+
+.student-home-hero {
+  padding: 22px 24px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.student-home-hero h2 {
+  margin: 0 0 6px !important;
+}
+
+.student-home-hero .ant-typography {
+  margin-bottom: 0;
+}
+
+.student-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.student-section {
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.student-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.reservation-card {
+  height: 100%;
+}
+
+.reservation-card-stack {
+  width: 100%;
+}
+
+.student-record-list {
+  display: grid;
+  gap: 10px;
+}
+
+.student-record-item {
+  min-width: 0;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.student-record-item > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.student-record-item .ant-typography {
+  margin: 0;
 }
 
 .reservation-rules {
@@ -598,6 +703,7 @@ body {
   }
 
   .reservation-panel,
+  .student-home-hero,
   .reservation-fields {
     align-items: stretch;
     flex-direction: column;
@@ -610,6 +716,8 @@ body {
   }
 
   .stats-grid,
+  .student-summary-grid,
+  .student-card-grid,
   .usage-row,
   .rule-form-grid,
   .resource-layout-fields,

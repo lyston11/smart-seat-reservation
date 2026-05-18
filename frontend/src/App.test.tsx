@@ -3,6 +3,29 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
+function makeReservation(overrides: Record<string, unknown> = {}) {
+  return {
+    reservationId: 7,
+    seatSlotId: 8,
+    seatId: 9,
+    userId: 1,
+    status: 'RESERVED',
+    checkinCode: '246810',
+    expiresAt: '2026-05-18T10:00:00',
+    seatNo: 'A-001',
+    seatLabel: '1号',
+    tableId: 1,
+    tableNo: 'T01',
+    areaId: 1,
+    areaName: 'A 区',
+    floor: '1F',
+    slotDate: '2026-05-18',
+    startTime: '09:00:00',
+    endTime: '10:00:00',
+    ...overrides,
+  };
+}
+
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
@@ -147,7 +170,7 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByDisplayValue('7')).toBeTruthy();
+    expect(await screen.findByText('#7')).toBeTruthy();
     expect(await screen.findByDisplayValue('246810')).toBeTruthy();
 
     const checkoutButton = await screen.findByRole('button', { name: '签 退' });
@@ -311,6 +334,118 @@ describe('App', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/reservations',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+  });
+
+  it('renders the student home dashboard with active reservation details', async () => {
+    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
+    window.localStorage.setItem(
+      'smart-seat-auth-user',
+      JSON.stringify({ id: 1, name: 'Demo Student', studentNo: '20260001', role: 'STUDENT' }),
+    );
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('/api/reservations?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [makeReservation()],
+          }),
+        };
+      }
+      if (url.startsWith('/api/reservations/rules')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: {
+              checkinGraceMinutes: 15,
+              maxAdvanceDays: 7,
+              dailyActiveReservationLimit: 3,
+              updatedBy: null,
+              updatedAt: null,
+            },
+          }),
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/student/home']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 3, name: '学生首页' })).toBeTruthy();
+    expect((await screen.findAllByText('A 区 · 1F · T01 · A-001 (1号)')).length).toBeGreaterThan(0);
+    expect(await screen.findByText('签到码 246810 · 截止 2026-05-18 10:00')).toBeTruthy();
+  });
+
+  it('lets students check in from the reservation management page', async () => {
+    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
+    window.localStorage.setItem(
+      'smart-seat-auth-user',
+      JSON.stringify({ id: 1, name: 'Demo Student', studentNo: '20260001', role: 'STUDENT' }),
+    );
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.startsWith('/api/reservations?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [makeReservation()],
+          }),
+        };
+      }
+      if (url === '/api/reservations/7/check-in') {
+        expect(init?.method).toBe('POST');
+        expect(JSON.parse(String(init?.body))).toEqual({ checkinCode: '246810' });
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: makeReservation({ status: 'CHECKED_IN' }),
+          }),
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/student/reservations']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect((await screen.findAllByText('A 区 · 1F · T01 · A-001 (1号)')).length).toBeGreaterThan(0);
+    fireEvent.click(await screen.findByRole('button', { name: /签\s*到/ }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/reservations/7/check-in',
         expect.objectContaining({ method: 'POST' }),
       );
     });

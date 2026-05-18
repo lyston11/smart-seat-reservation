@@ -2,7 +2,10 @@ package com.lyston.smartseat.reservation;
 
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableField;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @TableName("reservations")
 public class Reservation {
@@ -18,6 +21,26 @@ public class Reservation {
     private LocalDateTime checkedInAt;
     private LocalDateTime checkedOutAt;
     private LocalDateTime expiresAt;
+    @TableField(exist = false)
+    private String seatNo;
+    @TableField(exist = false)
+    private String seatLabel;
+    @TableField(exist = false)
+    private Long tableId;
+    @TableField(exist = false)
+    private String tableNo;
+    @TableField(exist = false)
+    private Long areaId;
+    @TableField(exist = false)
+    private String areaName;
+    @TableField(exist = false)
+    private String floor;
+    @TableField(exist = false)
+    private LocalDate slotDate;
+    @TableField(exist = false)
+    private LocalTime startTime;
+    @TableField(exist = false)
+    private LocalTime endTime;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -99,6 +122,86 @@ public class Reservation {
 
     public void setExpiresAt(LocalDateTime expiresAt) {
         this.expiresAt = expiresAt;
+    }
+
+    public String getSeatNo() {
+        return seatNo;
+    }
+
+    public void setSeatNo(String seatNo) {
+        this.seatNo = seatNo;
+    }
+
+    public String getSeatLabel() {
+        return seatLabel;
+    }
+
+    public void setSeatLabel(String seatLabel) {
+        this.seatLabel = seatLabel;
+    }
+
+    public Long getTableId() {
+        return tableId;
+    }
+
+    public void setTableId(Long tableId) {
+        this.tableId = tableId;
+    }
+
+    public String getTableNo() {
+        return tableNo;
+    }
+
+    public void setTableNo(String tableNo) {
+        this.tableNo = tableNo;
+    }
+
+    public Long getAreaId() {
+        return areaId;
+    }
+
+    public void setAreaId(Long areaId) {
+        this.areaId = areaId;
+    }
+
+    public String getAreaName() {
+        return areaName;
+    }
+
+    public void setAreaName(String areaName) {
+        this.areaName = areaName;
+    }
+
+    public String getFloor() {
+        return floor;
+    }
+
+    public void setFloor(String floor) {
+        this.floor = floor;
+    }
+
+    public LocalDate getSlotDate() {
+        return slotDate;
+    }
+
+    public void setSlotDate(LocalDate slotDate) {
+        this.slotDate = slotDate;
+    }
+
+    public LocalTime getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(LocalTime startTime) {
+        this.startTime = startTime;
+    }
+
+    public LocalTime getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(LocalTime endTime) {
+        this.endTime = endTime;
     }
 
     public LocalDateTime getCreatedAt() {

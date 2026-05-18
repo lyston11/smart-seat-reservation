@@ -33,7 +33,7 @@ export default function LoginPage() {
       const session = await login(values.studentNo, values.password);
       setAuthSession(session);
       messageApi.success('登录成功');
-      const defaultPath = session.user.role === 'ADMIN' ? '/admin/dashboard' : '/student/seats';
+      const defaultPath = session.user.role === 'ADMIN' ? '/admin/dashboard' : '/student/home';
       navigate(typeof returnPath === 'string' && returnPath.startsWith('/') ? returnPath : defaultPath, {
         replace: true,
       });

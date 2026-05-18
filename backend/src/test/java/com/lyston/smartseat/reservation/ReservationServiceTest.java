@@ -71,6 +71,11 @@ class ReservationServiceTest {
 
         assertThat(response.seatSlotId()).isEqualTo(1L);
         assertThat(response.seatId()).isEqualTo(2L);
+        assertThat(response.seatNo()).isEqualTo("A-001");
+        assertThat(response.tableNo()).isEqualTo("T01");
+        assertThat(response.areaName()).isEqualTo("A 区");
+        assertThat(response.slotDate()).isEqualTo(futureDate());
+        assertThat(response.startTime()).isEqualTo(LocalTime.of(8, 0));
         assertThat(response.userId()).isEqualTo(10L);
         assertThat(response.status()).isEqualTo(ReservationStatus.RESERVED);
         assertThat(reservationRateLimiter.checkedUserId).isEqualTo(10L);
@@ -315,7 +320,13 @@ class ReservationServiceTest {
         SeatSlot slot = new SeatSlot();
         slot.setId(1L);
         slot.setSeatId(2L);
+        slot.setSeatNo("A-001");
+        slot.setSeatLabel("1号");
+        slot.setTableId(11L);
+        slot.setTableNo("T01");
         slot.setAreaId(1L);
+        slot.setAreaName("A 区");
+        slot.setFloor("1F");
         slot.setSlotDate(slotDate);
         slot.setStartTime(startTime);
         slot.setEndTime(endTime);
@@ -372,6 +383,7 @@ class ReservationServiceTest {
                 case "releaseReservedSlot" -> releaseReservedRows;
                 case "findAvailableWindowForSeat" -> availableWindow;
                 case "countActiveOverlappingSlotsBySeat" -> activeOverlapBySeatCount;
+                case "findByIdWithLayout" -> slot;
                 case "insert" -> {
                     insertedSlot = (SeatSlot) args[0];
                     insertedSlot.setId(insertedSlotId);

@@ -15,6 +15,7 @@ const AdminTablesPage = lazy(() => import('./pages/AdminTablesPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const MyReservationsPage = lazy(() => import('./pages/MyReservationsPage'));
 const SeatSlotsPage = lazy(() => import('./pages/SeatSlotsPage'));
+const StudentHomePage = lazy(() => import('./pages/StudentHomePage'));
 const TableCheckinPage = lazy(() => import('./pages/TableCheckinPage'));
 
 function ProtectedRoute() {
@@ -33,7 +34,8 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>
-            <Route index element={<Navigate to="/student/seats" replace />} />
+            <Route index element={<Navigate to="/student/home" replace />} />
+            <Route path="/student/home" element={<StudentHomePage />} />
             <Route path="/student/seats" element={<SeatSlotsPage />} />
             <Route path="/student/reservations" element={<MyReservationsPage />} />
             <Route path="/student/table-checkin" element={<TableCheckinPage />} />
@@ -47,7 +49,7 @@ export default function App() {
               <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />
             </Route>
           </Route>
-          <Route path="*" element={<Navigate to="/student/seats" replace />} />
+          <Route path="*" element={<Navigate to="/student/home" replace />} />
         </Routes>
       </Suspense>
     </AntApp>
