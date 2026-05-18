@@ -3,6 +3,37 @@
 ## 2026-05-18
 
 ### 任务
+- Issue: Task 9
+- 分支: feature/codex-table-checkin-impl
+- 目标: 补充桌子资源、桌码签到和具体桌位座位字段的 API 与架构文档。
+
+### 本次改动
+- API 手测文档补充座位时段响应中的桌子/座位布局字段说明。
+- API 手测文档新增桌子列表、新增、编辑、状态更新和固定签到二维码接口示例。
+- API 手测文档更新座位新增/编辑示例，加入 `tableId`、`seatLabel`、`seatSide`、`seatOrder`。
+- API 手测文档新增 `POST /api/reservations/table-check-in` 桌码签到示例和校验说明。
+- 架构文档补充 `areas -> tables -> seats -> seat_slots -> reservations` 资源层级。
+- 架构文档说明固定桌码只证明物理桌子位置，动态签到码继续证明预约归属。
+
+### 涉及文件
+- docs/API_EXAMPLES.md
+- docs/architecture/ARCHITECTURE.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `git diff --check`，通过；仅提示工作区文件后续会被 Git 转为 CRLF。
+- 文档为 Markdown 说明，无额外构建步骤。
+
+### 遗留问题
+- 后续如增加桌码批量打印、桌子级统计或区域差异化预约规则，需要继续同步 API 与架构文档。
+
+### 对其他成员的影响
+- 后续接口示例应以 `tables` 作为座位资源的上层实体，不再只用 `seats.tableNo` 这类松散字段表达桌子。
+- 桌码签到文档明确要求 `tableQrToken + checkinCode` 双凭证校验，后续改动不要绕过预约码校验。
+
+## 2026-05-18
+
+### 任务
 - Issue: Task 8
 - 分支: feature/codex-table-checkin-impl
 - 目标: 添加管理员桌子管理和固定桌码入口，并把座位管理升级为选择具体桌子的具体座位。
