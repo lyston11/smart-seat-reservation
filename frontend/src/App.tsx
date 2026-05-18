@@ -11,6 +11,7 @@ const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 const AdminReservationRulesPage = lazy(() => import('./pages/AdminReservationRulesPage'));
 const AdminSeatSlotsPage = lazy(() => import('./pages/AdminSeatSlotsPage'));
 const AdminSeatsPage = lazy(() => import('./pages/AdminSeatsPage'));
+const AdminTablesPage = lazy(() => import('./pages/AdminTablesPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const MyReservationsPage = lazy(() => import('./pages/MyReservationsPage'));
 const SeatSlotsPage = lazy(() => import('./pages/SeatSlotsPage'));
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="/student/table-checkin" element={<TableCheckinPage />} />
             <Route element={<RoleRoute allowedRoles={['ADMIN']} />}>
               <Route path="/admin/areas" element={<AdminAreasPage />} />
+              <Route path="/admin/tables" element={<AdminTablesPage />} />
               <Route path="/admin/seats" element={<AdminSeatsPage />} />
               <Route path="/admin/seat-slots" element={<AdminSeatSlotsPage />} />
               <Route path="/admin/reservation-rules" element={<AdminReservationRulesPage />} />

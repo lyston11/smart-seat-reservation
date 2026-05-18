@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, Button, Form, Input, Result, Space, Typography, message } from 'antd';
 import { Link, useSearchParams } from 'react-router-dom';
 import { tableCheckInReservation } from '../api/seatSlots';
@@ -12,12 +12,12 @@ export default function TableCheckinPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token')?.trim() ?? '';
   const [submitting, setSubmitting] = useState(false);
-  const [checkedInReservation, setCheckedInReservation] = useState<ReservationResult | null>(null);
+  const [checkedInResult, setCheckedInResult] = useState<{
+    token: string;
+    reservation: ReservationResult;
+  } | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
-
-  useEffect(() => {
-    setCheckedInReservation(null);
-  }, [token]);
+  const checkedInReservation = checkedInResult?.token === token ? checkedInResult.reservation : null;
 
   async function submit(values: CheckinForm) {
     if (!token) {
@@ -31,7 +31,7 @@ export default function TableCheckinPage() {
         tableQrToken: token,
         checkinCode: values.checkinCode.trim(),
       });
-      setCheckedInReservation(reservation);
+      setCheckedInResult({ token, reservation });
       messageApi.success('签到成功');
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '签到失败');

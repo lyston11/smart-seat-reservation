@@ -111,14 +111,37 @@ body {
   padding-top: 8px;
 }
 
-.seat-layout-fields {
+.table-form {
+  padding-top: 8px;
+}
+
+.resource-layout-fields,
+.seat-table-layout-fields {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
-.seat-layout-fields .ant-input-number {
+.resource-layout-fields .ant-input-number,
+.seat-table-layout-fields .ant-input-number {
   width: 100%;
+}
+
+.table-qr-panel {
+  display: grid;
+  gap: 16px;
+  justify-items: stretch;
+}
+
+.table-qr-code {
+  width: 220px;
+  height: 220px;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
 }
 
 .audit-filter-select {
@@ -484,7 +507,8 @@ body {
   .stats-grid,
   .usage-row,
   .rule-form-grid,
-  .seat-layout-fields {
+  .resource-layout-fields,
+  .seat-table-layout-fields {
     grid-template-columns: 1fr;
   }
 

@@ -1,9 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
 afterEach(() => {
+  cleanup();
   window.localStorage.clear();
   vi.unstubAllGlobals();
 });
@@ -103,10 +104,36 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('button', { name: '登录' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: '登录' }));
+    const loginButton = await screen.findByRole('button', { name: /登\s*录/ });
+    expect(loginButton).toBeTruthy();
+    fireEvent.click(loginButton);
 
     expect(await screen.findByRole('heading', { level: 3, name: '桌码签到' })).toBeTruthy();
     expect(await screen.findByLabelText('签到码')).toBeTruthy();
+  });
+
+  it('renders admin table management route for administrators', async () => {
+    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
+    window.localStorage.setItem(
+      'smart-seat-auth-user',
+      JSON.stringify({ id: 2, name: 'Demo Admin', studentNo: 'admin', role: 'ADMIN' }),
+    );
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/admin/tables']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 3, name: '桌子管理' })).toBeTruthy();
+    expect(await screen.findByRole('link', { name: '桌子管理' })).toBeTruthy();
   });
 });

@@ -38,6 +38,11 @@ const adminMenuItems: MenuItem[] = [
     label: <Link to="/admin/areas">区域管理</Link>,
   },
   {
+    key: '/admin/tables',
+    icon: <ClipboardList size={18} />,
+    label: <Link to="/admin/tables">桌子管理</Link>,
+  },
+  {
     key: '/admin/seats',
     icon: <ClipboardList size={18} />,
     label: <Link to="/admin/seats">座位管理</Link>,
@@ -69,6 +74,7 @@ const pageTitles: Record<string, string> = {
   '/student/reservations': '我的预约',
   '/student/table-checkin': '桌码签到',
   '/admin/areas': '区域管理',
+  '/admin/tables': '桌子管理',
   '/admin/seats': '座位管理',
   '/admin/seat-slots': '开放时段',
   '/admin/reservation-rules': '预约规则',

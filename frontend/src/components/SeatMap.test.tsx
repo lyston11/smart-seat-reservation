@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import SeatMap from './SeatMap';
 import type { SeatSlot } from '../types/seat';
 
@@ -8,11 +8,13 @@ function makeSlot(overrides: Partial<SeatSlot>): SeatSlot {
     id: overrides.id ?? 1,
     seatId: overrides.seatId ?? 1,
     seatNo: overrides.seatNo ?? 'S1',
-    tableId: overrides.tableId ?? 1,
-    tableNo: overrides.tableNo ?? 'T1',
-    tableRowNo: overrides.tableRowNo ?? 1,
-    tableColumnNo: overrides.tableColumnNo ?? 1,
-    tableDisplayOrder: overrides.tableDisplayOrder ?? 1,
+    tableId: Object.hasOwn(overrides, 'tableId') ? (overrides.tableId as number) : 1,
+    tableNo: Object.hasOwn(overrides, 'tableNo') ? (overrides.tableNo as string | null) : 'T1',
+    tableRowNo: Object.hasOwn(overrides, 'tableRowNo') ? (overrides.tableRowNo as number | null) : 1,
+    tableColumnNo: Object.hasOwn(overrides, 'tableColumnNo') ? (overrides.tableColumnNo as number | null) : 1,
+    tableDisplayOrder: Object.hasOwn(overrides, 'tableDisplayOrder')
+      ? (overrides.tableDisplayOrder as number | null)
+      : 1,
     seatLabel: overrides.seatLabel ?? null,
     seatSide: overrides.seatSide ?? 'SINGLE',
     seatOrder: overrides.seatOrder ?? 1,
@@ -28,6 +30,10 @@ function makeSlot(overrides: Partial<SeatSlot>): SeatSlot {
     reservationId: overrides.reservationId ?? null,
   };
 }
+
+afterEach(() => {
+  cleanup();
+});
 
 describe('SeatMap', () => {
   it('groups seats by time and table, orders concrete seats, and reserves only available seats', () => {
