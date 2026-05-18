@@ -1,0 +1,26 @@
+package com.lyston.smartseat.table;
+
+public record StudyTableResponse(
+        Long id,
+        Long areaId,
+        String tableNo,
+        String name,
+        String status,
+        Integer rowNo,
+        Integer columnNo,
+        Integer displayOrder
+) {
+
+    public static StudyTableResponse from(StudyTable table) {
+        return new StudyTableResponse(
+                table.getId(),
+                table.getAreaId(),
+                table.getTableNo(),
+                table.getName(),
+                table.getStatus(),
+                table.getRowNo(),
+                table.getColumnNo(),
+                table.getDisplayOrder()
+        );
+    }
+}
