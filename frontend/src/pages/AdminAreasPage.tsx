@@ -9,6 +9,8 @@ type AreaFormValues = {
   floor?: string;
   description?: string;
   status: AreaStatus;
+  openTime?: string;
+  closeTime?: string;
 };
 
 const statusLabels: Record<AreaStatus, string> = {
@@ -43,7 +45,14 @@ export default function AdminAreasPage() {
 
   function openCreateModal() {
     setEditingArea(null);
-    form.setFieldsValue({ name: '', floor: '', description: '', status: 'ACTIVE' });
+    form.setFieldsValue({
+      name: '',
+      floor: '',
+      description: '',
+      status: 'ACTIVE',
+      openTime: '08:00',
+      closeTime: '22:00',
+    });
     setModalOpen(true);
   }
 
@@ -54,19 +63,26 @@ export default function AdminAreasPage() {
       floor: area.floor ?? '',
       description: area.description ?? '',
       status: area.status,
+      openTime: area.openTime?.slice(0, 5) ?? '08:00',
+      closeTime: area.closeTime?.slice(0, 5) ?? '22:00',
     });
     setModalOpen(true);
   }
 
   async function saveArea() {
     const values = await form.validateFields();
+    const payload = {
+      ...values,
+      openTime: normalizeFormTime(values.openTime),
+      closeTime: normalizeFormTime(values.closeTime),
+    };
     setSaving(true);
     try {
       if (editingArea) {
-        await updateArea(editingArea.id, values);
+        await updateArea(editingArea.id, payload);
         messageApi.success('区域已更新');
       } else {
-        await createArea(values);
+        await createArea(payload);
         messageApi.success('区域已新增');
       }
       setModalOpen(false);
@@ -102,6 +118,11 @@ export default function AdminAreasPage() {
     { title: '区域 ID', dataIndex: 'id', width: 120 },
     { title: '区域名称', dataIndex: 'name', width: 180 },
     { title: '楼层', dataIndex: 'floor', width: 120, render: (value) => value ?? '-' },
+    {
+      title: '开放时段',
+      width: 160,
+      render: (_, record) => `${record.openTime?.slice(0, 5) ?? '08:00'}-${record.closeTime?.slice(0, 5) ?? '22:00'}`,
+    },
     { title: '说明', dataIndex: 'description', ellipsis: true, render: (value) => value ?? '-' },
     {
       title: '状态',
@@ -183,6 +204,22 @@ export default function AdminAreasPage() {
           >
             <Input.TextArea rows={3} />
           </Form.Item>
+          <div className="resource-layout-fields">
+            <Form.Item
+              label="开放开始"
+              name="openTime"
+              rules={[{ required: true, message: '请选择开放开始时间' }]}
+            >
+              <Input type="time" step={900} />
+            </Form.Item>
+            <Form.Item
+              label="开放结束"
+              name="closeTime"
+              rules={[{ required: true, message: '请选择开放结束时间' }]}
+            >
+              <Input type="time" step={900} />
+            </Form.Item>
+          </div>
           {editingArea ? (
             <Form.Item
               label="状态"
@@ -201,4 +238,11 @@ export default function AdminAreasPage() {
       </Modal>
     </div>
   );
+}
+
+function normalizeFormTime(value?: string) {
+  if (!value) {
+    return undefined;
+  }
+  return value.length === 5 ? `${value}:00` : value;
 }

@@ -4,6 +4,8 @@ export type Area = {
   floor: string | null;
   description: string | null;
   status: AreaStatus;
+  openTime: string;
+  closeTime: string;
 };
 
 export type AreaStatus = 'ACTIVE' | 'INACTIVE';
@@ -11,7 +13,12 @@ export type AreaStatus = 'ACTIVE' | 'INACTIVE';
 export type Seat = {
   id: number;
   areaId: number;
+  tableId: number;
+  tableNo: string | null;
   seatNo: string;
+  seatLabel: string | null;
+  seatSide: string | null;
+  seatOrder: number | null;
   rowNo: number | null;
   columnNo: number | null;
   displayOrder: number | null;
@@ -20,12 +27,50 @@ export type Seat = {
 
 export type SeatStatus = 'ACTIVE' | 'INACTIVE';
 
+export type StudyTableStatus = 'ACTIVE' | 'INACTIVE';
+
+export type StudyTable = {
+  id: number;
+  areaId: number;
+  tableNo: string;
+  name: string | null;
+  status: StudyTableStatus;
+  rowNo: number | null;
+  columnNo: number | null;
+  displayOrder: number | null;
+  positionX: number;
+  positionY: number;
+  widthPx: number;
+  heightPx: number;
+  rotationDeg: number;
+};
+
+export type StudyTableQr = {
+  tableId: number;
+  tableNo: string;
+  qrToken: string;
+  checkinPath: string;
+};
+
 export type SeatSlotStatus = 'AVAILABLE' | 'RESERVED' | 'USING' | 'ABNORMAL';
 
 export type SeatSlot = {
   id: number;
   seatId: number;
   seatNo: string | null;
+  tableId: number;
+  tableNo: string | null;
+  tableRowNo: number | null;
+  tableColumnNo: number | null;
+  tableDisplayOrder: number | null;
+  tablePositionX: number | null;
+  tablePositionY: number | null;
+  tableWidthPx: number | null;
+  tableHeightPx: number | null;
+  tableRotationDeg: number | null;
+  seatLabel: string | null;
+  seatSide: string | null;
+  seatOrder: number | null;
   rowNo: number | null;
   columnNo: number | null;
   displayOrder: number | null;

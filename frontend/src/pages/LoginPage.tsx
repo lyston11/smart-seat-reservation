@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button, Form, Input, Radio, Typography, message } from 'antd';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { login } from '../api/auth';
 import { setAuthSession } from '../api/http';
 
@@ -18,7 +18,13 @@ export default function LoginPage() {
   const [form] = Form.useForm<LoginFormValues>();
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
+  const location = useLocation();
   const navigate = useNavigate();
+
+  const returnPath =
+    typeof location.state === 'object' && location.state !== null && 'from' in location.state
+      ? location.state.from
+      : null;
 
   async function submit() {
     const values = await form.validateFields();
@@ -27,7 +33,10 @@ export default function LoginPage() {
       const session = await login(values.studentNo, values.password);
       setAuthSession(session);
       messageApi.success('登录成功');
-      navigate(session.user.role === 'ADMIN' ? '/admin/dashboard' : '/student/seats', { replace: true });
+      const defaultPath = session.user.role === 'ADMIN' ? '/admin/dashboard' : '/student/seats';
+      navigate(typeof returnPath === 'string' && returnPath.startsWith('/') ? returnPath : defaultPath, {
+        replace: true,
+      });
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '登录失败');
     } finally {

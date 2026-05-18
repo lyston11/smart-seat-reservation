@@ -7,13 +7,127 @@ type SeatMapProps = {
   slots: SeatSlot[];
   loading?: boolean;
   loadingSlotId?: number | null;
-  onReserve: (slotId: number) => void;
+  onReserve: (slot: SeatSlot) => void;
 };
 
-function byTimeAndSeat(left: SeatSlot, right: SeatSlot) {
+type SeatSide = 'NORTH' | 'EAST' | 'SOUTH' | 'WEST' | 'SINGLE';
+
+type TableGroup = {
+  key: string;
+  tableId: number | null;
+  tableNo: string | null;
+  rowNo: number | null;
+  columnNo: number | null;
+  displayOrder: number | null;
+  positionX: number | null;
+  positionY: number | null;
+  widthPx: number | null;
+  heightPx: number | null;
+  rotationDeg: number | null;
+  seats: SeatSlot[];
+};
+
+type TimeGroup = {
+  timeRange: string;
+  tables: TableGroup[];
+  totalSeats: number;
+};
+
+const sideOrder: Record<SeatSide, number> = {
+  NORTH: 1,
+  WEST: 2,
+  EAST: 3,
+  SOUTH: 4,
+  SINGLE: 5,
+};
+
+const sideClass: Record<SeatSide, string> = {
+  NORTH: 'north',
+  EAST: 'east',
+  SOUTH: 'south',
+  WEST: 'west',
+  SINGLE: 'single',
+};
+
+const tableSeatSides: SeatSide[] = ['NORTH', 'WEST', 'EAST', 'SOUTH', 'SINGLE'];
+
+function getTimeRange(slot: SeatSlot) {
+  return `${slot.startTime.slice(0, 5)}-${slot.endTime.slice(0, 5)}`;
+}
+
+function getSeatSide(slot: SeatSlot): SeatSide {
+  if (slot.seatSide === 'NORTH' || slot.seatSide === 'EAST' || slot.seatSide === 'SOUTH' || slot.seatSide === 'WEST') {
+    return slot.seatSide;
+  }
+  return 'SINGLE';
+}
+
+function getTableKey(slot: SeatSlot) {
+  if (slot.tableId) {
+    return `table-${slot.tableId}`;
+  }
+  return `legacy-${slot.tableNo ?? slot.seatId}`;
+}
+
+function getTableLabel(table: TableGroup) {
+  return table.tableNo ?? (table.tableId ? String(table.tableId) : '未分配桌位');
+}
+
+function getSeatLabel(slot: SeatSlot) {
+  return slot.seatLabel ?? slot.seatNo ?? `座位 ${slot.seatId}`;
+}
+
+function byTimeTableAndSeat(left: SeatSlot, right: SeatSlot) {
   const timeCompare = `${left.startTime}-${left.endTime}`.localeCompare(`${right.startTime}-${right.endTime}`);
   if (timeCompare !== 0) {
     return timeCompare;
+  }
+  const tableDisplayCompare =
+    (left.tableDisplayOrder ?? Number.MAX_SAFE_INTEGER) - (right.tableDisplayOrder ?? Number.MAX_SAFE_INTEGER);
+  if (tableDisplayCompare !== 0) {
+    return tableDisplayCompare;
+  }
+  const tableRowCompare =
+    (left.tableRowNo ?? Number.MAX_SAFE_INTEGER) - (right.tableRowNo ?? Number.MAX_SAFE_INTEGER);
+  if (tableRowCompare !== 0) {
+    return tableRowCompare;
+  }
+  const tableColumnCompare =
+    (left.tableColumnNo ?? Number.MAX_SAFE_INTEGER) - (right.tableColumnNo ?? Number.MAX_SAFE_INTEGER);
+  if (tableColumnCompare !== 0) {
+    return tableColumnCompare;
+  }
+  const tableCompare = getTableKey(left).localeCompare(getTableKey(right));
+  if (tableCompare !== 0) {
+    return tableCompare;
+  }
+  return bySeatPosition(left, right);
+}
+
+function bySeatPosition(left: SeatSlot, right: SeatSlot) {
+  const sideCompare = sideOrder[getSeatSide(left)] - sideOrder[getSeatSide(right)];
+  if (sideCompare !== 0) {
+    return sideCompare;
+  }
+  const orderCompare = (left.seatOrder ?? Number.MAX_SAFE_INTEGER) - (right.seatOrder ?? Number.MAX_SAFE_INTEGER);
+  if (orderCompare !== 0) {
+    return orderCompare;
+  }
+  return (left.seatNo ?? String(left.seatId)).localeCompare(right.seatNo ?? String(right.seatId));
+}
+
+function byTablePosition(left: TableGroup, right: TableGroup) {
+  const yCompare = (left.positionY ?? Number.MAX_SAFE_INTEGER) - (right.positionY ?? Number.MAX_SAFE_INTEGER);
+  if (yCompare !== 0) {
+    return yCompare;
+  }
+  const xCompare = (left.positionX ?? Number.MAX_SAFE_INTEGER) - (right.positionX ?? Number.MAX_SAFE_INTEGER);
+  if (xCompare !== 0) {
+    return xCompare;
+  }
+  const displayCompare = (left.displayOrder ?? Number.MAX_SAFE_INTEGER) - (right.displayOrder ?? Number.MAX_SAFE_INTEGER);
+  if (displayCompare !== 0) {
+    return displayCompare;
   }
   const rowCompare = (left.rowNo ?? Number.MAX_SAFE_INTEGER) - (right.rowNo ?? Number.MAX_SAFE_INTEGER);
   if (rowCompare !== 0) {
@@ -23,43 +137,103 @@ function byTimeAndSeat(left: SeatSlot, right: SeatSlot) {
   if (columnCompare !== 0) {
     return columnCompare;
   }
-  const displayCompare =
-    (left.displayOrder ?? Number.MAX_SAFE_INTEGER) - (right.displayOrder ?? Number.MAX_SAFE_INTEGER);
-  if (displayCompare !== 0) {
-    return displayCompare;
-  }
-  return (left.seatNo ?? String(left.seatId)).localeCompare(right.seatNo ?? String(right.seatId));
+  return getTableLabel(left).localeCompare(getTableLabel(right));
 }
 
-function groupSlots(slots: SeatSlot[]) {
-  const groups = new Map<string, SeatSlot[]>();
+function groupSlots(slots: SeatSlot[]): TimeGroup[] {
+  const groups = new Map<string, Map<string, TableGroup>>();
 
-  [...slots].sort(byTimeAndSeat).forEach((slot) => {
-    const key = `${slot.startTime.slice(0, 5)}-${slot.endTime.slice(0, 5)}`;
-    groups.set(key, [...(groups.get(key) ?? []), slot]);
+  [...slots].sort(byTimeTableAndSeat).forEach((slot) => {
+    const timeRange = getTimeRange(slot);
+    const tableKey = getTableKey(slot);
+    const tableGroups = groups.get(timeRange) ?? new Map<string, TableGroup>();
+    const tableGroup = tableGroups.get(tableKey) ?? {
+      key: tableKey,
+      tableId: slot.tableId ?? null,
+      tableNo: slot.tableNo,
+      rowNo: slot.tableRowNo,
+      columnNo: slot.tableColumnNo,
+      displayOrder: slot.tableDisplayOrder,
+      positionX: slot.tablePositionX,
+      positionY: slot.tablePositionY,
+      widthPx: slot.tableWidthPx,
+      heightPx: slot.tableHeightPx,
+      rotationDeg: slot.tableRotationDeg,
+      seats: [],
+    };
+
+    tableGroup.seats = [...tableGroup.seats, slot].sort(bySeatPosition);
+    tableGroups.set(tableKey, tableGroup);
+    groups.set(timeRange, tableGroups);
   });
 
-  return Array.from(groups.entries()).map(([timeRange, items]) => ({ timeRange, items }));
+  return Array.from(groups.entries()).map(([timeRange, tableGroups]) => {
+    const tables = Array.from(tableGroups.values()).sort(byTablePosition);
+    return {
+      timeRange,
+      tables,
+      totalSeats: tables.reduce((sum, table) => sum + table.seats.length, 0),
+    };
+  });
 }
 
-function getLayoutStyle(items: SeatSlot[]): CSSProperties {
-  const positionedItems = items.filter((slot) => slot.rowNo && slot.columnNo);
-  if (positionedItems.length === 0) {
+function hasCoordinateLayout(tables: TableGroup[]) {
+  return tables.some((table) => table.positionX !== null && table.positionY !== null);
+}
+
+function getCoordinateRoomStyle(tables: TableGroup[]): CSSProperties {
+  const positionedTables = tables.filter((table) => table.positionX !== null && table.positionY !== null);
+  if (positionedTables.length === 0) {
     return {};
   }
-  const maxColumn = Math.max(...positionedItems.map((slot) => slot.columnNo ?? 1));
+  const maxRight = Math.max(...positionedTables.map((table) => (table.positionX ?? 0) + (table.widthPx ?? 220)));
+  const maxBottom = Math.max(...positionedTables.map((table) => (table.positionY ?? 0) + (table.heightPx ?? 96) + 92));
   return {
-    gridTemplateColumns: `repeat(${maxColumn}, minmax(88px, 1fr))`,
+    minWidth: Math.max(maxRight + 96, 640),
+    minHeight: Math.max(maxBottom + 64, 360),
   };
 }
 
-function getCellStyle(slot: SeatSlot): CSSProperties {
-  if (!slot.rowNo || !slot.columnNo) {
+function getLayoutStyle(tables: TableGroup[]): CSSProperties {
+  if (hasCoordinateLayout(tables)) {
+    return getCoordinateRoomStyle(tables);
+  }
+  const positionedItems = tables.filter((table) => table.rowNo && table.columnNo);
+  if (positionedItems.length === 0) {
+    return {};
+  }
+  const maxColumn = Math.max(...positionedItems.map((table) => table.columnNo ?? 1));
+  return {
+    '--table-grid-columns': maxColumn,
+  } as CSSProperties;
+}
+
+function getTableStyle(table: TableGroup): CSSProperties {
+  if (table.positionX !== null && table.positionY !== null) {
+    return {
+      left: table.positionX,
+      top: table.positionY,
+      width: table.widthPx ?? 220,
+      minHeight: (table.heightPx ?? 96) + 92,
+      transform: table.rotationDeg ? `rotate(${table.rotationDeg}deg)` : undefined,
+    };
+  }
+  if (!table.rowNo || !table.columnNo) {
     return {};
   }
   return {
-    gridRow: slot.rowNo,
-    gridColumn: slot.columnNo,
+    gridRow: table.rowNo,
+    gridColumn: table.columnNo,
+  };
+}
+
+function getTableSurfaceStyle(table: TableGroup): CSSProperties {
+  if (table.widthPx === null && table.heightPx === null) {
+    return {};
+  }
+  return {
+    width: table.widthPx ?? 220,
+    height: table.heightPx ?? 96,
   };
 }
 
@@ -88,34 +262,59 @@ export default function SeatMap({ slots, loading = false, loadingSlotId, onReser
         <section className="seat-map-section" key={group.timeRange}>
           <div className="seat-map-section-header">
             <strong>{group.timeRange}</strong>
-            <span>{group.items.length} 个开放座位</span>
+            <span>{group.totalSeats} 个开放座位</span>
           </div>
-          <div className="seat-room-layout">
+          <div className={`seat-room-layout ${hasCoordinateLayout(group.tables) ? 'seat-room-layout-coordinate' : ''}`}>
             <div className="seat-room-feature seat-room-door">入口</div>
             <div className="seat-room-feature seat-room-window">采光窗</div>
-            <div className="seat-map-grid" style={getLayoutStyle(group.items)}>
-              {group.items.map((slot) => {
-                const disabled = slot.status !== 'AVAILABLE';
-                const label = slot.seatNo ?? `座位 ${slot.seatId}`;
-                const position =
-                  slot.rowNo && slot.columnNo ? `第 ${slot.rowNo} 排 · 第 ${slot.columnNo} 列` : '未设置布局位置';
-                const title = `${label} · ${position} · ${seatSlotStatusText[slot.status]}`;
+            <div
+              className={`seat-map-grid ${hasCoordinateLayout(group.tables) ? 'seat-map-grid-coordinate' : ''}`}
+              style={getLayoutStyle(group.tables)}
+            >
+              {group.tables.map((table) => (
+                <div
+                  className={`seat-table ${table.positionX !== null && table.positionY !== null ? 'seat-table-positioned' : ''}`}
+                  style={getTableStyle(table)}
+                  key={table.key}
+                  role="group"
+                  aria-label={getTableLabel(table)}
+                >
+                  <div className="seat-table-surface" style={getTableSurfaceStyle(table)}>
+                    <span>{getTableLabel(table)}</span>
+                  </div>
+                  {tableSeatSides.map((side) => {
+                    const sideSeats = table.seats.filter((slot) => getSeatSide(slot) === side);
+                    if (sideSeats.length === 0) {
+                      return null;
+                    }
 
-                return (
-                  <Tooltip title={title} key={slot.id}>
-                    <Button
-                      className={`seat-map-cell seat-map-cell-${slot.status.toLowerCase()}`}
-                      disabled={disabled}
-                      loading={loadingSlotId === slot.id}
-                      style={getCellStyle(slot)}
-                      onClick={() => onReserve(slot.id)}
-                    >
-                      <span>{label}</span>
-                      <Tag color={seatSlotStatusColor[slot.status]}>{seatSlotStatusText[slot.status]}</Tag>
-                    </Button>
-                  </Tooltip>
-                );
-              })}
+                    return (
+                      <div className={`seat-table-side seat-table-side-${sideClass[side]}`} key={side}>
+                        {sideSeats.map((slot) => {
+                          const disabled = slot.status !== 'AVAILABLE';
+                          const label = getSeatLabel(slot);
+                          const tableLabel = getTableLabel(table);
+                          const title = `${tableLabel} · ${label} · ${seatSlotStatusText[slot.status]}`;
+
+                          return (
+                            <Tooltip title={title} key={slot.id}>
+                              <Button
+                                className={`seat-map-cell seat-map-cell-${slot.status.toLowerCase()}`}
+                                disabled={disabled}
+                                loading={loadingSlotId === slot.id}
+                                onClick={() => onReserve(slot)}
+                              >
+                                <span>{label}</span>
+                                <Tag color={seatSlotStatusColor[slot.status]}>{seatSlotStatusText[slot.status]}</Tag>
+                              </Button>
+                            </Tooltip>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
             <div className="seat-room-feature seat-room-desk">服务台</div>
           </div>

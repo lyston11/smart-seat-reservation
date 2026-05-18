@@ -8,7 +8,11 @@ export function listSeats(areaId: number) {
 
 export type CreateSeatPayload = {
   areaId: number;
+  tableId: number;
   seatNo: string;
+  seatLabel?: string;
+  seatSide?: string;
+  seatOrder?: number;
   rowNo?: number;
   columnNo?: number;
   displayOrder?: number;
@@ -16,7 +20,11 @@ export type CreateSeatPayload = {
 
 export type UpdateSeatPayload = {
   areaId: number;
+  tableId: number;
   seatNo: string;
+  seatLabel?: string;
+  seatSide?: string;
+  seatOrder?: number;
   rowNo?: number;
   columnNo?: number;
   displayOrder?: number;

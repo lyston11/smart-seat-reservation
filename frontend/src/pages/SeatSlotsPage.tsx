@@ -8,6 +8,7 @@ import {
   checkOutReservation,
   createReservation,
   getReservationRules,
+  listUserReservations,
   listSeatSlots,
 } from '../api/seatSlots';
 import SeatMap from '../components/SeatMap';
@@ -17,7 +18,10 @@ import type { Area, SeatSlot } from '../types/seat';
 export default function SeatSlotsPage() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [areaId, setAreaId] = useState(1);
+  const [areaTimeInitialized, setAreaTimeInitialized] = useState(false);
   const [date, setDate] = useState(dayjs());
+  const [startTime, setStartTime] = useState('08:00');
+  const [endTime, setEndTime] = useState('22:00');
   const [slots, setSlots] = useState<SeatSlot[]>([]);
   const [activeReservation, setActiveReservation] = useState<ReservationResult | null>(null);
   const [reservationRules, setReservationRules] = useState<ReservationRule | null>(null);
@@ -29,19 +33,40 @@ export default function SeatSlotsPage() {
 
   const dateText = useMemo(() => date.format('YYYY-MM-DD'), [date]);
   const activeAreas = useMemo(() => areas.filter((area) => area.status === 'ACTIVE'), [areas]);
+  const selectedArea = useMemo(() => areas.find((area) => area.id === areaId), [areas, areaId]);
+  const startTimeText = useMemo(() => normalizeInputTime(startTime), [startTime]);
+  const endTimeText = useMemo(() => normalizeInputTime(endTime), [endTime]);
+  const visibleSlots = useMemo(
+    () => buildVisibleSlotsForSelectedTime(slots, startTimeText, endTimeText),
+    [endTimeText, slots, startTimeText],
+  );
+
+  function restoreActiveReservation(reservations: ReservationResult[]) {
+    const active = reservations.find((reservation) =>
+      reservation.status === 'RESERVED' || reservation.status === 'CHECKED_IN'
+    );
+    setActiveReservation(active ?? null);
+    setCheckinCode(active?.checkinCode ?? '');
+  }
 
   const loadAreas = useCallback(async () => {
     try {
       const nextAreas = await listAreas();
       setAreas(nextAreas);
       const nextActiveAreas = nextAreas.filter((area) => area.status === 'ACTIVE');
-      if (nextActiveAreas.length > 0 && !nextActiveAreas.some((area) => area.id === areaId)) {
-        setAreaId(nextActiveAreas[0].id);
+      if (nextActiveAreas.length > 0) {
+        const currentArea = nextActiveAreas.find((area) => area.id === areaId);
+        if (!currentArea) {
+          applySelectedArea(nextActiveAreas[0]);
+        } else if (!areaTimeInitialized) {
+          applySelectedArea(currentArea);
+          setAreaTimeInitialized(true);
+        }
       }
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '加载区域失败');
     }
-  }, [areaId, messageApi]);
+  }, [areaId, areaTimeInitialized, messageApi]);
 
   const loadSlots = useCallback(async () => {
     setLoading(true);
@@ -62,10 +87,28 @@ export default function SeatSlotsPage() {
     }
   }, [messageApi]);
 
-  async function reserve(slotId: number) {
-    setReservingId(slotId);
+  const loadActiveReservation = useCallback(async () => {
     try {
-      const reservation = await createReservation(slotId);
+      restoreActiveReservation(await listUserReservations(10));
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '加载当前预约失败');
+    }
+  }, [messageApi]);
+
+  async function reserve(slot: SeatSlot) {
+    if (startTimeText >= endTimeText) {
+      messageApi.warning('开始时间必须早于结束时间');
+      return;
+    }
+
+    setReservingId(slot.id);
+    try {
+      const reservation = await createReservation({
+        seatId: slot.seatId,
+        slotDate: dateText,
+        startTime: startTimeText,
+        endTime: endTimeText,
+      });
       setActiveReservation(reservation);
       setCheckinCode(reservation.checkinCode);
       messageApi.success('预约成功');
@@ -92,7 +135,13 @@ export default function SeatSlotsPage() {
             ? await checkOutReservation(activeReservation.reservationId)
             : await cancelReservation(activeReservation.reservationId);
 
-      setActiveReservation(reservation);
+      if (reservation.status === 'RESERVED' || reservation.status === 'CHECKED_IN') {
+        setActiveReservation(reservation);
+        setCheckinCode(reservation.checkinCode);
+      } else {
+        setActiveReservation(null);
+        setCheckinCode('');
+      }
       messageApi.success('操作成功');
       await loadSlots();
     } catch (error) {
@@ -107,9 +156,16 @@ export default function SeatSlotsPage() {
       void loadAreas();
       void loadSlots();
       void loadRules();
+      void loadActiveReservation();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadAreas, loadSlots, loadRules]);
+  }, [loadActiveReservation, loadAreas, loadSlots, loadRules]);
+
+  function applySelectedArea(area: Area) {
+    setAreaId(area.id);
+    setStartTime(area.openTime.slice(0, 5));
+    setEndTime(area.closeTime.slice(0, 5));
+  }
 
   return (
     <div className="page">
@@ -124,11 +180,36 @@ export default function SeatSlotsPage() {
                 label: `${area.name}${area.floor ? ` · ${area.floor}` : ''}`,
                 value: area.id,
               }))}
-              onChange={setAreaId}
+              onChange={(nextAreaId) => {
+                const nextArea = areas.find((area) => area.id === nextAreaId);
+                if (nextArea) {
+                  applySelectedArea(nextArea);
+                } else {
+                  setAreaId(nextAreaId);
+                }
+              }}
             />
           </Form.Item>
           <Form.Item label="日期">
             <DatePicker value={date} onChange={(value) => setDate(value ?? dayjs())} />
+          </Form.Item>
+          <Form.Item label="开始时间">
+            <Input
+              type="time"
+              aria-label="开始时间"
+              value={startTime}
+              step={900}
+              onChange={(event) => setStartTime(event.target.value)}
+            />
+          </Form.Item>
+          <Form.Item label="结束时间">
+            <Input
+              type="time"
+              aria-label="结束时间"
+              value={endTime}
+              step={900}
+              onChange={(event) => setEndTime(event.target.value)}
+            />
           </Form.Item>
           <Form.Item>
             <Button type="primary" onClick={loadSlots} loading={loading}>
@@ -182,6 +263,14 @@ export default function SeatSlotsPage() {
       <div className="reservation-rules">
         <span>同一时间仅允许保留一个活跃预约</span>
         <span>
+          当前选择 {startTime}-{endTime}
+        </span>
+        {selectedArea ? (
+          <span>
+            开放 {selectedArea.openTime.slice(0, 5)}-{selectedArea.closeTime.slice(0, 5)}
+          </span>
+        ) : null}
+        <span>
           每日最多保留 {reservationRules?.dailyActiveReservationLimit ?? '-'} 个活跃预约
         </span>
         <span>已开始或过期时段不可预约</span>
@@ -189,7 +278,48 @@ export default function SeatSlotsPage() {
         <span>预约后 {reservationRules?.checkinGraceMinutes ?? '-'} 分钟内未签到将自动释放</span>
       </div>
 
-      <SeatMap slots={slots} loading={loading} loadingSlotId={reservingId} onReserve={reserve} />
+      <SeatMap slots={visibleSlots} loading={loading} loadingSlotId={reservingId} onReserve={reserve} />
     </div>
   );
+}
+
+function normalizeInputTime(value: string) {
+  return value.length === 5 ? `${value}:00` : value;
+}
+
+function overlaps(slot: SeatSlot, startTime: string, endTime: string) {
+  return slot.startTime < endTime && slot.endTime > startTime;
+}
+
+function contains(slot: SeatSlot, startTime: string, endTime: string) {
+  return slot.startTime <= startTime && slot.endTime >= endTime;
+}
+
+function getBusySlot(slots: SeatSlot[], startTime: string, endTime: string) {
+  return slots.find((slot) => slot.status !== 'AVAILABLE' && overlaps(slot, startTime, endTime));
+}
+
+function getAvailableWindow(slots: SeatSlot[], startTime: string, endTime: string) {
+  return slots.find((slot) => slot.status === 'AVAILABLE' && contains(slot, startTime, endTime));
+}
+
+function buildVisibleSlotsForSelectedTime(slots: SeatSlot[], startTime: string, endTime: string) {
+  const bySeat = new Map<number, SeatSlot[]>();
+  slots.forEach((slot) => {
+    bySeat.set(slot.seatId, [...(bySeat.get(slot.seatId) ?? []), slot]);
+  });
+
+  return Array.from(bySeat.values())
+    .map((seatSlots) => {
+      const busySlot = getBusySlot(seatSlots, startTime, endTime);
+      if (busySlot) {
+        return { ...busySlot, startTime, endTime };
+      }
+      const availableWindow = getAvailableWindow(seatSlots, startTime, endTime);
+      if (availableWindow) {
+        return { ...availableWindow, startTime, endTime };
+      }
+      return null;
+    })
+    .filter((slot): slot is SeatSlot => slot !== null);
 }

@@ -28,6 +28,11 @@ export type CheckinPayload = {
   checkinCode: string;
 };
 
+export type TableCheckinPayload = {
+  tableQrToken: string;
+  checkinCode: string;
+};
+
 export type ReservationRule = {
   checkinGraceMinutes: number;
   maxAdvanceDays: number;

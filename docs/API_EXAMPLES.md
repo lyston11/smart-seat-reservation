@@ -52,7 +52,15 @@ curl "http://localhost:18080/api/seat-slots?areaId=1&date=2026-05-14" \
   -H "X-Auth-Token: 替换为学生或管理员 token"
 ```
 
-返回中的 `id` 是后续预约使用的 `seatSlotId`，`seatNo` 是前端座位地图展示的真实座位编号。
+返回中的 `id` 是后续预约使用的 `seatSlotId`，`seatNo` 是前端座位地图展示的真实座位编号。桌位可视化字段包括：
+
+```text
+tableId / tableNo / tableRowNo / tableColumnNo / tableDisplayOrder
+tablePositionX / tablePositionY / tableWidthPx / tableHeightPx / tableRotationDeg
+seatLabel / seatSide / seatOrder
+```
+
+前端会按学生当前选择的开始/结束时间展示座位状态，并优先使用桌子坐标字段渲染真实平面图。长方形桌子建议使用 `NORTH` 两个座位和 `SOUTH` 两个座位表达“上方两个、下方两个”的常见四人桌布局。
 
 管理员按模板批量发布开放时段：
 
@@ -137,7 +145,7 @@ curl "http://localhost:18080/api/admin/audit-logs?action=AREA_CHANGE&actorUserId
 
 `action` 可选值包括 `ADMIN_RELEASE_SEAT_SLOT`、`ADMIN_MARK_SEAT_SLOT_ABNORMAL`、`ADMIN_RESTORE_SEAT_SLOT` 和 `AREA_CHANGE`。其中 `AREA_CHANGE` 会覆盖区域新增、编辑和状态变更三类日志。
 
-## 4. 区域和座位资源
+## 4. 区域、桌子和座位资源
 
 查询所有区域：
 
@@ -155,7 +163,9 @@ curl -X POST http://localhost:18080/api/areas \
   -d '{
     "name": "图书馆二楼 C 区",
     "floor": "2F",
-    "description": "安静学习区"
+    "description": "安静学习区",
+    "openTime": "08:00:00",
+    "closeTime": "22:00:00"
   }'
 ```
 
@@ -169,7 +179,9 @@ curl -X PUT http://localhost:18080/api/areas/1 \
     "name": "Library Area A",
     "floor": "1F",
     "description": "Demo public study area",
-    "status": "ACTIVE"
+    "status": "ACTIVE",
+    "openTime": "08:00:00",
+    "closeTime": "22:00:00"
   }'
 ```
 
@@ -183,6 +195,89 @@ curl -X PATCH http://localhost:18080/api/areas/1/status \
     "status": "INACTIVE"
   }'
 ```
+
+查询区域 `1` 下的桌子资源：
+
+```bash
+curl "http://localhost:18080/api/tables?areaId=1" \
+  -H "X-Auth-Token: 替换为学生或管理员 token"
+```
+
+普通桌子列表不会返回 `qrToken`，避免固定桌码被学生端列表直接暴露。
+
+新增桌子资源：
+
+```bash
+curl -X POST http://localhost:18080/api/tables \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: 替换为管理员 token" \
+  -d '{
+    "areaId": 1,
+    "tableNo": "T02",
+    "name": "图书馆一楼 A 区 T02",
+    "rowNo": 1,
+    "columnNo": 2,
+    "displayOrder": 2,
+    "positionX": 340,
+    "positionY": 80,
+    "widthPx": 260,
+    "heightPx": 96,
+    "rotationDeg": 0
+  }'
+```
+
+编辑桌子资源：
+
+```bash
+curl -X PUT http://localhost:18080/api/tables/1 \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: 替换为管理员 token" \
+  -d '{
+    "areaId": 1,
+    "tableNo": "T01",
+    "name": "图书馆一楼 A 区 T01",
+    "status": "ACTIVE",
+    "rowNo": 1,
+    "columnNo": 1,
+    "displayOrder": 1,
+    "positionX": 80,
+    "positionY": 80,
+    "widthPx": 260,
+    "heightPx": 96,
+    "rotationDeg": 0
+  }'
+```
+
+停用或启用桌子资源：
+
+```bash
+curl -X PATCH http://localhost:18080/api/tables/1/status \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: 替换为管理员 token" \
+  -d '{
+    "status": "INACTIVE"
+  }'
+```
+
+查询桌子固定签到二维码信息：
+
+```bash
+curl http://localhost:18080/api/tables/1/checkin-qr \
+  -H "X-Auth-Token: 替换为管理员 token"
+```
+
+返回示例：
+
+```json
+{
+  "tableId": 1,
+  "tableNo": "T01",
+  "qrToken": "demo-area-1-table-t01",
+  "checkinPath": "/student/table-checkin?token=demo-area-1-table-t01"
+}
+```
+
+`checkinPath` 用于生成贴在桌面上的固定二维码。学生扫码进入签到页后，仍需要输入预约详情中的动态签到码。
 
 查询区域 `1` 下的座位资源：
 
@@ -199,7 +294,11 @@ curl -X POST http://localhost:18080/api/seats \
   -H "X-Auth-Token: 替换为管理员 token" \
   -d '{
     "areaId": 1,
+    "tableId": 1,
     "seatNo": "A-005",
+    "seatLabel": "1",
+    "seatSide": "NORTH",
+    "seatOrder": 1,
     "rowNo": 3,
     "columnNo": 1,
     "displayOrder": 5
@@ -214,7 +313,11 @@ curl -X PUT http://localhost:18080/api/seats/1 \
   -H "X-Auth-Token: 替换为管理员 token" \
   -d '{
     "areaId": 1,
+    "tableId": 1,
     "seatNo": "A-001",
+    "seatLabel": "1",
+    "seatSide": "NORTH",
+    "seatOrder": 1,
     "rowNo": 1,
     "columnNo": 1,
     "displayOrder": 1,
@@ -233,9 +336,9 @@ curl -X PATCH http://localhost:18080/api/seats/1/status \
   }'
 ```
 
-区域和座位都采用逻辑停用，不做物理删除，避免破坏历史预约记录。
+区域、桌子和座位都采用逻辑停用，不做物理删除，避免破坏历史预约记录。
 
-座位资源的 `rowNo`、`columnNo` 和 `displayOrder` 用于学生端座位地图按真实行列渲染。历史数据会通过迁移自动补一个演示布局。
+区域资源的 `openTime` 和 `closeTime` 控制学生可预约的每日起止时间。桌子资源的 `positionX`、`positionY`、`widthPx`、`heightPx` 和 `rotationDeg` 用于控制真实平面图坐标；`rowNo`、`columnNo` 和 `displayOrder` 保留为排序和旧布局兜底。座位资源的 `seatLabel`、`seatSide` 和 `seatOrder` 用于控制具体座位在桌子周围的显示位置，`seatSide` 可选值为 `NORTH`、`EAST`、`SOUTH`、`WEST`、`SINGLE`。历史数据会通过迁移自动补一个演示布局。
 
 ## 5. 创建预约
 
@@ -272,6 +375,20 @@ curl -X POST http://localhost:18080/api/reservations \
   }'
 ```
 
+学生自选具体座位和时间段时，也可以直接提交 `seatId`、日期和起止时间。后端会校验所选时间是否落在区域开放时间内、是否有管理员发布的可用窗口覆盖、座位是否存在重叠活跃占用，并在成功后创建一条精确 `seat_slots` 记录用于后续签到、签退和管理员释放：
+
+```bash
+curl -X POST http://localhost:18080/api/reservations \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: 替换为学生 token" \
+  -d '{
+    "seatId": 1,
+    "slotDate": "2026-05-19",
+    "startTime": "09:30:00",
+    "endTime": "17:30:00"
+  }'
+```
+
 后端会从登录 token 识别当前学生，不再从请求体传 `userId`。预约接口已接入 Redis 短窗口限流，并会拒绝已开始/过去时段、拒绝超过提前预约天数的时段、拒绝同一学生在重叠时间段内重复持有活跃预约，也会限制每日活跃预约数量。数据库条件更新仍是防超卖的最终保障：
 
 ```sql
@@ -294,6 +411,20 @@ curl -X POST http://localhost:18080/api/reservations/1/check-in \
 ```
 
 成功后预约状态变为 `CHECKED_IN`，座位时段状态变为 `USING`。
+
+桌面固定二维码签到：
+
+```bash
+curl -X POST http://localhost:18080/api/reservations/table-check-in \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: 替换为学生 token" \
+  -d '{
+    "tableQrToken": "demo-area-1-table-t01",
+    "checkinCode": "替换为预约返回的签到码"
+  }'
+```
+
+桌码签到会先根据 `tableQrToken` 定位活动桌子，再匹配当前学生在该桌子下的 `RESERVED` 预约，并校验动态签到码和过期时间。二维码只证明学生到达了物理桌子，签到码仍用于证明预约归属。
 
 ## 7. 查询我的预约
 
@@ -362,18 +493,21 @@ curl "http://localhost:18080/api/admin/dashboard?date=2026-05-14" \
 - 登录、退出和当前用户识别。
 - 查询座位时段。
 - 动态展示预约规则。
-- 创建预约。
+- 按日期、开始时间、结束时间和具体座位创建预约。
 - 查询我的预约。
 - 显示预约返回的签到码。
 - 使用签到码签到。
+- 扫描桌面固定二维码后进入 `/student/table-checkin?token=<tableQrToken>`，输入签到码完成桌码签到。
 - 签退释放座位。
 - 取消预约释放座位。
 
 当前前端管理端已经接入：
 
 - 区域管理页新增、编辑、停用、启用区域。
+- 区域管理页维护学生可预约的每日开放开始/结束时间。
+- 桌子管理页按区域维护桌子坐标、尺寸和旋转角度，查看并复制固定桌码签到链接。
 - 座位管理页查询区域座位。
-- 座位管理页新增、编辑、停用、启用座位资源。
+- 座位管理页新增、编辑、停用、启用座位资源，并维护所属桌子、桌上标签、桌边方位和同侧顺序。
 - 开放时段页按区域、座位、日期和多个时间段模板批量发布可预约资源。
 - 开放时段页撤销未被预约的空闲时段。
 - 开放时段页填写原因后标记异常占用和恢复异常时段。

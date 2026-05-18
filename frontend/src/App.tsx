@@ -1,6 +1,6 @@
 import { App as AntApp } from 'antd';
 import { lazy, Suspense } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { getStoredUser } from './api/http';
 import AppLayout from './layout/AppLayout';
 import RoleRoute from './router/RoleRoute';
@@ -11,14 +11,17 @@ const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage'));
 const AdminReservationRulesPage = lazy(() => import('./pages/AdminReservationRulesPage'));
 const AdminSeatSlotsPage = lazy(() => import('./pages/AdminSeatSlotsPage'));
 const AdminSeatsPage = lazy(() => import('./pages/AdminSeatsPage'));
+const AdminTablesPage = lazy(() => import('./pages/AdminTablesPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const MyReservationsPage = lazy(() => import('./pages/MyReservationsPage'));
 const SeatSlotsPage = lazy(() => import('./pages/SeatSlotsPage'));
+const TableCheckinPage = lazy(() => import('./pages/TableCheckinPage'));
 
 function ProtectedRoute() {
+  const location = useLocation();
   const user = getStoredUser();
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
   }
   return <AppLayout />;
 }
@@ -33,8 +36,10 @@ export default function App() {
             <Route index element={<Navigate to="/student/seats" replace />} />
             <Route path="/student/seats" element={<SeatSlotsPage />} />
             <Route path="/student/reservations" element={<MyReservationsPage />} />
+            <Route path="/student/table-checkin" element={<TableCheckinPage />} />
             <Route element={<RoleRoute allowedRoles={['ADMIN']} />}>
               <Route path="/admin/areas" element={<AdminAreasPage />} />
+              <Route path="/admin/tables" element={<AdminTablesPage />} />
               <Route path="/admin/seats" element={<AdminSeatsPage />} />
               <Route path="/admin/seat-slots" element={<AdminSeatSlotsPage />} />
               <Route path="/admin/reservation-rules" element={<AdminReservationRulesPage />} />

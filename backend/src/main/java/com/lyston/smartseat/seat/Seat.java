@@ -1,5 +1,6 @@
 package com.lyston.smartseat.seat;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
@@ -10,7 +11,13 @@ public class Seat {
     @TableId
     private Long id;
     private Long areaId;
+    private Long tableId;
+    @TableField(exist = false)
+    private String tableNo;
     private String seatNo;
+    private String seatLabel;
+    private String seatSide;
+    private Integer seatOrder;
     private Integer rowNo;
     private Integer columnNo;
     private Integer displayOrder;
@@ -34,12 +41,52 @@ public class Seat {
         this.areaId = areaId;
     }
 
+    public Long getTableId() {
+        return tableId;
+    }
+
+    public void setTableId(Long tableId) {
+        this.tableId = tableId;
+    }
+
+    public String getTableNo() {
+        return tableNo;
+    }
+
+    public void setTableNo(String tableNo) {
+        this.tableNo = tableNo;
+    }
+
     public String getSeatNo() {
         return seatNo;
     }
 
     public void setSeatNo(String seatNo) {
         this.seatNo = seatNo;
+    }
+
+    public String getSeatLabel() {
+        return seatLabel;
+    }
+
+    public void setSeatLabel(String seatLabel) {
+        this.seatLabel = seatLabel;
+    }
+
+    public String getSeatSide() {
+        return seatSide;
+    }
+
+    public void setSeatSide(String seatSide) {
+        this.seatSide = seatSide;
+    }
+
+    public Integer getSeatOrder() {
+        return seatOrder;
+    }
+
+    public void setSeatOrder(Integer seatOrder) {
+        this.seatOrder = seatOrder;
     }
 
     public Integer getRowNo() {

@@ -1,5 +1,297 @@
 # lyston11 开发日志
 
+## 2026-05-18
+
+### 任务
+- Issue: 暂无
+- 分支: feature/codex-table-checkin-impl
+- 目标: 支持真实长桌坐标布局和学生自选预约起止时间。
+
+### 本次改动
+- `areas` 新增每日开放开始/结束时间，管理员区域管理页可维护 `openTime` 和 `closeTime`。
+- `tables` 新增平面图坐标、尺寸和旋转角字段，管理员桌子管理页可维护桌子位置和长方形桌面尺寸。
+- 学生选座页新增开始时间、结束时间输入，默认使用当前区域开放时段，可最长选择完整开放日。
+- 预约接口兼容原 `seatSlotId` 预约，并新增 `seatId + slotDate + startTime + endTime` 自选时段预约。
+- 后端会校验自选时段落在管理员发布的可用窗口和区域开放时间内，拒绝座位重叠活跃占用，并为成功预约创建或复用精确座位时段。
+- 签到过期时间改为基于 `slotDate + startTime + checkinGraceMinutes` 计算，避免未来预约刚创建就过早过期。
+- 学生端座位图优先使用桌子坐标渲染真实平面图，长桌支持上方两个座位、下方两个座位的布局。
+- V8 迁移为演示数据补充桌子坐标，并把 A 区四个演示座位调整为 `NORTH/NORTH/SOUTH/SOUTH`。
+- API 示例文档补充区域开放时间、桌子坐标字段和自选时间预约示例。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/area/
+- backend/src/main/java/com/lyston/smartseat/table/
+- backend/src/main/java/com/lyston/smartseat/seat/
+- backend/src/main/java/com/lyston/smartseat/reservation/
+- backend/src/main/resources/db/migration/V8__add_coordinate_layout_and_open_hours.sql
+- backend/src/test/java/com/lyston/smartseat/reservation/ReservationServiceTest.java
+- frontend/src/components/SeatMap.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/pages/AdminAreasPage.tsx
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/api/
+- frontend/src/types/seat.ts
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- frontend/src/components/SeatMap.test.tsx
+- docs/API_EXAMPLES.md
+- docs/plans/2026-05-18-layout-and-flexible-time-design.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dtest=ReservationServiceTest test`，预约服务 16 个测试通过。
+- 已运行 `mvn test`，后端 42 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端 2 个测试文件、9 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 桌子位置当前通过数字坐标维护，后续可继续做拖拽式平面图编辑器和批量导入。
+- 自选时间依赖管理员先发布覆盖该日期、座位和时间范围的可用窗口；后续如要完全按区域开放时间自动开放，可再加后台自动生成或虚拟窗口逻辑。
+
+### 对其他成员的影响
+- 座位时段响应新增 `tablePositionX`、`tablePositionY`、`tableWidthPx`、`tableHeightPx`、`tableRotationDeg`，前端座位图会优先使用这些字段。
+- 新增区域时建议设置 `openTime` / `closeTime`；不传时后端默认 `08:00:00` 到 `22:00:00`。
+- 新增桌子时建议维护坐标和尺寸；不传时后端默认 `80,80,220,96,0`。
+- 调整预约创建逻辑时要保留学生重叠预约、座位重叠预约、开放窗口和提前预约天数校验。
+
+## 2026-05-18
+
+### 任务
+- Issue: Task 9
+- 分支: feature/codex-table-checkin-impl
+- 目标: 补充桌子资源、桌码签到和具体桌位座位字段的 API 与架构文档。
+
+### 本次改动
+- API 手测文档补充座位时段响应中的桌子/座位布局字段说明。
+- API 手测文档新增桌子列表、新增、编辑、状态更新和固定签到二维码接口示例。
+- API 手测文档更新座位新增/编辑示例，加入 `tableId`、`seatLabel`、`seatSide`、`seatOrder`。
+- API 手测文档新增 `POST /api/reservations/table-check-in` 桌码签到示例和校验说明。
+- 架构文档补充 `areas -> tables -> seats -> seat_slots -> reservations` 资源层级。
+- 架构文档说明固定桌码只证明物理桌子位置，动态签到码继续证明预约归属。
+
+### 涉及文件
+- docs/API_EXAMPLES.md
+- docs/architecture/ARCHITECTURE.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `git diff --check`，通过；仅提示工作区文件后续会被 Git 转为 CRLF。
+- 文档为 Markdown 说明，无额外构建步骤。
+
+### 遗留问题
+- 后续如增加桌码批量打印、桌子级统计或区域差异化预约规则，需要继续同步 API 与架构文档。
+
+### 对其他成员的影响
+- 后续接口示例应以 `tables` 作为座位资源的上层实体，不再只用 `seats.tableNo` 这类松散字段表达桌子。
+- 桌码签到文档明确要求 `tableQrToken + checkinCode` 双凭证校验，后续改动不要绕过预约码校验。
+
+## 2026-05-18
+
+### 任务
+- Issue: Task 8
+- 分支: feature/codex-table-checkin-impl
+- 目标: 添加管理员桌子管理和固定桌码入口，并把座位管理升级为选择具体桌子的具体座位。
+
+### 本次改动
+- 新增管理员桌子管理页 `/admin/tables`，支持按区域查询桌子、新增/编辑桌号、名称、布局行列、展示顺序和状态。
+- 桌子管理页新增固定签到码弹窗，通过 `GET /api/tables/{id}/checkin-qr` 获取桌码链接并使用 Ant Design QRCode 展示。
+- 管理员菜单和路由新增“桌子管理”，继续放在 `RoleRoute allowedRoles={['ADMIN']}` 下。
+- 座位管理页新增所属桌子、桌上标签、桌边方位和同侧顺序字段，新增/编辑座位会提交 `tableId`、`seatLabel`、`seatSide`、`seatOrder`。
+- 座位管理页切换区域时同步刷新桌子下拉和座位列表，避免跨区域选错桌子。
+- 修复桌码签到页 token 切换成功态的 React hooks lint 问题。
+- 补充/修复前端测试，覆盖管理员桌子管理路由、登录后回到桌码签到页、SeatMap 旧数据兜底清理。
+
+### 涉及文件
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/pages/AdminSeatsPage.tsx
+- frontend/src/App.tsx
+- frontend/src/layout/AppLayout.tsx
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- frontend/src/components/SeatMap.test.tsx
+- frontend/src/pages/TableCheckinPage.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm install --cache .npm-cache`，恢复前端本地依赖；随后已删除临时 `.npm-cache`。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端 2 个测试文件、6 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，但不影响通过结果。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，通过；仅提示工作区文件后续会被 Git 转为 CRLF。
+
+### 遗留问题
+- 桌子二维码当前在弹窗中展示和复制链接，后续可补导出打印版 PDF 或批量打印入口。
+- 座位管理仍保留区域平面行列字段；真实房间如果需要 CAD 级布局，后续可继续扩展桌子/障碍物坐标。
+
+### 对其他成员的影响
+- 管理员新增座位现在必须先创建并选择所属桌子，后端会校验桌子属于同一区域且启用状态可承载启用座位。
+- 普通桌子列表仍不暴露 `qrToken`，固定桌码必须通过管理员二维码接口获取。
+- 学生端可视化选座依赖 `seatLabel`、`seatSide`、`seatOrder` 来呈现具体桌边座位，新增座位时应认真维护这些字段。
+
+## 2026-05-18
+
+### 任务
+- Issue: Task 7 follow-up
+- 分支: feature/codex-table-checkin-impl
+- 目标: 修复桌码签到未登录跳转后丢失 `token` 的真实扫码登录流程，并补充页面鲁棒性。
+
+### 本次改动
+- `ProtectedRoute` 未登录跳转 `/login` 时，通过 router state 保留原始 `pathname + search`。
+- 登录成功后优先跳回安全的内部 `location.state.from`，否则继续使用学生/管理员默认入口。
+- 桌码签到页在 URL token 变化时重置成功状态，避免切换二维码后停留在旧签到成功页。
+- 补充前端回归测试，覆盖未登录访问 `/student/table-checkin?token=...` 后登录返回原桌码签到页。
+
+### 涉及文件
+- frontend/src/App.tsx
+- frontend/src/pages/LoginPage.tsx
+- frontend/src/pages/TableCheckinPage.tsx
+- frontend/src/App.test.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已尝试运行 `npm run test -- App.test.tsx`，失败于 `vitest: not recognized`，当前前端依赖/可执行文件不完整。
+- 已尝试运行 `npm run lint`，失败于 `eslint: not recognized`，当前前端依赖/可执行文件不完整。
+- 已尝试运行 `npm run test`，失败于 `vitest: not recognized`，当前前端依赖/可执行文件不完整。
+- 已尝试运行 `npm run build`，失败于 `tsc: not recognized`，当前前端依赖/可执行文件不完整。
+- 已运行 `git diff --check`，通过；仅提示工作区文件后续会被 Git 转为 CRLF。
+
+### 遗留问题
+- 当前无法在本地完成自动化 lint/test/build 验证，需要恢复前端依赖后重新运行。
+
+### 对其他成员的影响
+- 未登录扫码进入桌码签到页时，登录后会回到原始 `/student/table-checkin?token=<tableQrToken>`。
+
+## 2026-05-18
+
+### 任务
+- Issue: Task 7
+- 分支: feature/codex-table-checkin-impl
+- 目标: 添加学生端桌码签到页面，支持扫描 `/student/table-checkin?token=<tableQrToken>` 后输入签到码完成签到。
+
+### 本次改动
+- 新增 `TableCheckinPage`，读取 URL 中的 `token`，展示缺少 token、输入签到码、提交 loading、签到成功和后续导航状态。
+- 桌码签到提交调用 `tableCheckInReservation({ tableQrToken: token, checkinCode })`，后端错误通过 Ant Design message 展示。
+- 新增受保护路由 `/student/table-checkin`，并补充布局标题“桌码签到”。
+- 补充前端路由测试，覆盖 token 和签到码提交到 `/api/reservations/table-check-in` 的请求体。
+
+### 涉及文件
+- frontend/src/pages/TableCheckinPage.tsx
+- frontend/src/App.tsx
+- frontend/src/layout/AppLayout.tsx
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已尝试运行 `npm run lint`，失败于 `eslint: not recognized`，当前前端依赖/可执行文件不完整。
+- 已尝试运行 `npm run test -- App.test.tsx`，失败于 `vitest: not recognized`，当前前端依赖/可执行文件不完整。
+- 已尝试运行 `npm run test`，失败于 `vitest: not recognized`，当前前端依赖/可执行文件不完整。
+- 已尝试运行 `npm run build`，失败于 `tsc: not recognized`，当前前端依赖/可执行文件不完整。
+- 已运行 `git diff --check`，通过；仅提示工作区文件后续会被 Git 转为 CRLF。
+
+### 遗留问题
+- 当前无法在本地完成自动化 lint/test/build 验证，需要恢复前端依赖后重新运行。
+
+### 对其他成员的影响
+- 新增学生端受保护路由 `/student/table-checkin`，桌面二维码路径可继续使用 `/student/table-checkin?token=<tableQrToken>`。
+- 桌码签到页依赖 `frontend/src/api/seatSlots.ts` 中的 `tableCheckInReservation` 和后端 `/api/reservations/table-check-in`。
+
+## 2026-05-18
+
+### 任务
+- Issue: Task 6
+- 分支: feature/codex-table-checkin-impl
+- 目标: 构建学生端可视化桌位-座位地图，按时间段和桌位展示具体座位。
+
+### 本次改动
+- `SeatMap` 改为先按时间段分组，再按桌位分组，兼容无桌位历史座位的兜底分组。
+- 桌位内座位按方位、顺序和座位号排序，支持 NORTH/WEST/EAST/SOUTH/SINGLE 位置展示。
+- 座位按钮继续复用既有状态颜色和文案，非空闲座位禁用，空闲座位点击后调用 `onReserve(slot.id)`。
+- 保留入口、采光窗、服务台等房间提示，并补充组件测试覆盖桌位分组、座位排序、禁用和预约点击。
+
+### 涉及文件
+- frontend/src/components/SeatMap.tsx
+- frontend/src/components/SeatMap.test.tsx
+- frontend/src/styles/main.css
+
+### 验证方式
+- 已尝试运行 `npm run lint`，失败于 `eslint: not recognized`，当前前端依赖/可执行文件不完整。
+- 已尝试运行 `npm run test`，失败于 `vitest: not recognized`，当前前端依赖/可执行文件不完整。
+- 已尝试运行 `npm run build`，失败于 `tsc: not recognized`，当前前端依赖/可执行文件不完整。
+- 已运行 `git diff --check`，通过；仅提示工作区文件后续会被 Git 转为 CRLF。
+
+### 遗留问题
+- 当前无法在本地完成自动化 lint/test/build 验证，需要恢复前端依赖后重新运行。
+
+### 对其他成员的影响
+- 学生端座位地图现在优先使用桌位字段 `tableId`、`tableNo`、`tableRowNo`、`tableColumnNo`、`tableDisplayOrder` 和座位方位字段；后端不要删除这些响应字段。
+
+## 2026-05-18
+
+### 任务
+- Issue: Task 5
+- 分支: feature/codex-table-checkin-impl
+- 目标: 添加前端桌位类型和 API 封装，为后续桌位管理与桌码签到页面做类型/API 准备。
+
+### 本次改动
+- 新增 `StudyTable`、`StudyTableQr` 和桌位状态类型，普通桌位列表类型不包含 `qrToken`。
+- 扩展 `Seat`、`SeatSlot`、座位创建/更新 payload，加入桌位和单座布局字段。
+- 新增 `tables` API 封装，支持桌位列表、新增、编辑、状态更新和获取签到二维码。
+- 新增桌码签到 API，调用 `/api/reservations/table-check-in`。
+
+### 涉及文件
+- frontend/src/types/seat.ts
+- frontend/src/types/reservation.ts
+- frontend/src/api/tables.ts
+- frontend/src/api/seatSlots.ts
+- frontend/src/api/seats.ts
+
+### 验证方式
+- 已运行 `npm run build`，失败于 `tsc: command not found`，当前前端依赖/可执行文件不完整。
+- 已运行 `git diff --check`，通过；仅提示工作区文件后续会被 Git 转为 CRLF。
+
+### 遗留问题
+- 本任务只补类型和 API；桌位管理、桌码签到 UI 后续任务实现。
+
+### 对其他成员的影响
+- 后续前端桌位 UI 应复用 `frontend/src/api/tables.ts` 和 `StudyTableQr`，不要从普通桌位列表中读取 `qrToken`。
+
+## 2026-05-18
+
+### 任务
+- Issue: 暂无
+- 分支: feature/codex-table-checkin-impl
+- 目标: 本地完整验收桌子固定二维码签到闭环，修复扫码签到后学生端无法继续签退的前端状态恢复缺口。
+
+### 本次改动
+- 安装并验证 Maven 后，使用 Docker Compose 启动 MySQL 8.4 和 Redis 7.4。
+- 启动后端和前端，完成管理员发布座位时段、学生选择 T01 桌具体座位、桌码签到、签退释放的本地联调。
+- 学生选座页加载最近预约，自动恢复 `RESERVED` / `CHECKED_IN` 活跃预约到顶部操作栏。
+- 签退或取消后清空顶部当前预约，避免已结束预约继续显示为可操作。
+- 新增前端测试，覆盖扫码签到后回到学生选座页仍能签退的场景。
+
+### 涉及文件
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/App.test.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `docker compose up -d`，`smart-seat-mysql` 和 `smart-seat-redis` 均为 healthy。
+- 已启动后端 `mvn spring-boot:run`，`GET /api/health` 返回 `UP`。
+- 已启动前端 `npm run dev -- --host 127.0.0.1`，`http://127.0.0.1:5173` 返回 200。
+- 已手动验收：学生预约 T01 桌 1 号座位，扫码访问 `/student/table-checkin?token=demo-area-1-table-t01` 输入签到码，预约变为 `CHECKED_IN`，座位时段变为 `USING`。
+- 已手动验收：回到学生选座页签退，预约变为 `CHECKED_OUT`，座位时段重新变为 `AVAILABLE`。
+- 已运行 `npm run test -- App.test.tsx`，前端路由相关测试 5 个通过。
+
+### 遗留问题
+- Vite / jsdom 验证中仍有 Ant Design `addonBefore` 废弃警告，可后续统一改为 `Space.Compact`。
+- Flyway 对 MySQL 8.4 提示版本高于其最新验证版本 8.1，目前迁移已成功，后续可视比赛或部署要求固定 MySQL 小版本。
+
+### 对其他成员的影响
+- 学生选座页现在会额外请求 `/api/reservations?limit=10` 用于恢复当前活跃预约。
+- 若后续新增预约状态，需要同步判断是否属于学生端可继续操作的活跃状态。
+
 ## 2026-05-13
 
 ### 任务

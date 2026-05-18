@@ -9,6 +9,8 @@ export type CreateAreaPayload = {
   name: string;
   floor?: string;
   description?: string;
+  openTime?: string;
+  closeTime?: string;
 };
 
 export type UpdateAreaPayload = {
@@ -16,6 +18,8 @@ export type UpdateAreaPayload = {
   floor?: string;
   description?: string;
   status: AreaStatus;
+  openTime?: string;
+  closeTime?: string;
 };
 
 export function createArea(payload: CreateAreaPayload) {

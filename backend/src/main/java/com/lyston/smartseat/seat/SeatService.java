@@ -2,22 +2,35 @@ package com.lyston.smartseat.seat;
 
 import com.lyston.smartseat.area.AreaMapper;
 import com.lyston.smartseat.common.BusinessException;
+import com.lyston.smartseat.table.StudyTable;
+import com.lyston.smartseat.table.StudyTableMapper;
+import com.lyston.smartseat.table.StudyTableStatus;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SeatService {
 
+    private static final Set<String> ALLOWED_SEAT_SIDES = Set.of("NORTH", "EAST", "SOUTH", "WEST", "SINGLE");
+
     private final AreaMapper areaMapper;
     private final SeatMapper seatMapper;
     private final SeatSlotMapper seatSlotMapper;
+    private final StudyTableMapper studyTableMapper;
 
-    public SeatService(AreaMapper areaMapper, SeatMapper seatMapper, SeatSlotMapper seatSlotMapper) {
+    public SeatService(
+            AreaMapper areaMapper,
+            SeatMapper seatMapper,
+            SeatSlotMapper seatSlotMapper,
+            StudyTableMapper studyTableMapper
+    ) {
         this.areaMapper = areaMapper;
         this.seatMapper = seatMapper;
         this.seatSlotMapper = seatSlotMapper;
+        this.studyTableMapper = studyTableMapper;
     }
 
     public List<SeatResponse> listSeats(Long areaId) {
@@ -32,12 +45,19 @@ public class SeatService {
         Long areaId = request.areaId();
         String seatNo = normalizeSeatNo(request.seatNo());
         requireArea(areaId);
+        StudyTable table = requireTableInArea(request.tableId(), areaId);
+        ensureTableCanHostStatus(table, SeatStatus.ACTIVE);
         ensureSeatNoAvailable(areaId, seatNo, null);
 
         LocalDateTime now = LocalDateTime.now();
         Seat seat = new Seat();
         seat.setAreaId(areaId);
+        seat.setTableId(table.getId());
+        seat.setTableNo(table.getTableNo());
         seat.setSeatNo(seatNo);
+        seat.setSeatLabel(normalizeNullable(request.seatLabel()));
+        seat.setSeatSide(normalizeSeatSide(request.seatSide()));
+        seat.setSeatOrder(request.seatOrder());
         seat.setRowNo(request.rowNo());
         seat.setColumnNo(request.columnNo());
         seat.setDisplayOrder(resolveDisplayOrder(request.displayOrder(), areaId));
@@ -57,11 +77,18 @@ public class SeatService {
         String status = normalizeStatus(request.status());
 
         requireArea(areaId);
+        StudyTable table = requireTableInArea(request.tableId(), areaId);
+        ensureTableCanHostStatus(table, status);
         ensureSeatNoAvailable(areaId, seatNo, seatId);
         ensureCanUseStatus(seat, status);
 
         seat.setAreaId(areaId);
+        seat.setTableId(table.getId());
+        seat.setTableNo(table.getTableNo());
         seat.setSeatNo(seatNo);
+        seat.setSeatLabel(normalizeNullable(request.seatLabel()));
+        seat.setSeatSide(normalizeSeatSide(request.seatSide()));
+        seat.setSeatOrder(request.seatOrder());
         seat.setRowNo(request.rowNo() == null ? seat.getRowNo() : request.rowNo());
         seat.setColumnNo(request.columnNo() == null ? seat.getColumnNo() : request.columnNo());
         seat.setDisplayOrder(request.displayOrder() == null ? seat.getDisplayOrder() : request.displayOrder());
@@ -69,24 +96,47 @@ public class SeatService {
         seat.setUpdatedAt(LocalDateTime.now());
         seatMapper.updateById(seat);
 
-        return SeatResponse.from(requireSeat(seatId));
+        return SeatResponse.from(seat);
     }
 
     @Transactional
     public SeatResponse updateSeatStatus(Long seatId, UpdateSeatStatusRequest request) {
         Seat seat = requireSeat(seatId);
         String status = normalizeStatus(request.status());
+        StudyTable table = requireTableInArea(seat.getTableId(), seat.getAreaId());
+        ensureTableCanHostStatus(table, status);
         ensureCanUseStatus(seat, status);
 
+        seat.setTableNo(table.getTableNo());
         seat.setStatus(status);
         seat.setUpdatedAt(LocalDateTime.now());
         seatMapper.updateById(seat);
 
-        return SeatResponse.from(requireSeat(seatId));
+        return SeatResponse.from(seat);
     }
 
     private String normalizeSeatNo(String seatNo) {
         return seatNo.trim();
+    }
+
+    private String normalizeNullable(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String normalizeSeatSide(String seatSide) {
+        String normalizedSide = normalizeNullable(seatSide);
+        if (normalizedSide == null) {
+            return null;
+        }
+        normalizedSide = normalizedSide.toUpperCase();
+        if (!ALLOWED_SEAT_SIDES.contains(normalizedSide)) {
+            throw new BusinessException("INVALID_SEAT_SIDE", "Seat side is invalid");
+        }
+        return normalizedSide;
     }
 
     private Integer resolveDisplayOrder(Integer displayOrder, Long areaId) {
@@ -107,6 +157,20 @@ public class SeatService {
     private void requireArea(Long areaId) {
         if (areaMapper.selectById(areaId) == null) {
             throw new BusinessException("AREA_NOT_FOUND", "Area not found");
+        }
+    }
+
+    private StudyTable requireTableInArea(Long tableId, Long areaId) {
+        StudyTable table = studyTableMapper.selectById(tableId);
+        if (table == null || !areaId.equals(table.getAreaId())) {
+            throw new BusinessException("TABLE_NOT_FOUND", "Table not found");
+        }
+        return table;
+    }
+
+    private void ensureTableCanHostStatus(StudyTable table, String status) {
+        if (SeatStatus.ACTIVE.equals(status) && !StudyTableStatus.ACTIVE.equals(table.getStatus())) {
+            throw new BusinessException("TABLE_NOT_ACTIVE", "Table is not active");
         }
     }
 
