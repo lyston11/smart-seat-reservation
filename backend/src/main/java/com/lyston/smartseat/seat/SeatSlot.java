@@ -16,6 +16,22 @@ public class SeatSlot {
     @TableField(exist = false)
     private String seatNo;
     @TableField(exist = false)
+    private Long tableId;
+    @TableField(exist = false)
+    private String tableNo;
+    @TableField(exist = false)
+    private Integer tableRowNo;
+    @TableField(exist = false)
+    private Integer tableColumnNo;
+    @TableField(exist = false)
+    private Integer tableDisplayOrder;
+    @TableField(exist = false)
+    private String seatLabel;
+    @TableField(exist = false)
+    private String seatSide;
+    @TableField(exist = false)
+    private Integer seatOrder;
+    @TableField(exist = false)
     private Integer rowNo;
     @TableField(exist = false)
     private Integer columnNo;
@@ -54,6 +70,70 @@ public class SeatSlot {
 
     public void setSeatNo(String seatNo) {
         this.seatNo = seatNo;
+    }
+
+    public Long getTableId() {
+        return tableId;
+    }
+
+    public void setTableId(Long tableId) {
+        this.tableId = tableId;
+    }
+
+    public String getTableNo() {
+        return tableNo;
+    }
+
+    public void setTableNo(String tableNo) {
+        this.tableNo = tableNo;
+    }
+
+    public Integer getTableRowNo() {
+        return tableRowNo;
+    }
+
+    public void setTableRowNo(Integer tableRowNo) {
+        this.tableRowNo = tableRowNo;
+    }
+
+    public Integer getTableColumnNo() {
+        return tableColumnNo;
+    }
+
+    public void setTableColumnNo(Integer tableColumnNo) {
+        this.tableColumnNo = tableColumnNo;
+    }
+
+    public Integer getTableDisplayOrder() {
+        return tableDisplayOrder;
+    }
+
+    public void setTableDisplayOrder(Integer tableDisplayOrder) {
+        this.tableDisplayOrder = tableDisplayOrder;
+    }
+
+    public String getSeatLabel() {
+        return seatLabel;
+    }
+
+    public void setSeatLabel(String seatLabel) {
+        this.seatLabel = seatLabel;
+    }
+
+    public String getSeatSide() {
+        return seatSide;
+    }
+
+    public void setSeatSide(String seatSide) {
+        this.seatSide = seatSide;
+    }
+
+    public Integer getSeatOrder() {
+        return seatOrder;
+    }
+
+    public void setSeatOrder(Integer seatOrder) {
+        this.seatOrder = seatOrder;
     }
 
     public Integer getRowNo() {

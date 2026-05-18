@@ -12,19 +12,29 @@ import org.apache.ibatis.annotations.Update;
 public interface SeatSlotMapper extends BaseMapper<SeatSlot> {
 
     @Select("""
-            SELECT ss.id, ss.seat_id, s.seat_no, s.row_no, s.column_no, s.display_order,
+            SELECT ss.id, ss.seat_id, s.seat_no,
+                   t.id AS table_id, t.table_no, t.row_no AS table_row_no,
+                   t.column_no AS table_column_no, t.display_order AS table_display_order,
+                   s.seat_label, s.seat_side, s.seat_order,
+                   s.row_no, s.column_no, s.display_order,
                    ss.area_id, ss.slot_date, ss.start_time, ss.end_time, ss.status,
                    ss.reserved_by, ss.reservation_id, ss.version, ss.created_at, ss.updated_at
             FROM seat_slots ss
             JOIN seats s
               ON s.id = ss.seat_id
              AND s.status = 'ACTIVE'
+            JOIN tables t
+              ON t.id = s.table_id
+             AND t.status = 'ACTIVE'
             JOIN areas a
               ON a.id = ss.area_id
              AND a.status = 'ACTIVE'
             WHERE ss.area_id = #{areaId}
               AND ss.slot_date = #{slotDate}
-            ORDER BY ss.start_time, COALESCE(s.row_no, 9999), COALESCE(s.column_no, 9999),
+            ORDER BY ss.start_time,
+                     COALESCE(t.row_no, 9999), COALESCE(t.column_no, 9999),
+                     COALESCE(t.display_order, 9999), t.table_no,
+                     s.seat_side, COALESCE(s.seat_order, 9999),
                      COALESCE(s.display_order, 9999), s.seat_no
             """)
     List<SeatSlot> findByAreaAndDate(@Param("areaId") Long areaId, @Param("slotDate") LocalDate slotDate);

@@ -4,6 +4,9 @@ import com.lyston.smartseat.area.Area;
 import com.lyston.smartseat.area.AreaMapper;
 import com.lyston.smartseat.cache.SeatSlotCacheService;
 import com.lyston.smartseat.common.BusinessException;
+import com.lyston.smartseat.table.StudyTable;
+import com.lyston.smartseat.table.StudyTableMapper;
+import com.lyston.smartseat.table.StudyTableStatus;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -21,17 +24,20 @@ public class SeatSlotService {
 
     private final AreaMapper areaMapper;
     private final SeatMapper seatMapper;
+    private final StudyTableMapper studyTableMapper;
     private final SeatSlotMapper seatSlotMapper;
     private final SeatSlotCacheService seatSlotCacheService;
 
     public SeatSlotService(
             AreaMapper areaMapper,
             SeatMapper seatMapper,
+            StudyTableMapper studyTableMapper,
             SeatSlotMapper seatSlotMapper,
             SeatSlotCacheService seatSlotCacheService
     ) {
         this.areaMapper = areaMapper;
         this.seatMapper = seatMapper;
+        this.studyTableMapper = studyTableMapper;
         this.seatSlotMapper = seatSlotMapper;
         this.seatSlotCacheService = seatSlotCacheService;
     }
@@ -123,6 +129,7 @@ public class SeatSlotService {
             LocalDateTime now
     ) {
         Seat seat = requireActiveSeatInArea(seatId, request.areaId());
+        StudyTable table = requireActiveTable(seat.getTableId(), request.areaId());
         if (seatSlotMapper.countBySeatAndPeriod(seatId, request.slotDate(), period.startTime(), period.endTime()) > 0) {
             return List.of();
         }
@@ -130,6 +137,14 @@ public class SeatSlotService {
         SeatSlot slot = new SeatSlot();
         slot.setSeatId(seat.getId());
         slot.setSeatNo(seat.getSeatNo());
+        slot.setTableId(table.getId());
+        slot.setTableNo(table.getTableNo());
+        slot.setTableRowNo(table.getRowNo());
+        slot.setTableColumnNo(table.getColumnNo());
+        slot.setTableDisplayOrder(table.getDisplayOrder());
+        slot.setSeatLabel(seat.getSeatLabel());
+        slot.setSeatSide(seat.getSeatSide());
+        slot.setSeatOrder(seat.getSeatOrder());
         slot.setRowNo(seat.getRowNo());
         slot.setColumnNo(seat.getColumnNo());
         slot.setDisplayOrder(seat.getDisplayOrder());
@@ -164,6 +179,17 @@ public class SeatSlotService {
             throw new BusinessException("SEAT_NOT_ACTIVE", "Seat is not active");
         }
         return seat;
+    }
+
+    private StudyTable requireActiveTable(Long tableId, Long areaId) {
+        StudyTable table = studyTableMapper.selectById(tableId);
+        if (table == null || !areaId.equals(table.getAreaId())) {
+            throw new BusinessException("TABLE_NOT_FOUND", "Table not found");
+        }
+        if (!StudyTableStatus.ACTIVE.equals(table.getStatus())) {
+            throw new BusinessException("TABLE_NOT_ACTIVE", "Table is not active");
+        }
+        return table;
     }
 
     private SeatSlot requireSeatSlot(Long seatSlotId) {
