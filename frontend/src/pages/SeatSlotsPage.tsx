@@ -15,6 +15,9 @@ import SeatMap from '../components/SeatMap';
 import type { ReservationResult, ReservationRule } from '../types/reservation';
 import type { Area, SeatSlot } from '../types/seat';
 
+const DEFAULT_OPEN_TIME = '08:00';
+const DEFAULT_CLOSE_TIME = '22:00';
+
 export default function SeatSlotsPage() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [areaId, setAreaId] = useState(1);
@@ -163,8 +166,8 @@ export default function SeatSlotsPage() {
 
   function applySelectedArea(area: Area) {
     setAreaId(area.id);
-    setStartTime(area.openTime.slice(0, 5));
-    setEndTime(area.closeTime.slice(0, 5));
+    setStartTime(formatAreaTime(area.openTime, DEFAULT_OPEN_TIME));
+    setEndTime(formatAreaTime(area.closeTime, DEFAULT_CLOSE_TIME));
   }
 
   return (
@@ -267,7 +270,8 @@ export default function SeatSlotsPage() {
         </span>
         {selectedArea ? (
           <span>
-            开放 {selectedArea.openTime.slice(0, 5)}-{selectedArea.closeTime.slice(0, 5)}
+            开放 {formatAreaTime(selectedArea.openTime, DEFAULT_OPEN_TIME)}-
+            {formatAreaTime(selectedArea.closeTime, DEFAULT_CLOSE_TIME)}
           </span>
         ) : null}
         <span>
@@ -285,6 +289,10 @@ export default function SeatSlotsPage() {
 
 function normalizeInputTime(value: string) {
   return value.length === 5 ? `${value}:00` : value;
+}
+
+function formatAreaTime(value: string | null | undefined, fallback: string) {
+  return value ? value.slice(0, 5) : fallback;
 }
 
 function overlaps(slot: SeatSlot, startTime: string, endTime: string) {

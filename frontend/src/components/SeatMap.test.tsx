@@ -191,6 +191,31 @@ describe('SeatMap', () => {
     expect(within(table).getByText('4号')).toBeTruthy();
   });
 
+  it('marks coordinate rooms as horizontally scrollable for narrow screens', () => {
+    render(
+      <SeatMap
+        slots={[
+          makeSlot({
+            id: 1,
+            seatId: 1,
+            tableNo: 'T01',
+            tablePositionX: 120,
+            tablePositionY: 80,
+            tableWidthPx: 260,
+            tableHeightPx: 96,
+            seatLabel: '1号',
+            seatSide: 'NORTH',
+          }),
+        ]}
+        onReserve={vi.fn()}
+      />,
+    );
+
+    const room = screen.getByTestId('seat-room-layout-09:00-10:00');
+    expect(room.className).toContain('seat-room-layout-scrollable');
+    expect(room.getAttribute('tabindex')).toBe('0');
+  });
+
   it('renders a fallback table label for legacy seats without table data', () => {
     render(
       <SeatMap

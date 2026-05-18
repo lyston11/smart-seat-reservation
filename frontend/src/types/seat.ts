@@ -4,8 +4,8 @@ export type Area = {
   floor: string | null;
   description: string | null;
   status: AreaStatus;
-  openTime: string;
-  closeTime: string;
+  openTime?: string | null;
+  closeTime?: string | null;
 };
 
 export type AreaStatus = 'ACTIVE' | 'INACTIVE';

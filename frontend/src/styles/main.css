@@ -14,6 +14,13 @@ body {
   min-height: 100vh;
 }
 
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
 .app-shell {
   min-height: 100vh;
 }
@@ -71,6 +78,7 @@ body {
 
 .page {
   max-width: 1180px;
+  width: 100%;
 }
 
 .empty-panel {
@@ -97,6 +105,7 @@ body {
 
 .toolbar .ant-form-inline {
   row-gap: 12px;
+  column-gap: 8px;
 }
 
 .area-select {
@@ -165,6 +174,7 @@ body {
   align-items: center;
   gap: 12px;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
 .reservation-input {
@@ -235,10 +245,17 @@ body {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .seat-room-layout-coordinate {
   padding: 38px 18px 44px;
+}
+
+.seat-room-layout-scrollable:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
 }
 
 .seat-room-feature {
@@ -410,6 +427,12 @@ body {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   overflow: hidden;
+  max-width: 100%;
+}
+
+.ant-table-wrapper .ant-table-content {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .usage-row {
@@ -465,8 +488,17 @@ body {
 }
 
 @media (max-width: 860px) {
-  .app-shell {
+  .app-shell-responsive {
     flex-direction: column;
+  }
+
+  .app-shell-responsive.ant-layout-has-sider {
+    flex-direction: column;
+  }
+
+  .app-main-layout {
+    min-width: 0;
+    width: 100%;
   }
 
   .app-sider {
@@ -488,10 +520,17 @@ body {
     padding: 14px 16px;
     align-items: flex-start;
     flex-direction: column;
+    width: 100%;
+  }
+
+  .app-user-actions {
+    width: 100%;
   }
 
   .app-content {
     padding: 16px;
+    overflow-x: hidden;
+    width: 100%;
   }
 
   .page {
@@ -503,9 +542,16 @@ body {
     width: 100%;
   }
 
+  .toolbar .ant-form-inline {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
   .toolbar .ant-form-item,
+  .toolbar .ant-form-item-control,
   .toolbar .ant-picker,
   .toolbar .ant-picker-range,
+  .toolbar .ant-input,
   .toolbar .ant-input-number,
   .toolbar .ant-btn,
   .table-checkin-panel .ant-btn,
@@ -515,16 +561,35 @@ body {
     width: 100%;
   }
 
+  .toolbar .ant-form-item {
+    margin-inline-end: 0;
+  }
+
   .reservation-panel,
   .reservation-fields {
     align-items: stretch;
     flex-direction: column;
   }
 
+  .reservation-panel .ant-space {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .reservation-panel .ant-space-item,
+  .reservation-panel .ant-btn {
+    width: 100%;
+  }
+
   .reservation-input,
   .reservation-code,
   .reservation-rules span {
     width: 100%;
+  }
+
+  .reservation-rules span {
+    border-radius: 8px;
   }
 
   .stats-grid,
@@ -544,7 +609,93 @@ body {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .seat-map-section {
+    padding: 12px;
+  }
+
+  .seat-room-layout {
+    padding: 32px 12px 38px;
+  }
+
   .seat-map-cell.ant-btn {
-    height: 46px;
+    min-height: 46px;
+    height: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .app-content {
+    padding: 12px;
+  }
+
+  .brand {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .brand-title {
+    font-size: 15px;
+  }
+
+  .brand-subtitle {
+    font-size: 12px;
+  }
+
+  .app-sider .ant-menu {
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .app-sider .ant-menu-inline {
+    display: flex;
+    border-inline-end: 0;
+  }
+
+  .app-sider .ant-menu-inline .ant-menu-item {
+    flex: 0 0 auto;
+    width: auto;
+    padding-inline: 14px !important;
+  }
+
+  .app-header {
+    gap: 10px;
+  }
+
+  .page-title {
+    font-size: 20px !important;
+    line-height: 28px !important;
+  }
+
+  .toolbar,
+  .reservation-panel,
+  .empty-panel {
+    padding: 12px;
+  }
+
+  .reservation-panel .ant-space {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-grid {
+    gap: 12px;
+  }
+
+  .seat-room-feature {
+    min-width: 48px;
+    font-size: 11px;
+  }
+
+  .seat-map-grid-coordinate {
+    min-width: 560px !important;
+  }
+
+  .seat-table-positioned {
+    transform-origin: top left;
+  }
+
+  .table-qr-code {
+    width: 100%;
+    max-width: 220px;
   }
 }

@@ -33,6 +33,33 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 3, name: '学生选座' })).toBeTruthy();
   });
 
+  it('renders responsive shell landmarks for the shared mobile layout', async () => {
+    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
+    window.localStorage.setItem(
+      'smart-seat-auth-user',
+      JSON.stringify({ id: 1, name: 'Demo Student', studentNo: '20260001', role: 'STUDENT' }),
+    );
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/student/seats']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    const shell = await screen.findByTestId('app-shell');
+    expect(shell.className).toContain('app-shell-responsive');
+    expect(screen.getByTestId('app-nav').className).toContain('app-nav-responsive');
+    expect(screen.getByTestId('app-user-actions').className).toContain('app-user-actions');
+  });
+
   it('submits table QR check-in with token and check-in code', async () => {
     window.localStorage.setItem('smart-seat-auth-token', 'test-token');
     window.localStorage.setItem(
@@ -314,6 +341,70 @@ describe('App', () => {
         expect.objectContaining({ method: 'POST' }),
       );
     });
+  });
+
+  it('falls back to the default opening window when legacy area data omits open hours', async () => {
+    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
+    window.localStorage.setItem(
+      'smart-seat-auth-user',
+      JSON.stringify({ id: 1, name: 'Demo Student', studentNo: '20260001', role: 'STUDENT' }),
+    );
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('/api/areas')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                name: '旧数据 A 区',
+                floor: '1F',
+                description: null,
+                status: 'ACTIVE',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/reservations/rules')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: {
+              checkinGraceMinutes: 15,
+              maxAdvanceDays: 7,
+              dailyActiveReservationLimit: 3,
+              updatedBy: null,
+              updatedAt: null,
+            },
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/student/seats']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 3, name: '学生选座' })).toBeTruthy();
+    expect(await screen.findByText('开放 08:00-22:00')).toBeTruthy();
   });
 
   it('returns to table QR check-in path after login', async () => {

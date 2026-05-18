@@ -258,68 +258,76 @@ export default function SeatMap({ slots, loading = false, loadingSlotId, onReser
 
   return (
     <div className="seat-map">
-      {groups.map((group) => (
-        <section className="seat-map-section" key={group.timeRange}>
-          <div className="seat-map-section-header">
-            <strong>{group.timeRange}</strong>
-            <span>{group.totalSeats} 个开放座位</span>
-          </div>
-          <div className={`seat-room-layout ${hasCoordinateLayout(group.tables) ? 'seat-room-layout-coordinate' : ''}`}>
-            <div className="seat-room-feature seat-room-door">入口</div>
-            <div className="seat-room-feature seat-room-window">采光窗</div>
-            <div
-              className={`seat-map-grid ${hasCoordinateLayout(group.tables) ? 'seat-map-grid-coordinate' : ''}`}
-              style={getLayoutStyle(group.tables)}
-            >
-              {group.tables.map((table) => (
-                <div
-                  className={`seat-table ${table.positionX !== null && table.positionY !== null ? 'seat-table-positioned' : ''}`}
-                  style={getTableStyle(table)}
-                  key={table.key}
-                  role="group"
-                  aria-label={getTableLabel(table)}
-                >
-                  <div className="seat-table-surface" style={getTableSurfaceStyle(table)}>
-                    <span>{getTableLabel(table)}</span>
-                  </div>
-                  {tableSeatSides.map((side) => {
-                    const sideSeats = table.seats.filter((slot) => getSeatSide(slot) === side);
-                    if (sideSeats.length === 0) {
-                      return null;
-                    }
-
-                    return (
-                      <div className={`seat-table-side seat-table-side-${sideClass[side]}`} key={side}>
-                        {sideSeats.map((slot) => {
-                          const disabled = slot.status !== 'AVAILABLE';
-                          const label = getSeatLabel(slot);
-                          const tableLabel = getTableLabel(table);
-                          const title = `${tableLabel} · ${label} · ${seatSlotStatusText[slot.status]}`;
-
-                          return (
-                            <Tooltip title={title} key={slot.id}>
-                              <Button
-                                className={`seat-map-cell seat-map-cell-${slot.status.toLowerCase()}`}
-                                disabled={disabled}
-                                loading={loadingSlotId === slot.id}
-                                onClick={() => onReserve(slot)}
-                              >
-                                <span>{label}</span>
-                                <Tag color={seatSlotStatusColor[slot.status]}>{seatSlotStatusText[slot.status]}</Tag>
-                              </Button>
-                            </Tooltip>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+      {groups.map((group) => {
+        const hasCoordinates = hasCoordinateLayout(group.tables);
+        return (
+          <section className="seat-map-section" key={group.timeRange}>
+            <div className="seat-map-section-header">
+              <strong>{group.timeRange}</strong>
+              <span>{group.totalSeats} 个开放座位</span>
             </div>
-            <div className="seat-room-feature seat-room-desk">服务台</div>
-          </div>
-        </section>
-      ))}
+            <div
+              className={`seat-room-layout ${hasCoordinates ? 'seat-room-layout-coordinate seat-room-layout-scrollable' : ''}`}
+              data-testid={`seat-room-layout-${group.timeRange}`}
+              tabIndex={hasCoordinates ? 0 : undefined}
+              aria-label={`${group.timeRange} 座位平面图`}
+            >
+              <div className="seat-room-feature seat-room-door">入口</div>
+              <div className="seat-room-feature seat-room-window">采光窗</div>
+              <div
+                className={`seat-map-grid ${hasCoordinates ? 'seat-map-grid-coordinate' : ''}`}
+                style={getLayoutStyle(group.tables)}
+              >
+                {group.tables.map((table) => (
+                  <div
+                    className={`seat-table ${table.positionX !== null && table.positionY !== null ? 'seat-table-positioned' : ''}`}
+                    style={getTableStyle(table)}
+                    key={table.key}
+                    role="group"
+                    aria-label={getTableLabel(table)}
+                  >
+                    <div className="seat-table-surface" style={getTableSurfaceStyle(table)}>
+                      <span>{getTableLabel(table)}</span>
+                    </div>
+                    {tableSeatSides.map((side) => {
+                      const sideSeats = table.seats.filter((slot) => getSeatSide(slot) === side);
+                      if (sideSeats.length === 0) {
+                        return null;
+                      }
+
+                      return (
+                        <div className={`seat-table-side seat-table-side-${sideClass[side]}`} key={side}>
+                          {sideSeats.map((slot) => {
+                            const disabled = slot.status !== 'AVAILABLE';
+                            const label = getSeatLabel(slot);
+                            const tableLabel = getTableLabel(table);
+                            const title = `${tableLabel} · ${label} · ${seatSlotStatusText[slot.status]}`;
+
+                            return (
+                              <Tooltip title={title} key={slot.id}>
+                                <Button
+                                  className={`seat-map-cell seat-map-cell-${slot.status.toLowerCase()}`}
+                                  disabled={disabled}
+                                  loading={loadingSlotId === slot.id}
+                                  onClick={() => onReserve(slot)}
+                                >
+                                  <span>{label}</span>
+                                  <Tag color={seatSlotStatusColor[slot.status]}>{seatSlotStatusText[slot.status]}</Tag>
+                                </Button>
+                              </Tooltip>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+              <div className="seat-room-feature seat-room-desk">服务台</div>
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

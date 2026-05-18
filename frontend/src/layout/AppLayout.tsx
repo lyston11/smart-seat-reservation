@@ -95,20 +95,20 @@ export default function AppLayout() {
   }
 
   return (
-    <Layout className="app-shell">
-      <Sider width={232} theme="light" className="app-sider">
+    <Layout className="app-shell app-shell-responsive" data-testid="app-shell">
+      <Sider width={232} theme="light" className="app-sider app-nav-responsive" data-testid="app-nav">
         <div className="brand">
           <div className="brand-title">Smart Seat</div>
           <div className="brand-subtitle">学院座位预约</div>
         </div>
         <Menu mode="inline" selectedKeys={[selectedKey]} items={menuItems} />
       </Sider>
-      <Layout>
+      <Layout className="app-main-layout">
         <Header className="app-header">
           <Typography.Title level={3} className="page-title">
             {pageTitles[selectedKey]}
           </Typography.Title>
-          <Space>
+          <Space className="app-user-actions" data-testid="app-user-actions" wrap>
             <Tag color={user?.role === 'ADMIN' ? 'purple' : 'blue'}>
               {user?.role === 'ADMIN' ? '管理员' : '学生'}
             </Tag>

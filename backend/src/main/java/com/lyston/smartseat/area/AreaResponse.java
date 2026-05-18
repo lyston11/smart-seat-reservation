@@ -12,6 +12,9 @@ public record AreaResponse(
         LocalTime closeTime
 ) {
 
+    private static final LocalTime DEFAULT_OPEN_TIME = LocalTime.of(8, 0);
+    private static final LocalTime DEFAULT_CLOSE_TIME = LocalTime.of(22, 0);
+
     public static AreaResponse from(Area area) {
         return new AreaResponse(
                 area.getId(),
@@ -19,8 +22,8 @@ public record AreaResponse(
                 area.getFloor(),
                 area.getDescription(),
                 area.getStatus(),
-                area.getOpenTime(),
-                area.getCloseTime()
+                area.getOpenTime() == null ? DEFAULT_OPEN_TIME : area.getOpenTime(),
+                area.getCloseTime() == null ? DEFAULT_CLOSE_TIME : area.getCloseTime()
         );
     }
 }

@@ -4,6 +4,54 @@
 
 ### 任务
 - Issue: 暂无
+- 分支: feature/codex-responsive-foundation
+- 目标: 为后续手机端适配补齐同一套页面的响应式基础。
+
+### 本次改动
+- 应用主框架增加稳定的响应式结构标记，便于后续继续扩展手机端布局和测试。
+- 窄屏下侧边导航转为顶部横向可滚动导航，顶部用户操作区可换行。
+- 工具栏表单、日期/时间输入、筛选按钮在窄屏下改为单列全宽布局。
+- 当前预约操作区在平板宽度下三列排列，手机宽度下单列全宽排列。
+- 坐标座位图增加可聚焦的横向滚动容器，保留真实平面坐标，不压缩到重叠。
+- 表格容器补充横向滚动基础，避免管理端列较多时撑破页面。
+- 学生选座页对旧区域数据缺失开放时间做默认值兜底，避免真实页面白屏；后端区域响应也会为旧数据补默认开放时间。
+- 手机断点下修正 Ant Design Layout 仍按侧栏横排导致的页面横向溢出。
+- 补充前端测试，覆盖共享移动端布局标记和坐标座位图滚动容器。
+- 补充旧区域数据缺失 `openTime` / `closeTime` 时学生选座页仍可渲染的回归测试。
+
+### 涉及文件
+- frontend/src/layout/AppLayout.tsx
+- frontend/src/components/SeatMap.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/types/seat.ts
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- frontend/src/components/SeatMap.test.tsx
+- backend/src/main/java/com/lyston/smartseat/area/AreaResponse.java
+- backend/src/test/java/com/lyston/smartseat/area/AreaResponseTest.java
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端 2 个测试文件、12 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn -Dtest=AreaResponseTest test`，新增后端区域响应兜底测试通过。
+- 已运行 `mvn test`，后端 44 个测试通过；测试编译仍有既有 unchecked 提示，不影响通过结果。
+- 已用浏览器在 390px 手机视口登录演示学生账号并打开 `/student/seats`，页面显示“学生选座”和“开放 08:00-22:00”，最终指标为 `bodyScrollWidth=375`、`documentClientWidth=375`，无页面级横向溢出。
+
+### 遗留问题
+- 本次只做同一套页面的响应式基础，尚未做独立手机端交互流。
+- 桌子可视化编辑器已有独立分支 `feature/lyston11-visual-table-layout-editor`，后续合并时需关注 `frontend/src/styles/main.css` 的样式冲突。
+- 真实浏览器控制台仍有 Ant Design `Input addonBefore` 已废弃提示，来自现有预约/签到码输入组件，本次未扩大范围替换。
+
+### 对其他成员的影响
+- 后续手机端适配可以复用 `app-shell-responsive`、`app-nav-responsive`、`app-user-actions` 和 `seat-room-layout-scrollable` 这些稳定结构。
+- 新增管理端表格时建议保持 Ant Design Table 默认内容可横向滚动，不要写固定超宽容器。
+
+## 2026-05-18
+
+### 任务
+- Issue: 暂无
 - 分支: feature/codex-table-checkin-impl
 - 目标: 支持真实长桌坐标布局和学生自选预约起止时间。
 
