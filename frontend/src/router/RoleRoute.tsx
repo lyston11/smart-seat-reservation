@@ -7,7 +7,7 @@ type RoleRouteProps = {
   redirectTo?: string;
 };
 
-export default function RoleRoute({ allowedRoles, redirectTo = '/student/seats' }: RoleRouteProps) {
+export default function RoleRoute({ allowedRoles, redirectTo }: RoleRouteProps) {
   const user = getStoredUser();
 
   if (!user) {
@@ -15,7 +15,8 @@ export default function RoleRoute({ allowedRoles, redirectTo = '/student/seats' 
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to={redirectTo} replace />;
+    const fallbackPath = user.role === 'ADMIN' ? '/admin/dashboard' : '/student/home';
+    return <Navigate to={redirectTo ?? fallbackPath} replace />;
   }
 
   return <Outlet />;

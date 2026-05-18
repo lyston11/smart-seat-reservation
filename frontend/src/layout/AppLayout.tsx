@@ -93,8 +93,9 @@ export default function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const user = getStoredUser();
-  const selectedKey = pageTitles[location.pathname] ? location.pathname : '/student/home';
-  const menuItems = user?.role === 'ADMIN' ? [...studentMenuItems, ...adminMenuItems] : studentMenuItems;
+  const defaultKey = user?.role === 'ADMIN' ? '/admin/dashboard' : '/student/home';
+  const selectedKey = pageTitles[location.pathname] ? location.pathname : defaultKey;
+  const menuItems = user?.role === 'ADMIN' ? adminMenuItems : studentMenuItems;
 
   async function signOut() {
     await logout();

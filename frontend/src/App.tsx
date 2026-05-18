@@ -35,10 +35,12 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route element={<ProtectedRoute />}>
             <Route index element={<Navigate to="/student/home" replace />} />
-            <Route path="/student/home" element={<StudentHomePage />} />
-            <Route path="/student/seats" element={<SeatSlotsPage />} />
-            <Route path="/student/reservations" element={<MyReservationsPage />} />
-            <Route path="/student/table-checkin" element={<TableCheckinPage />} />
+            <Route element={<RoleRoute allowedRoles={['STUDENT']} />}>
+              <Route path="/student/home" element={<StudentHomePage />} />
+              <Route path="/student/seats" element={<SeatSlotsPage />} />
+              <Route path="/student/reservations" element={<MyReservationsPage />} />
+              <Route path="/student/table-checkin" element={<TableCheckinPage />} />
+            </Route>
             <Route element={<RoleRoute allowedRoles={['ADMIN']} />}>
               <Route path="/admin/areas" element={<AdminAreasPage />} />
               <Route path="/admin/tables" element={<AdminTablesPage />} />
