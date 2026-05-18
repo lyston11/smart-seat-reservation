@@ -6,6 +6,16 @@ export type ReservationResult = {
   status: string;
   checkinCode: string;
   expiresAt: string;
+  seatNo?: string | null;
+  seatLabel?: string | null;
+  tableId?: number | null;
+  tableNo?: string | null;
+  areaId?: number | null;
+  areaName?: string | null;
+  floor?: string | null;
+  slotDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
 };
 
 export type AdminSeatSlotReleaseResult = {

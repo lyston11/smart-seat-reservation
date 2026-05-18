@@ -4,6 +4,129 @@
 
 ### 任务
 - Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 继续增强学生端预约管理能力，补齐筛选、详情、签到倒计时和首页快捷处理体验。
+
+### 本次改动
+- 我的预约页新增状态筛选和日期筛选，预约记录多起来后可以按待签到、使用中、已完成、已取消、已过期快速定位。
+- 我的预约页新增预约详情弹窗，集中展示区域、楼层、桌号、座位编号、预约日期、时间段、签到码和签到截止时间。
+- 预约详情弹窗和活跃预约卡片复用同一套签到、签退、取消操作入口，操作成功后自动刷新列表。
+- 待签到预约新增签到倒计时，剩余 5 分钟内自动红色高亮，已超时会显示超过签到截止。
+- 学生首页新增今日预约时间线，按开始时间排序展示当天预约，并提供快速签到/签退。
+- 学生首页新增最近常用区域统计，按预约次数展示常用学习区域。
+- 抽取并复用预约筛选、日期、倒计时、排序等展示工具，保持学生首页和我的预约页的状态文案一致。
+- 稳定前端测试环境中的 `ResizeObserver` mock，避免 Ant Design 下拉组件测试时被全局清理影响。
+
+### 涉及文件
+- frontend/src/pages/MyReservationsPage.tsx
+- frontend/src/pages/StudentHomePage.tsx
+- frontend/src/utils/reservationDisplay.ts
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- frontend/src/test/setup.ts
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 3 个测试文件、13 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 43 个测试通过。
+- 已运行 `git diff --check`，通过。
+- 已启动前端临时服务到 `5174` 端口做冒烟检查，未使用 `8080`；登录接口 `POST /api/auth/login` 返回成功。
+
+### 遗留问题
+- 学生端筛选目前在前端本地完成，后续预约记录量很大时可扩展为后端分页和服务端筛选。
+- 预约详情目前采用弹窗形态，后续如果要支持分享或扫码入口，可升级为独立详情路由。
+
+### 对其他成员的影响
+- 本次未新增后端接口和数据库字段，主要是前端体验增强。
+- 预约状态中文文案统一在 `reservationDisplay.ts` 维护，后续新增状态时需要同步筛选选项和颜色。
+
+## 2026-05-18
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 继续增强学生端，让学生首页、选座、预约管理形成完整可演示闭环。
+
+### 本次改动
+- 新增学生首页 `/student/home`，展示当前活跃预约、最近预约记录、签到宽限和可提前预约天数。
+- 登录后学生默认进入学生首页，侧边栏新增“学生首页”入口。
+- 学生选座页新增可预约/已占用统计卡片，并把当前预约从内部 ID 输入框升级为可读的座位、区域、桌号、时间和签到截止信息。
+- 我的预约页从简单表格升级为预约管理页，支持在活跃预约卡片里直接签到、签退和取消。
+- 后端预约响应补充 `seatNo`、`seatLabel`、`tableNo`、`areaName`、`floor`、`slotDate`、`startTime`、`endTime`，前端不再只能展示座位 ID 和时段 ID。
+- 抽取预约状态、时间和位置展示工具，学生端页面复用同一套中文状态和格式化逻辑。
+- 补充前端测试，覆盖学生首页活跃预约展示和我的预约页直接签到。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/reservation/
+- backend/src/main/java/com/lyston/smartseat/seat/
+- backend/src/test/java/com/lyston/smartseat/reservation/ReservationServiceTest.java
+- frontend/src/App.tsx
+- frontend/src/App.test.tsx
+- frontend/src/layout/AppLayout.tsx
+- frontend/src/pages/LoginPage.tsx
+- frontend/src/pages/StudentHomePage.tsx
+- frontend/src/pages/MyReservationsPage.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/types/reservation.ts
+- frontend/src/utils/reservationDisplay.ts
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端 3 个测试文件、12 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 43 个测试通过。
+
+### 遗留问题
+- 学生首页目前是预约概览和快捷入口，后续可继续补常用区域收藏、学习时长统计和签到提醒。
+- 我的预约页仍保留表格历史记录，后续可增加按状态/日期筛选。
+
+### 对其他成员的影响
+- `GET /api/reservations` 和预约创建/签到/签退/取消响应新增展示字段，旧字段保持兼容。
+- 前端学生端路由默认入口调整为 `/student/home`，原 `/student/seats` 仍可直接访问。
+
+## 2026-05-18
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 在最新 `main` 基础上继续完善管理员桌位可视化维护能力，让桌子坐标、尺寸和旋转角度有直观预览。
+
+### 本次改动
+- 新增 `TableLayoutPreview` 组件，按桌子坐标、尺寸和旋转角度渲染区域桌位平面图。
+- 管理员桌子管理页新增“区域桌位平面图”，支持点击平面图中的桌子直接进入编辑。
+- 桌子新增/编辑弹窗增加实时预览，管理员修改 X/Y 坐标、桌面尺寸和旋转角度时可以即时看到布局变化。
+- 新增桌位平面图组件测试，覆盖坐标渲染、选中状态、停用桌子隐藏和点击选择。
+
+### 涉及文件
+- frontend/src/components/TableLayoutPreview.tsx
+- frontend/src/components/TableLayoutPreview.test.tsx
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端 3 个测试文件、10 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 43 个测试通过。
+- 已运行 `git diff --check`，通过。
+
+### 遗留问题
+- 当前仍是坐标输入 + 预览模式，后续可继续升级为拖拽式桌位编辑器。
+- 平面图暂不支持墙体、柱子、门窗自定义维护；比赛演示可以先用固定房间元素表达空间感。
+
+### 对其他成员的影响
+- 没有新增后端接口或数据库字段，复用已有 `tables.positionX / positionY / widthPx / heightPx / rotationDeg`。
+- 管理员维护桌位时建议同步维护真实坐标和尺寸，学生端选座平面图会复用这些数据。
+
+## 2026-05-18
+
+### 任务
+- Issue: 暂无
 - 分支: feature/codex-table-checkin-impl
 - 目标: 支持真实长桌坐标布局和学生自选预约起止时间。
 

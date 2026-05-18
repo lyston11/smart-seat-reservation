@@ -144,13 +144,95 @@ body {
   border-radius: 8px;
 }
 
+.layout-preview-panel {
+  padding: 16px;
+  margin-top: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.table-layout-preview {
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.table-layout-room {
+  position: relative;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(244, 244, 245, 0.78)),
+    linear-gradient(90deg, rgba(229, 231, 235, 0.58) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(229, 231, 235, 0.58) 1px, transparent 1px),
+    #fbfbfa;
+  background-size: auto, 42px 42px, 42px 42px, auto;
+}
+
+.table-layout-item {
+  position: absolute;
+  padding: 8px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #78716c;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.24), transparent 24%, rgba(255, 255, 255, 0.18) 52%, transparent),
+    repeating-linear-gradient(90deg, #d6b47c 0 28px, #c99f68 28px 32px, #e0bf86 32px 60px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.38), 0 10px 18px rgba(17, 24, 39, 0.08);
+  color: #111827;
+  cursor: pointer;
+  font: inherit;
+  text-align: center;
+  transform-origin: center center;
+}
+
+.table-layout-item:hover,
+.table-layout-item:focus-visible {
+  border-color: #2563eb;
+  outline: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.38), 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.table-layout-item-selected {
+  border-color: #2563eb;
+}
+
+.table-layout-item span {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-layout-item small {
+  overflow: hidden;
+  max-width: 100%;
+  color: #4b5563;
+  font-size: 12px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table-form-preview {
+  margin-top: 16px;
+}
+
+.table-form-preview .table-layout-room {
+  min-width: 420px !important;
+  min-height: 260px !important;
+}
+
 .audit-filter-select {
   width: 180px;
 }
 
 .reservation-panel {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   padding: 16px;
@@ -158,6 +240,12 @@ body {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
+}
+
+.reservation-current {
+  min-width: 260px;
+  display: grid;
+  gap: 6px;
 }
 
 .reservation-fields {
@@ -173,6 +261,181 @@ body {
 
 .reservation-code {
   width: 420px;
+}
+
+.reservation-filter-select {
+  width: 160px;
+}
+
+.reservation-code-field {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.reservation-code-field span {
+  height: 32px;
+  padding: 5px 11px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid #d9d9d9;
+  border-right: 0;
+  border-radius: 6px 0 0 6px;
+  background: #fafafa;
+  color: #4b5563;
+  font-size: 14px;
+}
+
+.reservation-code-field .ant-input {
+  border-radius: 0 6px 6px 0;
+}
+
+.student-home-hero {
+  padding: 22px 24px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.student-home-hero h2 {
+  margin: 0 0 6px !important;
+}
+
+.student-home-hero .ant-typography {
+  margin-bottom: 0;
+}
+
+.student-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.student-section {
+  padding: 16px;
+  margin-bottom: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.student-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.reservation-card {
+  height: 100%;
+}
+
+.reservation-card-stack {
+  width: 100%;
+}
+
+.student-record-list {
+  display: grid;
+  gap: 10px;
+}
+
+.student-record-item {
+  min-width: 0;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.student-record-item > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.student-record-item .ant-typography {
+  margin: 0;
+}
+
+.reservation-countdown-row {
+  min-height: 24px;
+}
+
+.reservation-countdown-tag {
+  margin-inline-end: 0;
+}
+
+.reservation-detail-stack {
+  width: 100%;
+}
+
+.student-timeline {
+  display: grid;
+  gap: 12px;
+}
+
+.student-timeline-item {
+  min-width: 0;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.student-timeline-time {
+  display: grid;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.student-timeline-time span {
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.student-timeline-content {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.student-timeline-action {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.student-area-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.student-area-item {
+  min-width: 0;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
 }
 
 .reservation-rules {
@@ -510,12 +773,14 @@ body {
   .toolbar .ant-btn,
   .table-checkin-panel .ant-btn,
   .audit-filter-select,
+  .reservation-filter-select,
   .area-select,
   .seat-select {
     width: 100%;
   }
 
   .reservation-panel,
+  .student-home-hero,
   .reservation-fields {
     align-items: stretch;
     flex-direction: column;
@@ -528,6 +793,9 @@ body {
   }
 
   .stats-grid,
+  .student-summary-grid,
+  .student-card-grid,
+  .student-area-list,
   .usage-row,
   .rule-form-grid,
   .resource-layout-fields,
@@ -546,5 +814,14 @@ body {
 
   .seat-map-cell.ant-btn {
     height: 46px;
+  }
+
+  .student-timeline-item {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .student-timeline-action {
+    justify-content: flex-start;
   }
 }

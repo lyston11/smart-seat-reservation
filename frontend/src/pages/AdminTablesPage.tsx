@@ -17,6 +17,7 @@ import {
 import type { TableColumnsType } from 'antd';
 import { listAreas } from '../api/areas';
 import { createTable, getTableCheckinQr, listTables, updateTable, updateTableStatus } from '../api/tables';
+import TableLayoutPreview from '../components/TableLayoutPreview';
 import type { Area, StudyTable, StudyTableQr, StudyTableStatus } from '../types/seat';
 
 type TableFormValues = {
@@ -63,6 +64,7 @@ export default function AdminTablesPage() {
   const [qrLoading, setQrLoading] = useState(false);
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [tableQr, setTableQr] = useState<StudyTableQr | null>(null);
+  const [layoutPreviewValues, setLayoutPreviewValues] = useState<Partial<TableFormValues> | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
 
   const selectedArea = useMemo(() => areas.find((area) => area.id === areaId), [areaId, areas]);
@@ -107,6 +109,7 @@ export default function AdminTablesPage() {
       rotationDeg: 0,
       status: 'ACTIVE',
     });
+    setLayoutPreviewValues(form.getFieldsValue());
     setModalOpen(true);
   }
 
@@ -126,6 +129,7 @@ export default function AdminTablesPage() {
       rotationDeg: table.rotationDeg ?? 0,
       status: table.status,
     });
+    setLayoutPreviewValues(form.getFieldsValue());
     setModalOpen(true);
   }
 
@@ -302,16 +306,30 @@ export default function AdminTablesPage() {
 
       <Table rowKey="id" loading={loading} dataSource={tables} columns={columns} pagination={false} />
 
+      <div className="layout-preview-panel">
+        <div className="seat-map-section-header">
+          <strong>区域桌位平面图</strong>
+          <span>点击桌子可直接编辑位置和尺寸</span>
+        </div>
+        <TableLayoutPreview tables={tables} onSelectTable={openEditModal} selectedTableId={editingTable?.id} />
+      </div>
+
       <Modal
         title={editingTable ? '编辑桌子' : '新增桌子'}
         open={modalOpen}
+        width={760}
         okText="保存"
         cancelText="取消"
         confirmLoading={saving}
         onOk={saveTable}
         onCancel={() => setModalOpen(false)}
       >
-        <Form form={form} layout="vertical" className="table-form">
+        <Form
+          form={form}
+          layout="vertical"
+          className="table-form"
+          onValuesChange={(_, values) => setLayoutPreviewValues(values)}
+        >
           <Form.Item
             label="所属区域"
             name="areaId"
@@ -378,6 +396,31 @@ export default function AdminTablesPage() {
             </Form.Item>
           ) : null}
         </Form>
+        <div className="table-form-preview">
+          <div className="seat-map-section-header">
+            <strong>实时预览</strong>
+            <span>根据当前坐标、尺寸和旋转角度渲染</span>
+          </div>
+          <TableLayoutPreview
+            tables={[
+              {
+                id: editingTable?.id ?? -1,
+                areaId: layoutPreviewValues?.areaId ?? areaId,
+                tableNo: layoutPreviewValues?.tableNo || editingTable?.tableNo || 'T01',
+                name: layoutPreviewValues?.name || editingTable?.name || null,
+                status: 'ACTIVE',
+                rowNo: layoutPreviewValues?.rowNo ?? editingTable?.rowNo ?? null,
+                columnNo: layoutPreviewValues?.columnNo ?? editingTable?.columnNo ?? null,
+                displayOrder: layoutPreviewValues?.displayOrder ?? editingTable?.displayOrder ?? null,
+                positionX: layoutPreviewValues?.positionX ?? editingTable?.positionX ?? 80,
+                positionY: layoutPreviewValues?.positionY ?? editingTable?.positionY ?? 80,
+                widthPx: layoutPreviewValues?.widthPx ?? editingTable?.widthPx ?? 260,
+                heightPx: layoutPreviewValues?.heightPx ?? editingTable?.heightPx ?? 96,
+                rotationDeg: layoutPreviewValues?.rotationDeg ?? editingTable?.rotationDeg ?? 0,
+              },
+            ]}
+          />
+        </div>
       </Modal>
 
       <Modal

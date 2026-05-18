@@ -3,6 +3,7 @@ import type { MenuProps } from 'antd';
 import {
   CalendarCheck,
   ClipboardList,
+  Home,
   LayoutDashboard,
   Layers,
   MapPinned,
@@ -19,6 +20,11 @@ const { Header, Sider, Content } = Layout;
 type MenuItem = Required<MenuProps>['items'][number];
 
 const studentMenuItems: MenuItem[] = [
+  {
+    key: '/student/home',
+    icon: <Home size={18} />,
+    label: <Link to="/student/home">学生首页</Link>,
+  },
   {
     key: '/student/seats',
     icon: <MapPinned size={18} />,
@@ -70,6 +76,7 @@ const adminMenuItems: MenuItem[] = [
 ];
 
 const pageTitles: Record<string, string> = {
+  '/student/home': '学生首页',
   '/student/seats': '学生选座',
   '/student/reservations': '我的预约',
   '/student/table-checkin': '桌码签到',
@@ -86,8 +93,9 @@ export default function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const user = getStoredUser();
-  const selectedKey = pageTitles[location.pathname] ? location.pathname : '/student/seats';
-  const menuItems = user?.role === 'ADMIN' ? [...studentMenuItems, ...adminMenuItems] : studentMenuItems;
+  const defaultKey = user?.role === 'ADMIN' ? '/admin/dashboard' : '/student/home';
+  const selectedKey = pageTitles[location.pathname] ? location.pathname : defaultKey;
+  const menuItems = user?.role === 'ADMIN' ? adminMenuItems : studentMenuItems;
 
   async function signOut() {
     await logout();

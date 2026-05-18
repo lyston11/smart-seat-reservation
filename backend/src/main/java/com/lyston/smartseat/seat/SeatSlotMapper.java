@@ -44,6 +44,29 @@ public interface SeatSlotMapper extends BaseMapper<SeatSlot> {
     List<SeatSlot> findByAreaAndDate(@Param("areaId") Long areaId, @Param("slotDate") LocalDate slotDate);
 
     @Select("""
+            SELECT ss.id, ss.seat_id, s.seat_no,
+                   t.id AS table_id, t.table_no, t.row_no AS table_row_no,
+                   t.column_no AS table_column_no, t.display_order AS table_display_order,
+                   t.position_x AS table_position_x, t.position_y AS table_position_y,
+                   t.width_px AS table_width_px, t.height_px AS table_height_px,
+                   t.rotation_deg AS table_rotation_deg,
+                   s.seat_label, s.seat_side, s.seat_order,
+                   s.row_no, s.column_no, s.display_order,
+                   ss.area_id, a.name AS area_name, a.floor,
+                   ss.slot_date, ss.start_time, ss.end_time, ss.status,
+                   ss.reserved_by, ss.reservation_id, ss.version, ss.created_at, ss.updated_at
+            FROM seat_slots ss
+            JOIN seats s
+              ON s.id = ss.seat_id
+            LEFT JOIN tables t
+              ON t.id = s.table_id
+            JOIN areas a
+              ON a.id = ss.area_id
+            WHERE ss.id = #{seatSlotId}
+            """)
+    SeatSlot findByIdWithLayout(@Param("seatSlotId") Long seatSlotId);
+
+    @Select("""
             SELECT COUNT(*)
             FROM seat_slots
             WHERE seat_id = #{seatId}
@@ -83,7 +106,8 @@ public interface SeatSlotMapper extends BaseMapper<SeatSlot> {
                    t.rotation_deg AS table_rotation_deg,
                    s.seat_label, s.seat_side, s.seat_order,
                    s.row_no, s.column_no, s.display_order,
-                   ss.area_id, ss.slot_date, ss.start_time, ss.end_time, ss.status,
+                   ss.area_id, a.name AS area_name, a.floor,
+                   ss.slot_date, ss.start_time, ss.end_time, ss.status,
                    ss.reserved_by, ss.reservation_id, ss.version, ss.created_at, ss.updated_at,
                    a.open_time, a.close_time
             FROM seat_slots ss

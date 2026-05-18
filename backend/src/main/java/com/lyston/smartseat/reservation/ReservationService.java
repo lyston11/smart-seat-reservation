@@ -74,15 +74,7 @@ public class ReservationService {
         }
 
         evictSlotCache(slot);
-        return new ReservationResponse(
-                reservation.getId(),
-                slot.getId(),
-                slot.getSeatId(),
-                reservation.getUserId(),
-                reservation.getStatus(),
-                reservation.getCheckinCode(),
-                reservation.getExpiresAt()
-        );
+        return ReservationResponse.from(reservation, slot);
     }
 
     @Transactional
@@ -427,6 +419,10 @@ public class ReservationService {
     }
 
     private ReservationResponse toResponse(Reservation reservation) {
-        return ReservationResponse.from(reservation);
+        SeatSlot slot = seatSlotMapper.findByIdWithLayout(reservation.getSeatSlotId());
+        if (slot == null) {
+            return ReservationResponse.from(reservation);
+        }
+        return ReservationResponse.from(reservation, slot);
     }
 }
