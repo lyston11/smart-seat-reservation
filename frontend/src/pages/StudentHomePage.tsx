@@ -2,13 +2,19 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, Empty, message, Space, Statistic, Tag, Typography } from 'antd';
 import { Link } from 'react-router-dom';
 import { getStoredUser } from '../api/http';
-import { getReservationRules, listUserReservations } from '../api/seatSlots';
+import { checkInReservation, checkOutReservation, getReservationRules, listUserReservations } from '../api/seatSlots';
 import type { ReservationResult, ReservationRule } from '../types/reservation';
 import {
+  canCheckInReservation,
+  canCheckOutReservation,
+  compareReservationsByStartTime,
   formatDateTime,
   formatReservationLocation,
   formatReservationTime,
+  formatTime,
+  getCheckinCountdown,
   isActiveReservation,
+  isTodayReservation,
   reservationStatusColor,
   reservationStatusText,
 } from '../utils/reservationDisplay';
@@ -17,6 +23,7 @@ export default function StudentHomePage() {
   const [reservations, setReservations] = useState<ReservationResult[]>([]);
   const [rules, setRules] = useState<ReservationRule | null>(null);
   const [loading, setLoading] = useState(false);
+  const [actionId, setActionId] = useState<number | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
   const user = getStoredUser();
 
@@ -42,6 +49,74 @@ export default function StudentHomePage() {
 
   const activeReservations = useMemo(() => reservations.filter(isActiveReservation), [reservations]);
   const latestReservations = useMemo(() => reservations.slice(0, 5), [reservations]);
+  const todayReservations = useMemo(
+    () => reservations.filter((reservation) => isTodayReservation(reservation)).sort(compareReservationsByStartTime),
+    [reservations],
+  );
+  const recentAreas = useMemo(() => {
+    const areaCounts = new Map<string, number>();
+    reservations.forEach((reservation) => {
+      if (!reservation.areaName) {
+        return;
+      }
+      const key = `${reservation.areaName}${reservation.floor ? ` · ${reservation.floor}` : ''}`;
+      areaCounts.set(key, (areaCounts.get(key) ?? 0) + 1);
+    });
+    return Array.from(areaCounts.entries())
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, 3);
+  }, [reservations]);
+
+  async function runQuickAction(reservation: ReservationResult, action: 'check-in' | 'check-out') {
+    setActionId(reservation.reservationId);
+    try {
+      if (action === 'check-in') {
+        await checkInReservation(reservation.reservationId, { checkinCode: reservation.checkinCode });
+      } else {
+        await checkOutReservation(reservation.reservationId);
+      }
+      messageApi.success('操作成功');
+      await loadHomeData();
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '操作失败');
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  function renderCountdown(reservation: ReservationResult) {
+    const countdown = getCheckinCountdown(reservation);
+    if (!countdown) {
+      return null;
+    }
+    return (
+      <Tag color={countdown.urgent ? 'red' : 'blue'} className="reservation-countdown-tag">
+        {countdown.text}
+      </Tag>
+    );
+  }
+
+  function renderQuickAction(reservation: ReservationResult) {
+    if (canCheckInReservation(reservation)) {
+      return (
+        <Button
+          type="primary"
+          loading={actionId === reservation.reservationId}
+          onClick={() => runQuickAction(reservation, 'check-in')}
+        >
+          快速签到
+        </Button>
+      );
+    }
+    if (canCheckOutReservation(reservation)) {
+      return (
+        <Button loading={actionId === reservation.reservationId} onClick={() => runQuickAction(reservation, 'check-out')}>
+          快速签退
+        </Button>
+      );
+    }
+    return null;
+  }
 
   return (
     <div className="page">
@@ -99,15 +174,69 @@ export default function StudentHomePage() {
                   <Typography.Text type="secondary">
                     签到码 {reservation.checkinCode} · 截止 {formatDateTime(reservation.expiresAt)}
                   </Typography.Text>
-                  <Button>
-                    <Link to="/student/reservations">处理预约</Link>
-                  </Button>
+                  <Space wrap>
+                    {renderCountdown(reservation)}
+                    {renderQuickAction(reservation)}
+                    <Button>
+                      <Link to="/student/reservations">处理预约</Link>
+                    </Button>
+                  </Space>
                 </Space>
               </Card>
             ))}
           </div>
         ) : (
           <Empty description="暂无活跃预约，可以先去选座" />
+        )}
+      </div>
+
+      <div className="student-section">
+        <div className="seat-map-section-header">
+          <strong>今日预约时间线</strong>
+          <span>按开始时间排序</span>
+        </div>
+        {todayReservations.length > 0 ? (
+          <div className="student-timeline">
+            {todayReservations.map((reservation) => (
+              <div className="student-timeline-item" key={reservation.reservationId}>
+                <div className="student-timeline-time">
+                  {formatTime(reservation.startTime)}
+                  <span>{formatTime(reservation.endTime)}</span>
+                </div>
+                <div className="student-timeline-content">
+                  <Space wrap>
+                    <Tag color={reservationStatusColor[reservation.status] ?? 'default'}>
+                      {reservationStatusText[reservation.status] ?? reservation.status}
+                    </Tag>
+                    {renderCountdown(reservation)}
+                  </Space>
+                  <Typography.Text strong>{formatReservationLocation(reservation)}</Typography.Text>
+                </div>
+                <div className="student-timeline-action">{renderQuickAction(reservation)}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Empty description="今天暂无预约" />
+        )}
+      </div>
+
+      <div className="student-section">
+        <div className="seat-map-section-header">
+          <strong>最近常用区域</strong>
+          <span>按预约次数统计</span>
+        </div>
+        {recentAreas.length > 0 ? (
+          <div className="student-area-list">
+            {recentAreas.map(([area, count]) => (
+              <div className="student-area-item" key={area}>
+                <Typography.Text strong>{area}</Typography.Text>
+                <Tag>{count} 次</Tag>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Empty description="暂无常用区域" />
         )}
       </div>
 

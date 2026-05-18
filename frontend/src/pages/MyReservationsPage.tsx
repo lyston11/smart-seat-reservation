@@ -1,23 +1,50 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Empty, Form, Input, message, Popconfirm, Space, Statistic, Table, Tag, Typography } from 'antd';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Button,
+  Card,
+  DatePicker,
+  Descriptions,
+  Empty,
+  Form,
+  Input,
+  message,
+  Modal,
+  Popconfirm,
+  Select,
+  Space,
+  Statistic,
+  Table,
+  Tag,
+  Typography,
+} from 'antd';
 import type { TableColumnsType } from 'antd';
+import dayjs from 'dayjs';
 import { cancelReservation, checkInReservation, checkOutReservation, listUserReservations } from '../api/seatSlots';
 import type { ReservationResult } from '../types/reservation';
 import {
   canCancelReservation,
   canCheckInReservation,
   canCheckOutReservation,
+  filterReservations,
+  formatDate,
   formatDateTime,
   formatReservationLocation,
   formatReservationTime,
+  formatTime,
+  getCheckinCountdown,
   isActiveReservation,
   reservationStatusColor,
+  reservationStatusFilterOptions,
   reservationStatusText,
+  type ReservationStatusFilter,
 } from '../utils/reservationDisplay';
 
 export default function MyReservationsPage() {
   const [reservations, setReservations] = useState<ReservationResult[]>([]);
   const [checkinCodes, setCheckinCodes] = useState<Record<number, string>>({});
+  const [statusFilter, setStatusFilter] = useState<ReservationStatusFilter>('ALL');
+  const [dateFilter, setDateFilter] = useState<string | null>(null);
+  const [detailReservation, setDetailReservation] = useState<ReservationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [actionId, setActionId] = useState<number | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
@@ -62,6 +89,9 @@ export default function MyReservationsPage() {
       }
       messageApi.success('操作成功');
       await loadReservations();
+      if (detailReservation?.reservationId === reservation.reservationId) {
+        setDetailReservation(null);
+      }
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '操作失败');
     } finally {
@@ -72,6 +102,59 @@ export default function MyReservationsPage() {
   const activeReservations = reservations.filter(isActiveReservation);
   const reservedCount = reservations.filter((reservation) => reservation.status === 'RESERVED').length;
   const checkedInCount = reservations.filter((reservation) => reservation.status === 'CHECKED_IN').length;
+  const filteredReservations = useMemo(
+    () => filterReservations(reservations, statusFilter, dateFilter),
+    [dateFilter, reservations, statusFilter],
+  );
+
+  function renderCountdown(reservation: ReservationResult) {
+    const countdown = getCheckinCountdown(reservation);
+    if (!countdown) {
+      return <Typography.Text type="secondary">-</Typography.Text>;
+    }
+    return (
+      <Tag color={countdown.urgent ? 'red' : 'blue'} className="reservation-countdown-tag">
+        {countdown.text}
+      </Tag>
+    );
+  }
+
+  function renderReservationActions(reservation: ReservationResult) {
+    return (
+      <Space wrap>
+        <Button
+          type="primary"
+          disabled={!canCheckInReservation(reservation)}
+          loading={actionId === reservation.reservationId}
+          onClick={() => runAction(reservation, 'check-in')}
+        >
+          签到
+        </Button>
+        <Button
+          disabled={!canCheckOutReservation(reservation)}
+          loading={actionId === reservation.reservationId}
+          onClick={() => runAction(reservation, 'check-out')}
+        >
+          签退
+        </Button>
+        <Popconfirm
+          title="取消预约"
+          description="取消后该座位会释放给其他同学。"
+          okText="取消预约"
+          cancelText="返回"
+          onConfirm={() => runAction(reservation, 'cancel')}
+        >
+          <Button
+            danger
+            disabled={!canCancelReservation(reservation)}
+            loading={actionId === reservation.reservationId}
+          >
+            取消
+          </Button>
+        </Popconfirm>
+      </Space>
+    );
+  }
 
   const columns: TableColumnsType<ReservationResult> = [
     { title: '预约 ID', dataIndex: 'reservationId', width: 110 },
@@ -95,6 +178,20 @@ export default function MyReservationsPage() {
     },
     { title: '签到码', dataIndex: 'checkinCode', ellipsis: true },
     { title: '签到截止', dataIndex: 'expiresAt', width: 180, render: (value) => formatDateTime(value) },
+    {
+      title: '倒计时',
+      width: 150,
+      render: (_, record) => renderCountdown(record),
+    },
+    {
+      title: '详情',
+      width: 120,
+      render: (_, record) => (
+        <Button size="small" onClick={() => setDetailReservation(record)}>
+          查看详情
+        </Button>
+      ),
+    },
   ];
 
   return (
@@ -102,6 +199,22 @@ export default function MyReservationsPage() {
       {contextHolder}
       <div className="toolbar">
         <Form layout="inline">
+          <Form.Item label="状态">
+            <Select
+              aria-label="状态筛选"
+              className="reservation-filter-select"
+              value={statusFilter}
+              options={reservationStatusFilterOptions}
+              onChange={setStatusFilter}
+            />
+          </Form.Item>
+          <Form.Item label="日期">
+            <DatePicker
+              allowClear
+              value={dateFilter ? dayjs(dateFilter) : null}
+              onChange={(value) => setDateFilter(value ? value.format('YYYY-MM-DD') : null)}
+            />
+          </Form.Item>
           <Form.Item>
             <Button type="primary" loading={loading} onClick={loadReservations}>
               刷新预约
@@ -140,6 +253,7 @@ export default function MyReservationsPage() {
                   </Space>
                   <Typography.Text>{formatReservationLocation(reservation)}</Typography.Text>
                   <Typography.Text type="secondary">{formatReservationTime(reservation)}</Typography.Text>
+                  <div className="reservation-countdown-row">{renderCountdown(reservation)}</div>
                   <div className="reservation-code-field">
                     <span>签到码</span>
                     <Input
@@ -153,41 +267,11 @@ export default function MyReservationsPage() {
                       }
                     />
                   </div>
-                  <Space wrap>
-                    <Button
-                      type="primary"
-                      disabled={!canCheckInReservation(reservation)}
-                      loading={actionId === reservation.reservationId}
-                      onClick={() => runAction(reservation, 'check-in')}
-                    >
-                      签到
-                    </Button>
-                    <Button
-                      disabled={!canCheckOutReservation(reservation)}
-                      loading={actionId === reservation.reservationId}
-                      onClick={() => runAction(reservation, 'check-out')}
-                    >
-                      签退
-                    </Button>
-                    <Popconfirm
-                      title="取消预约"
-                      description="取消后该座位会释放给其他同学。"
-                      okText="取消预约"
-                      cancelText="返回"
-                      onConfirm={() => runAction(reservation, 'cancel')}
-                    >
-                      <Button
-                        danger
-                        disabled={!canCancelReservation(reservation)}
-                        loading={actionId === reservation.reservationId}
-                      >
-                        取消
-                      </Button>
-                    </Popconfirm>
-                  </Space>
+                  {renderReservationActions(reservation)}
                   <Typography.Text type="secondary">
                     签到截止 {formatDateTime(reservation.expiresAt)}
                   </Typography.Text>
+                  <Button onClick={() => setDetailReservation(reservation)}>查看详情</Button>
                 </Space>
               </Card>
             ))}
@@ -200,10 +284,44 @@ export default function MyReservationsPage() {
       <Table
         rowKey="reservationId"
         loading={loading}
-        dataSource={reservations}
+        dataSource={filteredReservations}
         columns={columns}
         pagination={false}
       />
+
+      <Modal
+        title={detailReservation ? `预约 #${detailReservation.reservationId}` : '预约详情'}
+        open={Boolean(detailReservation)}
+        footer={detailReservation ? renderReservationActions(detailReservation) : null}
+        onCancel={() => setDetailReservation(null)}
+      >
+        {detailReservation ? (
+          <Space orientation="vertical" size={16} className="reservation-detail-stack">
+            <Descriptions column={1} size="small" bordered>
+              <Descriptions.Item label="状态">
+                <Tag color={reservationStatusColor[detailReservation.status] ?? 'default'}>
+                  {reservationStatusText[detailReservation.status] ?? detailReservation.status}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="区域">
+                {detailReservation.areaName ?? '-'}{detailReservation.floor ? ` · ${detailReservation.floor}` : ''}
+              </Descriptions.Item>
+              <Descriptions.Item label="桌号">{detailReservation.tableNo ?? '-'}</Descriptions.Item>
+              <Descriptions.Item label="座位">
+                {detailReservation.seatNo ?? `座位 ${detailReservation.seatId}`}
+                {detailReservation.seatLabel ? ` (${detailReservation.seatLabel})` : ''}
+              </Descriptions.Item>
+              <Descriptions.Item label="预约日期">{formatDate(detailReservation.slotDate)}</Descriptions.Item>
+              <Descriptions.Item label="预约时段">
+                {formatTime(detailReservation.startTime)}-{formatTime(detailReservation.endTime)}
+              </Descriptions.Item>
+              <Descriptions.Item label="签到码">{detailReservation.checkinCode}</Descriptions.Item>
+              <Descriptions.Item label="签到截止">{formatDateTime(detailReservation.expiresAt)}</Descriptions.Item>
+              <Descriptions.Item label="签到倒计时">{renderCountdown(detailReservation)}</Descriptions.Item>
+            </Descriptions>
+          </Space>
+        ) : null}
+      </Modal>
     </div>
   );
 }

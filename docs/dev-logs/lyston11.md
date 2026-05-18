@@ -5,6 +5,48 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 继续增强学生端预约管理能力，补齐筛选、详情、签到倒计时和首页快捷处理体验。
+
+### 本次改动
+- 我的预约页新增状态筛选和日期筛选，预约记录多起来后可以按待签到、使用中、已完成、已取消、已过期快速定位。
+- 我的预约页新增预约详情弹窗，集中展示区域、楼层、桌号、座位编号、预约日期、时间段、签到码和签到截止时间。
+- 预约详情弹窗和活跃预约卡片复用同一套签到、签退、取消操作入口，操作成功后自动刷新列表。
+- 待签到预约新增签到倒计时，剩余 5 分钟内自动红色高亮，已超时会显示超过签到截止。
+- 学生首页新增今日预约时间线，按开始时间排序展示当天预约，并提供快速签到/签退。
+- 学生首页新增最近常用区域统计，按预约次数展示常用学习区域。
+- 抽取并复用预约筛选、日期、倒计时、排序等展示工具，保持学生首页和我的预约页的状态文案一致。
+- 稳定前端测试环境中的 `ResizeObserver` mock，避免 Ant Design 下拉组件测试时被全局清理影响。
+
+### 涉及文件
+- frontend/src/pages/MyReservationsPage.tsx
+- frontend/src/pages/StudentHomePage.tsx
+- frontend/src/utils/reservationDisplay.ts
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- frontend/src/test/setup.ts
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 3 个测试文件、13 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 43 个测试通过。
+- 已运行 `git diff --check`，通过。
+- 已启动前端临时服务到 `5174` 端口做冒烟检查，未使用 `8080`；登录接口 `POST /api/auth/login` 返回成功。
+
+### 遗留问题
+- 学生端筛选目前在前端本地完成，后续预约记录量很大时可扩展为后端分页和服务端筛选。
+- 预约详情目前采用弹窗形态，后续如果要支持分享或扫码入口，可升级为独立详情路由。
+
+### 对其他成员的影响
+- 本次未新增后端接口和数据库字段，主要是前端体验增强。
+- 预约状态中文文案统一在 `reservationDisplay.ts` 维护，后续新增状态时需要同步筛选选项和颜色。
+
+## 2026-05-18
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
 - 目标: 继续增强学生端，让学生首页、选座、预约管理形成完整可演示闭环。
 
 ### 本次改动

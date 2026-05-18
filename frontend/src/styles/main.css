@@ -263,6 +263,10 @@ body {
   width: 420px;
 }
 
+.reservation-filter-select {
+  width: 160px;
+}
+
 .reservation-code-field {
   min-width: 0;
   display: grid;
@@ -360,6 +364,78 @@ body {
 
 .student-record-item .ant-typography {
   margin: 0;
+}
+
+.reservation-countdown-row {
+  min-height: 24px;
+}
+
+.reservation-countdown-tag {
+  margin-inline-end: 0;
+}
+
+.reservation-detail-stack {
+  width: 100%;
+}
+
+.student-timeline {
+  display: grid;
+  gap: 12px;
+}
+
+.student-timeline-item {
+  min-width: 0;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.student-timeline-time {
+  display: grid;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.student-timeline-time span {
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.student-timeline-content {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.student-timeline-action {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.student-area-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.student-area-item {
+  min-width: 0;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
 }
 
 .reservation-rules {
@@ -697,6 +773,7 @@ body {
   .toolbar .ant-btn,
   .table-checkin-panel .ant-btn,
   .audit-filter-select,
+  .reservation-filter-select,
   .area-select,
   .seat-select {
     width: 100%;
@@ -718,6 +795,7 @@ body {
   .stats-grid,
   .student-summary-grid,
   .student-card-grid,
+  .student-area-list,
   .usage-row,
   .rule-form-grid,
   .resource-layout-fields,
@@ -736,5 +814,14 @@ body {
 
   .seat-map-cell.ant-btn {
     height: 46px;
+  }
+
+  .student-timeline-item {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .student-timeline-action {
+    justify-content: flex-start;
   }
 }

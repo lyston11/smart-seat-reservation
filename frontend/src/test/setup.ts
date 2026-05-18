@@ -22,4 +22,8 @@ class ResizeObserverMock {
   disconnect() {}
 }
 
-vi.stubGlobal('ResizeObserver', ResizeObserverMock);
+Object.defineProperty(globalThis, 'ResizeObserver', {
+  configurable: true,
+  writable: true,
+  value: ResizeObserverMock,
+});

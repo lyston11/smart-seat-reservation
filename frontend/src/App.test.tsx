@@ -26,6 +26,24 @@ function makeReservation(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function storeStudentSession() {
+  window.localStorage.setItem('smart-seat-auth-token', 'test-token');
+  window.localStorage.setItem(
+    'smart-seat-auth-user',
+    JSON.stringify({ id: 1, name: 'Demo Student', studentNo: '20260001', role: 'STUDENT' }),
+  );
+}
+
+function toLocalDateTimeText(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const date = String(value.getDate()).padStart(2, '0');
+  const hours = String(value.getHours()).padStart(2, '0');
+  const minutes = String(value.getMinutes()).padStart(2, '0');
+  const seconds = String(value.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${date}T${hours}:${minutes}:${seconds}`;
+}
+
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
@@ -34,11 +52,7 @@ afterEach(() => {
 
 describe('App', () => {
   it('renders student seat page title', async () => {
-    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
-    window.localStorage.setItem(
-      'smart-seat-auth-user',
-      JSON.stringify({ id: 1, name: 'Demo Student', studentNo: '20260001', role: 'STUDENT' }),
-    );
+    storeStudentSession();
 
     vi.stubGlobal(
       'fetch',
@@ -57,11 +71,7 @@ describe('App', () => {
   });
 
   it('submits table QR check-in with token and check-in code', async () => {
-    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
-    window.localStorage.setItem(
-      'smart-seat-auth-user',
-      JSON.stringify({ id: 1, name: 'Demo Student', studentNo: '20260001', role: 'STUDENT' }),
-    );
+    storeStudentSession();
 
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -106,11 +116,7 @@ describe('App', () => {
   });
 
   it('restores checked-in reservation on student seat page so the student can check out', async () => {
-    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
-    window.localStorage.setItem(
-      'smart-seat-auth-user',
-      JSON.stringify({ id: 1, name: 'Demo Student', studentNo: '20260001', role: 'STUDENT' }),
-    );
+    storeStudentSession();
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -186,11 +192,7 @@ describe('App', () => {
   });
 
   it('submits a concrete seat reservation with the selected custom time range', async () => {
-    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
-    window.localStorage.setItem(
-      'smart-seat-auth-user',
-      JSON.stringify({ id: 1, name: 'Demo Student', studentNo: '20260001', role: 'STUDENT' }),
-    );
+    storeStudentSession();
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -340,11 +342,7 @@ describe('App', () => {
   });
 
   it('renders the student home dashboard with active reservation details', async () => {
-    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
-    window.localStorage.setItem(
-      'smart-seat-auth-user',
-      JSON.stringify({ id: 1, name: 'Demo Student', studentNo: '20260001', role: 'STUDENT' }),
-    );
+    storeStudentSession();
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -355,7 +353,21 @@ describe('App', () => {
             success: true,
             code: 'OK',
             message: 'ok',
-            data: [makeReservation()],
+            data: [
+              makeReservation(),
+              makeReservation({
+                reservationId: 8,
+                status: 'CHECKED_OUT',
+                areaName: 'B 区',
+                floor: '2F',
+                tableNo: 'T02',
+                seatNo: 'B-002',
+                seatLabel: '2号',
+                slotDate: '2026-05-18',
+                startTime: '14:00:00',
+                endTime: '16:00:00',
+              }),
+            ],
           }),
         };
       }
@@ -392,14 +404,13 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 3, name: '学生首页' })).toBeTruthy();
     expect((await screen.findAllByText('A 区 · 1F · T01 · A-001 (1号)')).length).toBeGreaterThan(0);
     expect(await screen.findByText('签到码 246810 · 截止 2026-05-18 10:00')).toBeTruthy();
+    expect(await screen.findByText('今日预约时间线')).toBeTruthy();
+    expect(await screen.findByText('最近常用区域')).toBeTruthy();
+    expect(await screen.findByText('A 区 · 1F')).toBeTruthy();
   });
 
   it('lets students check in from the reservation management page', async () => {
-    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
-    window.localStorage.setItem(
-      'smart-seat-auth-user',
-      JSON.stringify({ id: 1, name: 'Demo Student', studentNo: '20260001', role: 'STUDENT' }),
-    );
+    storeStudentSession();
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -449,6 +460,71 @@ describe('App', () => {
         expect.objectContaining({ method: 'POST' }),
       );
     });
+  });
+
+  it('filters reservations and opens the reservation detail dialog', async () => {
+    storeStudentSession();
+    const futureExpiresAt = toLocalDateTimeText(new Date(Date.now() + 12 * 60 * 1000));
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith('/api/reservations?')) {
+          return {
+            ok: true,
+            json: async () => ({
+              success: true,
+              code: 'OK',
+              message: 'ok',
+              data: [
+                makeReservation({ expiresAt: futureExpiresAt }),
+                makeReservation({
+                  reservationId: 8,
+                  status: 'CHECKED_OUT',
+                  areaName: 'B 区',
+                  floor: '2F',
+                  tableNo: 'T02',
+                  seatNo: 'B-002',
+                  seatLabel: '2号',
+                  slotDate: '2026-05-19',
+                }),
+              ],
+            }),
+          };
+        }
+        return {
+          ok: true,
+          json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+        };
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/student/reservations']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect((await screen.findAllByText('A 区 · 1F · T01 · A-001 (1号)')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('B 区 · 2F · T02 · B-002 (2号)')).length).toBeGreaterThan(0);
+
+    fireEvent.mouseDown(screen.getByLabelText('状态筛选'));
+    const reservedOptions = await screen.findAllByText('待签到');
+    fireEvent.click(reservedOptions[reservedOptions.length - 1]);
+
+    await waitFor(() => {
+      expect(screen.queryByText('B 区 · 2F · T02 · B-002 (2号)')).toBeNull();
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: '查看详情' })[0]);
+
+    await waitFor(() => {
+      expect(document.querySelector('.ant-modal-title')?.textContent).toBe('预约 #7');
+    });
+    expect(await screen.findByText('2026-05-18')).toBeTruthy();
+    expect(await screen.findByText('09:00-10:00')).toBeTruthy();
+    expect((await screen.findAllByText(/剩余 \d+ 分钟/)).length).toBeGreaterThan(0);
   });
 
   it('returns to table QR check-in path after login', async () => {
