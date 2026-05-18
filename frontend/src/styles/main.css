@@ -399,6 +399,25 @@ body {
   width: 100%;
 }
 
+.table-checkin-page {
+  max-width: 720px;
+}
+
+.table-checkin-panel {
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.table-checkin-stack {
+  width: 100%;
+}
+
+.table-checkin-title {
+  margin-top: 0 !important;
+}
+
 @media (max-width: 860px) {
   .app-shell {
     flex-direction: column;
@@ -443,6 +462,7 @@ body {
   .toolbar .ant-picker-range,
   .toolbar .ant-input-number,
   .toolbar .ant-btn,
+  .table-checkin-panel .ant-btn,
   .audit-filter-select,
   .area-select,
   .seat-select {
