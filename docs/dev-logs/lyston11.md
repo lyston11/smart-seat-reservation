@@ -4,6 +4,41 @@
 
 ### 任务
 - Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 在最新 `main` 基础上继续完善管理员桌位可视化维护能力，让桌子坐标、尺寸和旋转角度有直观预览。
+
+### 本次改动
+- 新增 `TableLayoutPreview` 组件，按桌子坐标、尺寸和旋转角度渲染区域桌位平面图。
+- 管理员桌子管理页新增“区域桌位平面图”，支持点击平面图中的桌子直接进入编辑。
+- 桌子新增/编辑弹窗增加实时预览，管理员修改 X/Y 坐标、桌面尺寸和旋转角度时可以即时看到布局变化。
+- 新增桌位平面图组件测试，覆盖坐标渲染、选中状态、停用桌子隐藏和点击选择。
+
+### 涉及文件
+- frontend/src/components/TableLayoutPreview.tsx
+- frontend/src/components/TableLayoutPreview.test.tsx
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端 3 个测试文件、10 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 43 个测试通过。
+- 已运行 `git diff --check`，通过。
+
+### 遗留问题
+- 当前仍是坐标输入 + 预览模式，后续可继续升级为拖拽式桌位编辑器。
+- 平面图暂不支持墙体、柱子、门窗自定义维护；比赛演示可以先用固定房间元素表达空间感。
+
+### 对其他成员的影响
+- 没有新增后端接口或数据库字段，复用已有 `tables.positionX / positionY / widthPx / heightPx / rotationDeg`。
+- 管理员维护桌位时建议同步维护真实坐标和尺寸，学生端选座平面图会复用这些数据。
+
+## 2026-05-18
+
+### 任务
+- Issue: 暂无
 - 分支: feature/codex-table-checkin-impl
 - 目标: 支持真实长桌坐标布局和学生自选预约起止时间。
 
