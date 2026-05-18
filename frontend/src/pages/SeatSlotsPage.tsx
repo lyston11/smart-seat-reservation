@@ -8,6 +8,7 @@ import {
   checkOutReservation,
   createReservation,
   getReservationRules,
+  listUserReservations,
   listSeatSlots,
 } from '../api/seatSlots';
 import SeatMap from '../components/SeatMap';
@@ -29,6 +30,14 @@ export default function SeatSlotsPage() {
 
   const dateText = useMemo(() => date.format('YYYY-MM-DD'), [date]);
   const activeAreas = useMemo(() => areas.filter((area) => area.status === 'ACTIVE'), [areas]);
+
+  function restoreActiveReservation(reservations: ReservationResult[]) {
+    const active = reservations.find((reservation) =>
+      reservation.status === 'RESERVED' || reservation.status === 'CHECKED_IN'
+    );
+    setActiveReservation(active ?? null);
+    setCheckinCode(active?.checkinCode ?? '');
+  }
 
   const loadAreas = useCallback(async () => {
     try {
@@ -62,6 +71,14 @@ export default function SeatSlotsPage() {
     }
   }, [messageApi]);
 
+  const loadActiveReservation = useCallback(async () => {
+    try {
+      restoreActiveReservation(await listUserReservations(10));
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '加载当前预约失败');
+    }
+  }, [messageApi]);
+
   async function reserve(slotId: number) {
     setReservingId(slotId);
     try {
@@ -92,7 +109,13 @@ export default function SeatSlotsPage() {
             ? await checkOutReservation(activeReservation.reservationId)
             : await cancelReservation(activeReservation.reservationId);
 
-      setActiveReservation(reservation);
+      if (reservation.status === 'RESERVED' || reservation.status === 'CHECKED_IN') {
+        setActiveReservation(reservation);
+        setCheckinCode(reservation.checkinCode);
+      } else {
+        setActiveReservation(null);
+        setCheckinCode('');
+      }
       messageApi.success('操作成功');
       await loadSlots();
     } catch (error) {
@@ -107,9 +130,10 @@ export default function SeatSlotsPage() {
       void loadAreas();
       void loadSlots();
       void loadRules();
+      void loadActiveReservation();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadAreas, loadSlots, loadRules]);
+  }, [loadActiveReservation, loadAreas, loadSlots, loadRules]);
 
   return (
     <div className="page">

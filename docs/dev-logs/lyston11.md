@@ -202,6 +202,41 @@
 ### 对其他成员的影响
 - 后续前端桌位 UI 应复用 `frontend/src/api/tables.ts` 和 `StudyTableQr`，不要从普通桌位列表中读取 `qrToken`。
 
+## 2026-05-18
+
+### 任务
+- Issue: 暂无
+- 分支: feature/codex-table-checkin-impl
+- 目标: 本地完整验收桌子固定二维码签到闭环，修复扫码签到后学生端无法继续签退的前端状态恢复缺口。
+
+### 本次改动
+- 安装并验证 Maven 后，使用 Docker Compose 启动 MySQL 8.4 和 Redis 7.4。
+- 启动后端和前端，完成管理员发布座位时段、学生选择 T01 桌具体座位、桌码签到、签退释放的本地联调。
+- 学生选座页加载最近预约，自动恢复 `RESERVED` / `CHECKED_IN` 活跃预约到顶部操作栏。
+- 签退或取消后清空顶部当前预约，避免已结束预约继续显示为可操作。
+- 新增前端测试，覆盖扫码签到后回到学生选座页仍能签退的场景。
+
+### 涉及文件
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/App.test.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `docker compose up -d`，`smart-seat-mysql` 和 `smart-seat-redis` 均为 healthy。
+- 已启动后端 `mvn spring-boot:run`，`GET /api/health` 返回 `UP`。
+- 已启动前端 `npm run dev -- --host 127.0.0.1`，`http://127.0.0.1:5173` 返回 200。
+- 已手动验收：学生预约 T01 桌 1 号座位，扫码访问 `/student/table-checkin?token=demo-area-1-table-t01` 输入签到码，预约变为 `CHECKED_IN`，座位时段变为 `USING`。
+- 已手动验收：回到学生选座页签退，预约变为 `CHECKED_OUT`，座位时段重新变为 `AVAILABLE`。
+- 已运行 `npm run test -- App.test.tsx`，前端路由相关测试 5 个通过。
+
+### 遗留问题
+- Vite / jsdom 验证中仍有 Ant Design `addonBefore` 废弃警告，可后续统一改为 `Space.Compact`。
+- Flyway 对 MySQL 8.4 提示版本高于其最新验证版本 8.1，目前迁移已成功，后续可视比赛或部署要求固定 MySQL 小版本。
+
+### 对其他成员的影响
+- 学生选座页现在会额外请求 `/api/reservations?limit=10` 用于恢复当前活跃预约。
+- 若后续新增预约状态，需要同步判断是否属于学生端可继续操作的活跃状态。
+
 ## 2026-05-13
 
 ### 任务
