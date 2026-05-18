@@ -8,6 +8,11 @@ export type CreateTablePayload = {
   rowNo?: number;
   columnNo?: number;
   displayOrder?: number;
+  positionX?: number;
+  positionY?: number;
+  widthPx?: number;
+  heightPx?: number;
+  rotationDeg?: number;
 };
 
 export type UpdateTablePayload = {
@@ -18,6 +23,11 @@ export type UpdateTablePayload = {
   rowNo?: number;
   columnNo?: number;
   displayOrder?: number;
+  positionX?: number;
+  positionY?: number;
+  widthPx?: number;
+  heightPx?: number;
+  rotationDeg?: number;
 };
 
 export function listTables(areaId: number) {

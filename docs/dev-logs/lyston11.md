@@ -3,6 +3,61 @@
 ## 2026-05-18
 
 ### 任务
+- Issue: 暂无
+- 分支: feature/codex-table-checkin-impl
+- 目标: 支持真实长桌坐标布局和学生自选预约起止时间。
+
+### 本次改动
+- `areas` 新增每日开放开始/结束时间，管理员区域管理页可维护 `openTime` 和 `closeTime`。
+- `tables` 新增平面图坐标、尺寸和旋转角字段，管理员桌子管理页可维护桌子位置和长方形桌面尺寸。
+- 学生选座页新增开始时间、结束时间输入，默认使用当前区域开放时段，可最长选择完整开放日。
+- 预约接口兼容原 `seatSlotId` 预约，并新增 `seatId + slotDate + startTime + endTime` 自选时段预约。
+- 后端会校验自选时段落在管理员发布的可用窗口和区域开放时间内，拒绝座位重叠活跃占用，并为成功预约创建或复用精确座位时段。
+- 签到过期时间改为基于 `slotDate + startTime + checkinGraceMinutes` 计算，避免未来预约刚创建就过早过期。
+- 学生端座位图优先使用桌子坐标渲染真实平面图，长桌支持上方两个座位、下方两个座位的布局。
+- V8 迁移为演示数据补充桌子坐标，并把 A 区四个演示座位调整为 `NORTH/NORTH/SOUTH/SOUTH`。
+- API 示例文档补充区域开放时间、桌子坐标字段和自选时间预约示例。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/area/
+- backend/src/main/java/com/lyston/smartseat/table/
+- backend/src/main/java/com/lyston/smartseat/seat/
+- backend/src/main/java/com/lyston/smartseat/reservation/
+- backend/src/main/resources/db/migration/V8__add_coordinate_layout_and_open_hours.sql
+- backend/src/test/java/com/lyston/smartseat/reservation/ReservationServiceTest.java
+- frontend/src/components/SeatMap.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/pages/AdminAreasPage.tsx
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/api/
+- frontend/src/types/seat.ts
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- frontend/src/components/SeatMap.test.tsx
+- docs/API_EXAMPLES.md
+- docs/plans/2026-05-18-layout-and-flexible-time-design.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dtest=ReservationServiceTest test`，预约服务 16 个测试通过。
+- 已运行 `mvn test`，后端 42 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端 2 个测试文件、9 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 桌子位置当前通过数字坐标维护，后续可继续做拖拽式平面图编辑器和批量导入。
+- 自选时间依赖管理员先发布覆盖该日期、座位和时间范围的可用窗口；后续如要完全按区域开放时间自动开放，可再加后台自动生成或虚拟窗口逻辑。
+
+### 对其他成员的影响
+- 座位时段响应新增 `tablePositionX`、`tablePositionY`、`tableWidthPx`、`tableHeightPx`、`tableRotationDeg`，前端座位图会优先使用这些字段。
+- 新增区域时建议设置 `openTime` / `closeTime`；不传时后端默认 `08:00:00` 到 `22:00:00`。
+- 新增桌子时建议维护坐标和尺寸；不传时后端默认 `80,80,220,96,0`。
+- 调整预约创建逻辑时要保留学生重叠预约、座位重叠预约、开放窗口和提前预约天数校验。
+
+## 2026-05-18
+
+### 任务
 - Issue: Task 9
 - 分支: feature/codex-table-checkin-impl
 - 目标: 补充桌子资源、桌码签到和具体桌位座位字段的 API 与架构文档。

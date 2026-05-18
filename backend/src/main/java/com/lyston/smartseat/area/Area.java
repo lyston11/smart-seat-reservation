@@ -3,6 +3,7 @@ package com.lyston.smartseat.area;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @TableName("areas")
 public class Area {
@@ -13,6 +14,8 @@ public class Area {
     private String floor;
     private String description;
     private String status;
+    private LocalTime openTime;
+    private LocalTime closeTime;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -54,6 +57,22 @@ public class Area {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public LocalTime getOpenTime() {
+        return openTime;
+    }
+
+    public void setOpenTime(LocalTime openTime) {
+        this.openTime = openTime;
+    }
+
+    public LocalTime getCloseTime() {
+        return closeTime;
+    }
+
+    public void setCloseTime(LocalTime closeTime) {
+        this.closeTime = closeTime;
     }
 
     public LocalDateTime getCreatedAt() {

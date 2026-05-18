@@ -8,7 +8,12 @@ public record StudyTableResponse(
         String status,
         Integer rowNo,
         Integer columnNo,
-        Integer displayOrder
+        Integer displayOrder,
+        Integer positionX,
+        Integer positionY,
+        Integer widthPx,
+        Integer heightPx,
+        Integer rotationDeg
 ) {
 
     public static StudyTableResponse from(StudyTable table) {
@@ -20,7 +25,12 @@ public record StudyTableResponse(
                 table.getStatus(),
                 table.getRowNo(),
                 table.getColumnNo(),
-                table.getDisplayOrder()
+                table.getDisplayOrder(),
+                table.getPositionX(),
+                table.getPositionY(),
+                table.getWidthPx(),
+                table.getHeightPx(),
+                table.getRotationDeg()
         );
     }
 }

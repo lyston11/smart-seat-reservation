@@ -26,6 +26,11 @@ type TableFormValues = {
   rowNo?: number;
   columnNo?: number;
   displayOrder?: number;
+  positionX?: number;
+  positionY?: number;
+  widthPx?: number;
+  heightPx?: number;
+  rotationDeg?: number;
   status: StudyTableStatus;
 };
 
@@ -95,6 +100,11 @@ export default function AdminTablesPage() {
       rowNo: undefined,
       columnNo: undefined,
       displayOrder: undefined,
+      positionX: 80,
+      positionY: 80,
+      widthPx: 260,
+      heightPx: 96,
+      rotationDeg: 0,
       status: 'ACTIVE',
     });
     setModalOpen(true);
@@ -109,6 +119,11 @@ export default function AdminTablesPage() {
       rowNo: table.rowNo ?? undefined,
       columnNo: table.columnNo ?? undefined,
       displayOrder: table.displayOrder ?? undefined,
+      positionX: table.positionX ?? 80,
+      positionY: table.positionY ?? 80,
+      widthPx: table.widthPx ?? 260,
+      heightPx: table.heightPx ?? 96,
+      rotationDeg: table.rotationDeg ?? 0,
       status: table.status,
     });
     setModalOpen(true);
@@ -129,6 +144,11 @@ export default function AdminTablesPage() {
           rowNo: values.rowNo,
           columnNo: values.columnNo,
           displayOrder: values.displayOrder,
+          positionX: values.positionX,
+          positionY: values.positionY,
+          widthPx: values.widthPx,
+          heightPx: values.heightPx,
+          rotationDeg: values.rotationDeg,
         });
         messageApi.success('桌子已新增');
       }
@@ -199,6 +219,16 @@ export default function AdminTablesPage() {
       width: 160,
       render: (_, record) =>
         record.rowNo && record.columnNo ? `第 ${record.rowNo} 排 / 第 ${record.columnNo} 列` : '-',
+    },
+    {
+      title: '平面坐标',
+      width: 180,
+      render: (_, record) => `x ${record.positionX ?? 80}, y ${record.positionY ?? 80}`,
+    },
+    {
+      title: '桌面尺寸',
+      width: 150,
+      render: (_, record) => `${record.widthPx ?? 260} × ${record.heightPx ?? 96}`,
     },
     { title: '展示顺序', dataIndex: 'displayOrder', width: 120, render: (value) => value ?? '-' },
     {
@@ -316,6 +346,25 @@ export default function AdminTablesPage() {
             </Form.Item>
             <Form.Item label="展示顺序" name="displayOrder">
               <InputNumber min={1} precision={0} placeholder="自动" />
+            </Form.Item>
+          </div>
+          <div className="resource-layout-fields">
+            <Form.Item label="X 坐标" name="positionX">
+              <InputNumber min={0} precision={0} placeholder="80" />
+            </Form.Item>
+            <Form.Item label="Y 坐标" name="positionY">
+              <InputNumber min={0} precision={0} placeholder="80" />
+            </Form.Item>
+            <Form.Item label="旋转角度" name="rotationDeg">
+              <InputNumber precision={0} placeholder="0" />
+            </Form.Item>
+          </div>
+          <div className="resource-layout-fields">
+            <Form.Item label="桌宽 px" name="widthPx">
+              <InputNumber min={80} precision={0} placeholder="260" />
+            </Form.Item>
+            <Form.Item label="桌高 px" name="heightPx">
+              <InputNumber min={48} precision={0} placeholder="96" />
             </Form.Item>
           </div>
           {editingTable ? (

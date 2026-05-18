@@ -26,6 +26,16 @@ public class SeatSlot {
     @TableField(exist = false)
     private Integer tableDisplayOrder;
     @TableField(exist = false)
+    private Integer tablePositionX;
+    @TableField(exist = false)
+    private Integer tablePositionY;
+    @TableField(exist = false)
+    private Integer tableWidthPx;
+    @TableField(exist = false)
+    private Integer tableHeightPx;
+    @TableField(exist = false)
+    private Integer tableRotationDeg;
+    @TableField(exist = false)
     private String seatLabel;
     @TableField(exist = false)
     private String seatSide;
@@ -110,6 +120,46 @@ public class SeatSlot {
 
     public void setTableDisplayOrder(Integer tableDisplayOrder) {
         this.tableDisplayOrder = tableDisplayOrder;
+    }
+
+    public Integer getTablePositionX() {
+        return tablePositionX;
+    }
+
+    public void setTablePositionX(Integer tablePositionX) {
+        this.tablePositionX = tablePositionX;
+    }
+
+    public Integer getTablePositionY() {
+        return tablePositionY;
+    }
+
+    public void setTablePositionY(Integer tablePositionY) {
+        this.tablePositionY = tablePositionY;
+    }
+
+    public Integer getTableWidthPx() {
+        return tableWidthPx;
+    }
+
+    public void setTableWidthPx(Integer tableWidthPx) {
+        this.tableWidthPx = tableWidthPx;
+    }
+
+    public Integer getTableHeightPx() {
+        return tableHeightPx;
+    }
+
+    public void setTableHeightPx(Integer tableHeightPx) {
+        this.tableHeightPx = tableHeightPx;
+    }
+
+    public Integer getTableRotationDeg() {
+        return tableRotationDeg;
+    }
+
+    public void setTableRotationDeg(Integer tableRotationDeg) {
+        this.tableRotationDeg = tableRotationDeg;
     }
 
     public String getSeatLabel() {

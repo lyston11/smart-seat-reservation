@@ -17,6 +17,11 @@ public class StudyTable {
     private Integer rowNo;
     private Integer columnNo;
     private Integer displayOrder;
+    private Integer positionX;
+    private Integer positionY;
+    private Integer widthPx;
+    private Integer heightPx;
+    private Integer rotationDeg;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -90,6 +95,46 @@ public class StudyTable {
 
     public void setDisplayOrder(Integer displayOrder) {
         this.displayOrder = displayOrder;
+    }
+
+    public Integer getPositionX() {
+        return positionX;
+    }
+
+    public void setPositionX(Integer positionX) {
+        this.positionX = positionX;
+    }
+
+    public Integer getPositionY() {
+        return positionY;
+    }
+
+    public void setPositionY(Integer positionY) {
+        this.positionY = positionY;
+    }
+
+    public Integer getWidthPx() {
+        return widthPx;
+    }
+
+    public void setWidthPx(Integer widthPx) {
+        this.widthPx = widthPx;
+    }
+
+    public Integer getHeightPx() {
+        return heightPx;
+    }
+
+    public void setHeightPx(Integer heightPx) {
+        this.heightPx = heightPx;
+    }
+
+    public Integer getRotationDeg() {
+        return rotationDeg;
+    }
+
+    public void setRotationDeg(Integer rotationDeg) {
+        this.rotationDeg = rotationDeg;
     }
 
     public LocalDateTime getCreatedAt() {

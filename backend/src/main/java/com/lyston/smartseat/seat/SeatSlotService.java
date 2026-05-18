@@ -142,6 +142,11 @@ public class SeatSlotService {
         slot.setTableRowNo(table.getRowNo());
         slot.setTableColumnNo(table.getColumnNo());
         slot.setTableDisplayOrder(table.getDisplayOrder());
+        slot.setTablePositionX(table.getPositionX());
+        slot.setTablePositionY(table.getPositionY());
+        slot.setTableWidthPx(table.getWidthPx());
+        slot.setTableHeightPx(table.getHeightPx());
+        slot.setTableRotationDeg(table.getRotationDeg());
         slot.setSeatLabel(seat.getSeatLabel());
         slot.setSeatSide(seat.getSeatSide());
         slot.setSeatOrder(seat.getSeatOrder());

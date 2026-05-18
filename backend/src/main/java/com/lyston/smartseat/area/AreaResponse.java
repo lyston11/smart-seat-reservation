@@ -1,11 +1,15 @@
 package com.lyston.smartseat.area;
 
+import java.time.LocalTime;
+
 public record AreaResponse(
         Long id,
         String name,
         String floor,
         String description,
-        String status
+        String status,
+        LocalTime openTime,
+        LocalTime closeTime
 ) {
 
     public static AreaResponse from(Area area) {
@@ -14,7 +18,9 @@ public record AreaResponse(
                 area.getName(),
                 area.getFloor(),
                 area.getDescription(),
-                area.getStatus()
+                area.getStatus(),
+                area.getOpenTime(),
+                area.getCloseTime()
         );
     }
 }

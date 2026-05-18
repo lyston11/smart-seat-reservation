@@ -6,12 +6,16 @@ import com.lyston.smartseat.common.BusinessException;
 import com.lyston.smartseat.seat.SeatMapper;
 import com.lyston.smartseat.seat.SeatSlotMapper;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AreaService {
+
+    private static final LocalTime DEFAULT_OPEN_TIME = LocalTime.of(8, 0);
+    private static final LocalTime DEFAULT_CLOSE_TIME = LocalTime.of(22, 0);
 
     private final AreaMapper areaMapper;
     private final SeatMapper seatMapper;
@@ -48,6 +52,9 @@ public class AreaService {
         area.setFloor(normalizeNullable(request.floor()));
         area.setDescription(normalizeNullable(request.description()));
         area.setStatus(AreaStatus.ACTIVE);
+        area.setOpenTime(resolveOpenTime(request.openTime()));
+        area.setCloseTime(resolveCloseTime(request.closeTime()));
+        ensureOpeningWindow(area.getOpenTime(), area.getCloseTime());
         area.setCreatedAt(now);
         area.setUpdatedAt(now);
         areaMapper.insert(area);
@@ -68,6 +75,9 @@ public class AreaService {
         area.setFloor(normalizeNullable(request.floor()));
         area.setDescription(normalizeNullable(request.description()));
         area.setStatus(status);
+        area.setOpenTime(resolveOpenTime(request.openTime()));
+        area.setCloseTime(resolveCloseTime(request.closeTime()));
+        ensureOpeningWindow(area.getOpenTime(), area.getCloseTime());
         area.setUpdatedAt(LocalDateTime.now());
         areaMapper.updateById(area);
         auditService.record(actorUserId, AuditAction.AREA_UPDATE, "AREA", area.getId(), "update area");
@@ -104,6 +114,20 @@ public class AreaService {
             throw new BusinessException("INVALID_AREA_STATUS", "Area status is invalid");
         }
         return normalizedStatus;
+    }
+
+    private LocalTime resolveOpenTime(LocalTime openTime) {
+        return openTime == null ? DEFAULT_OPEN_TIME : openTime;
+    }
+
+    private LocalTime resolveCloseTime(LocalTime closeTime) {
+        return closeTime == null ? DEFAULT_CLOSE_TIME : closeTime;
+    }
+
+    private void ensureOpeningWindow(LocalTime openTime, LocalTime closeTime) {
+        if (!openTime.isBefore(closeTime)) {
+            throw new BusinessException("INVALID_AREA_OPENING_WINDOW", "Area open time must be before close time");
+        }
     }
 
     private Area requireArea(Long areaId) {

@@ -8,7 +8,7 @@ import org.apache.ibatis.annotations.Select;
 public interface AreaMapper extends BaseMapper<Area> {
 
     @Select("""
-            SELECT id, name, floor, description, status, created_at, updated_at
+            SELECT id, name, floor, description, status, open_time, close_time, created_at, updated_at
             FROM areas
             ORDER BY id
             """)

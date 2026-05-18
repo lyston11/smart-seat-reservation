@@ -4,6 +4,8 @@ export type Area = {
   floor: string | null;
   description: string | null;
   status: AreaStatus;
+  openTime: string;
+  closeTime: string;
 };
 
 export type AreaStatus = 'ACTIVE' | 'INACTIVE';
@@ -36,6 +38,11 @@ export type StudyTable = {
   rowNo: number | null;
   columnNo: number | null;
   displayOrder: number | null;
+  positionX: number;
+  positionY: number;
+  widthPx: number;
+  heightPx: number;
+  rotationDeg: number;
 };
 
 export type StudyTableQr = {
@@ -56,6 +63,11 @@ export type SeatSlot = {
   tableRowNo: number | null;
   tableColumnNo: number | null;
   tableDisplayOrder: number | null;
+  tablePositionX: number | null;
+  tablePositionY: number | null;
+  tableWidthPx: number | null;
+  tableHeightPx: number | null;
+  tableRotationDeg: number | null;
   seatLabel: string | null;
   seatSide: string | null;
   seatOrder: number | null;

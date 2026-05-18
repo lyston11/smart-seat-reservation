@@ -56,10 +56,11 @@ curl "http://localhost:18080/api/seat-slots?areaId=1&date=2026-05-14" \
 
 ```text
 tableId / tableNo / tableRowNo / tableColumnNo / tableDisplayOrder
+tablePositionX / tablePositionY / tableWidthPx / tableHeightPx / tableRotationDeg
 seatLabel / seatSide / seatOrder
 ```
 
-前端会按时间段和桌子分组展示座位，并根据 `seatSide` 将具体座位渲染在桌子的上、右、下、左或单人位区域。
+前端会按学生当前选择的开始/结束时间展示座位状态，并优先使用桌子坐标字段渲染真实平面图。长方形桌子建议使用 `NORTH` 两个座位和 `SOUTH` 两个座位表达“上方两个、下方两个”的常见四人桌布局。
 
 管理员按模板批量发布开放时段：
 
@@ -162,7 +163,9 @@ curl -X POST http://localhost:18080/api/areas \
   -d '{
     "name": "图书馆二楼 C 区",
     "floor": "2F",
-    "description": "安静学习区"
+    "description": "安静学习区",
+    "openTime": "08:00:00",
+    "closeTime": "22:00:00"
   }'
 ```
 
@@ -176,7 +179,9 @@ curl -X PUT http://localhost:18080/api/areas/1 \
     "name": "Library Area A",
     "floor": "1F",
     "description": "Demo public study area",
-    "status": "ACTIVE"
+    "status": "ACTIVE",
+    "openTime": "08:00:00",
+    "closeTime": "22:00:00"
   }'
 ```
 
@@ -212,7 +217,12 @@ curl -X POST http://localhost:18080/api/tables \
     "name": "图书馆一楼 A 区 T02",
     "rowNo": 1,
     "columnNo": 2,
-    "displayOrder": 2
+    "displayOrder": 2,
+    "positionX": 340,
+    "positionY": 80,
+    "widthPx": 260,
+    "heightPx": 96,
+    "rotationDeg": 0
   }'
 ```
 
@@ -229,7 +239,12 @@ curl -X PUT http://localhost:18080/api/tables/1 \
     "status": "ACTIVE",
     "rowNo": 1,
     "columnNo": 1,
-    "displayOrder": 1
+    "displayOrder": 1,
+    "positionX": 80,
+    "positionY": 80,
+    "widthPx": 260,
+    "heightPx": 96,
+    "rotationDeg": 0
   }'
 ```
 
@@ -323,7 +338,7 @@ curl -X PATCH http://localhost:18080/api/seats/1/status \
 
 区域、桌子和座位都采用逻辑停用，不做物理删除，避免破坏历史预约记录。
 
-桌子资源的 `rowNo`、`columnNo` 和 `displayOrder` 用于控制桌子在区域平面图中的位置。座位资源的 `seatLabel`、`seatSide` 和 `seatOrder` 用于控制具体座位在桌子周围的显示位置，`seatSide` 可选值为 `NORTH`、`EAST`、`SOUTH`、`WEST`、`SINGLE`。历史数据会通过迁移自动补一个演示布局。
+区域资源的 `openTime` 和 `closeTime` 控制学生可预约的每日起止时间。桌子资源的 `positionX`、`positionY`、`widthPx`、`heightPx` 和 `rotationDeg` 用于控制真实平面图坐标；`rowNo`、`columnNo` 和 `displayOrder` 保留为排序和旧布局兜底。座位资源的 `seatLabel`、`seatSide` 和 `seatOrder` 用于控制具体座位在桌子周围的显示位置，`seatSide` 可选值为 `NORTH`、`EAST`、`SOUTH`、`WEST`、`SINGLE`。历史数据会通过迁移自动补一个演示布局。
 
 ## 5. 创建预约
 
@@ -357,6 +372,20 @@ curl -X POST http://localhost:18080/api/reservations \
   -H "X-Auth-Token: 替换为学生 token" \
   -d '{
     "seatSlotId": 1
+  }'
+```
+
+学生自选具体座位和时间段时，也可以直接提交 `seatId`、日期和起止时间。后端会校验所选时间是否落在区域开放时间内、是否有管理员发布的可用窗口覆盖、座位是否存在重叠活跃占用，并在成功后创建一条精确 `seat_slots` 记录用于后续签到、签退和管理员释放：
+
+```bash
+curl -X POST http://localhost:18080/api/reservations \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: 替换为学生 token" \
+  -d '{
+    "seatId": 1,
+    "slotDate": "2026-05-19",
+    "startTime": "09:30:00",
+    "endTime": "17:30:00"
   }'
 ```
 
@@ -464,7 +493,7 @@ curl "http://localhost:18080/api/admin/dashboard?date=2026-05-14" \
 - 登录、退出和当前用户识别。
 - 查询座位时段。
 - 动态展示预约规则。
-- 创建预约。
+- 按日期、开始时间、结束时间和具体座位创建预约。
 - 查询我的预约。
 - 显示预约返回的签到码。
 - 使用签到码签到。
@@ -475,7 +504,8 @@ curl "http://localhost:18080/api/admin/dashboard?date=2026-05-14" \
 当前前端管理端已经接入：
 
 - 区域管理页新增、编辑、停用、启用区域。
-- 桌子管理页按区域维护桌子，查看并复制固定桌码签到链接。
+- 区域管理页维护学生可预约的每日开放开始/结束时间。
+- 桌子管理页按区域维护桌子坐标、尺寸和旋转角度，查看并复制固定桌码签到链接。
 - 座位管理页查询区域座位。
 - 座位管理页新增、编辑、停用、启用座位资源，并维护所属桌子、桌上标签、桌边方位和同侧顺序。
 - 开放时段页按区域、座位、日期和多个时间段模板批量发布可预约资源。

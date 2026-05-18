@@ -11,6 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class StudyTableService {
 
+    private static final int DEFAULT_POSITION_X = 80;
+    private static final int DEFAULT_POSITION_Y = 80;
+    private static final int DEFAULT_WIDTH_PX = 220;
+    private static final int DEFAULT_HEIGHT_PX = 96;
+    private static final int DEFAULT_ROTATION_DEG = 0;
+
     private final AreaMapper areaMapper;
     private final StudyTableMapper studyTableMapper;
 
@@ -43,6 +49,11 @@ public class StudyTableService {
         table.setRowNo(request.rowNo());
         table.setColumnNo(request.columnNo());
         table.setDisplayOrder(resolveDisplayOrder(request.displayOrder(), areaId));
+        table.setPositionX(resolveLayoutValue(request.positionX(), DEFAULT_POSITION_X));
+        table.setPositionY(resolveLayoutValue(request.positionY(), DEFAULT_POSITION_Y));
+        table.setWidthPx(resolveLayoutValue(request.widthPx(), DEFAULT_WIDTH_PX));
+        table.setHeightPx(resolveLayoutValue(request.heightPx(), DEFAULT_HEIGHT_PX));
+        table.setRotationDeg(resolveLayoutValue(request.rotationDeg(), DEFAULT_ROTATION_DEG));
         table.setCreatedAt(now);
         table.setUpdatedAt(now);
         studyTableMapper.insert(table);
@@ -69,6 +80,11 @@ public class StudyTableService {
         table.setRowNo(request.rowNo() == null ? table.getRowNo() : request.rowNo());
         table.setColumnNo(request.columnNo() == null ? table.getColumnNo() : request.columnNo());
         table.setDisplayOrder(request.displayOrder() == null ? table.getDisplayOrder() : request.displayOrder());
+        table.setPositionX(request.positionX() == null ? table.getPositionX() : request.positionX());
+        table.setPositionY(request.positionY() == null ? table.getPositionY() : request.positionY());
+        table.setWidthPx(request.widthPx() == null ? table.getWidthPx() : request.widthPx());
+        table.setHeightPx(request.heightPx() == null ? table.getHeightPx() : request.heightPx());
+        table.setRotationDeg(request.rotationDeg() == null ? table.getRotationDeg() : request.rotationDeg());
         table.setUpdatedAt(LocalDateTime.now());
         studyTableMapper.updateById(table);
 
@@ -116,6 +132,10 @@ public class StudyTableService {
             return displayOrder;
         }
         return studyTableMapper.countByAreaId(areaId) + 1;
+    }
+
+    private Integer resolveLayoutValue(Integer value, int fallback) {
+        return value == null ? fallback : value;
     }
 
     private String generateQrToken() {

@@ -11,6 +11,22 @@ public record CreateStudyTableRequest(
         @Size(max = 64) String name,
         @Min(1) Integer rowNo,
         @Min(1) Integer columnNo,
-        @Min(1) Integer displayOrder
+        @Min(1) Integer displayOrder,
+        @Min(0) Integer positionX,
+        @Min(0) Integer positionY,
+        @Min(80) Integer widthPx,
+        @Min(48) Integer heightPx,
+        Integer rotationDeg
 ) {
+
+    public CreateStudyTableRequest(
+            Long areaId,
+            String tableNo,
+            String name,
+            Integer rowNo,
+            Integer columnNo,
+            Integer displayOrder
+    ) {
+        this(areaId, tableNo, name, rowNo, columnNo, displayOrder, null, null, null, null, null);
+    }
 }

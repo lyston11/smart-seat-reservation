@@ -15,6 +15,11 @@ function makeSlot(overrides: Partial<SeatSlot>): SeatSlot {
     tableDisplayOrder: Object.hasOwn(overrides, 'tableDisplayOrder')
       ? (overrides.tableDisplayOrder as number | null)
       : 1,
+    tablePositionX: overrides.tablePositionX ?? null,
+    tablePositionY: overrides.tablePositionY ?? null,
+    tableWidthPx: overrides.tableWidthPx ?? null,
+    tableHeightPx: overrides.tableHeightPx ?? null,
+    tableRotationDeg: overrides.tableRotationDeg ?? null,
     seatLabel: overrides.seatLabel ?? null,
     seatSide: overrides.seatSide ?? 'SINGLE',
     seatOrder: overrides.seatOrder ?? 1,
@@ -111,7 +116,79 @@ describe('SeatMap', () => {
     fireEvent.click(reservedSeat);
 
     expect(onReserve).toHaveBeenCalledTimes(1);
-    expect(onReserve).toHaveBeenCalledWith(11);
+    expect(onReserve).toHaveBeenCalledWith(expect.objectContaining({ id: 11, seatId: 11 }));
+  });
+
+  it('renders coordinate tables as long desks with two seats above and two below', () => {
+    const onReserve = vi.fn();
+    render(
+      <SeatMap
+        slots={[
+          makeSlot({
+            id: 1,
+            seatId: 1,
+            seatNo: 'A-001',
+            tableNo: 'T01',
+            tablePositionX: 120,
+            tablePositionY: 80,
+            tableWidthPx: 260,
+            tableHeightPx: 96,
+            seatLabel: '1号',
+            seatSide: 'NORTH',
+            seatOrder: 1,
+          }),
+          makeSlot({
+            id: 2,
+            seatId: 2,
+            seatNo: 'A-002',
+            tableNo: 'T01',
+            tablePositionX: 120,
+            tablePositionY: 80,
+            tableWidthPx: 260,
+            tableHeightPx: 96,
+            seatLabel: '2号',
+            seatSide: 'NORTH',
+            seatOrder: 2,
+          }),
+          makeSlot({
+            id: 3,
+            seatId: 3,
+            seatNo: 'A-003',
+            tableNo: 'T01',
+            tablePositionX: 120,
+            tablePositionY: 80,
+            tableWidthPx: 260,
+            tableHeightPx: 96,
+            seatLabel: '3号',
+            seatSide: 'SOUTH',
+            seatOrder: 1,
+          }),
+          makeSlot({
+            id: 4,
+            seatId: 4,
+            seatNo: 'A-004',
+            tableNo: 'T01',
+            tablePositionX: 120,
+            tablePositionY: 80,
+            tableWidthPx: 260,
+            tableHeightPx: 96,
+            seatLabel: '4号',
+            seatSide: 'SOUTH',
+            seatOrder: 2,
+          }),
+        ]}
+        onReserve={onReserve}
+      />,
+    );
+
+    const table = screen.getByLabelText('T01');
+    expect(table.className).toContain('seat-table-positioned');
+    expect((table as HTMLElement).style.left).toBe('120px');
+    expect((table as HTMLElement).style.top).toBe('80px');
+    expect(within(table).getByText('1号')).toBeTruthy();
+    expect(within(table).getByText('2号')).toBeTruthy();
+    expect(within(table).getByText('3号')).toBeTruthy();
+    expect(within(table).getByText('4号')).toBeTruthy();
   });
 
   it('renders a fallback table label for legacy seats without table data', () => {

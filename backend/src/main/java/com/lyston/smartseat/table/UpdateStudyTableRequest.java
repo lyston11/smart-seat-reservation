@@ -12,6 +12,23 @@ public record UpdateStudyTableRequest(
         @NotBlank @Size(max = 32) String status,
         @Min(1) Integer rowNo,
         @Min(1) Integer columnNo,
-        @Min(1) Integer displayOrder
+        @Min(1) Integer displayOrder,
+        @Min(0) Integer positionX,
+        @Min(0) Integer positionY,
+        @Min(80) Integer widthPx,
+        @Min(48) Integer heightPx,
+        Integer rotationDeg
 ) {
+
+    public UpdateStudyTableRequest(
+            Long areaId,
+            String tableNo,
+            String name,
+            String status,
+            Integer rowNo,
+            Integer columnNo,
+            Integer displayOrder
+    ) {
+        this(areaId, tableNo, name, status, rowNo, columnNo, displayOrder, null, null, null, null, null);
+    }
 }

@@ -7,7 +7,7 @@ type SeatMapProps = {
   slots: SeatSlot[];
   loading?: boolean;
   loadingSlotId?: number | null;
-  onReserve: (slotId: number) => void;
+  onReserve: (slot: SeatSlot) => void;
 };
 
 type SeatSide = 'NORTH' | 'EAST' | 'SOUTH' | 'WEST' | 'SINGLE';
@@ -19,6 +19,11 @@ type TableGroup = {
   rowNo: number | null;
   columnNo: number | null;
   displayOrder: number | null;
+  positionX: number | null;
+  positionY: number | null;
+  widthPx: number | null;
+  heightPx: number | null;
+  rotationDeg: number | null;
   seats: SeatSlot[];
 };
 
@@ -112,6 +117,14 @@ function bySeatPosition(left: SeatSlot, right: SeatSlot) {
 }
 
 function byTablePosition(left: TableGroup, right: TableGroup) {
+  const yCompare = (left.positionY ?? Number.MAX_SAFE_INTEGER) - (right.positionY ?? Number.MAX_SAFE_INTEGER);
+  if (yCompare !== 0) {
+    return yCompare;
+  }
+  const xCompare = (left.positionX ?? Number.MAX_SAFE_INTEGER) - (right.positionX ?? Number.MAX_SAFE_INTEGER);
+  if (xCompare !== 0) {
+    return xCompare;
+  }
   const displayCompare = (left.displayOrder ?? Number.MAX_SAFE_INTEGER) - (right.displayOrder ?? Number.MAX_SAFE_INTEGER);
   if (displayCompare !== 0) {
     return displayCompare;
@@ -141,6 +154,11 @@ function groupSlots(slots: SeatSlot[]): TimeGroup[] {
       rowNo: slot.tableRowNo,
       columnNo: slot.tableColumnNo,
       displayOrder: slot.tableDisplayOrder,
+      positionX: slot.tablePositionX,
+      positionY: slot.tablePositionY,
+      widthPx: slot.tableWidthPx,
+      heightPx: slot.tableHeightPx,
+      rotationDeg: slot.tableRotationDeg,
       seats: [],
     };
 
@@ -159,7 +177,27 @@ function groupSlots(slots: SeatSlot[]): TimeGroup[] {
   });
 }
 
+function hasCoordinateLayout(tables: TableGroup[]) {
+  return tables.some((table) => table.positionX !== null && table.positionY !== null);
+}
+
+function getCoordinateRoomStyle(tables: TableGroup[]): CSSProperties {
+  const positionedTables = tables.filter((table) => table.positionX !== null && table.positionY !== null);
+  if (positionedTables.length === 0) {
+    return {};
+  }
+  const maxRight = Math.max(...positionedTables.map((table) => (table.positionX ?? 0) + (table.widthPx ?? 220)));
+  const maxBottom = Math.max(...positionedTables.map((table) => (table.positionY ?? 0) + (table.heightPx ?? 96) + 92));
+  return {
+    minWidth: Math.max(maxRight + 96, 640),
+    minHeight: Math.max(maxBottom + 64, 360),
+  };
+}
+
 function getLayoutStyle(tables: TableGroup[]): CSSProperties {
+  if (hasCoordinateLayout(tables)) {
+    return getCoordinateRoomStyle(tables);
+  }
   const positionedItems = tables.filter((table) => table.rowNo && table.columnNo);
   if (positionedItems.length === 0) {
     return {};
@@ -171,12 +209,31 @@ function getLayoutStyle(tables: TableGroup[]): CSSProperties {
 }
 
 function getTableStyle(table: TableGroup): CSSProperties {
+  if (table.positionX !== null && table.positionY !== null) {
+    return {
+      left: table.positionX,
+      top: table.positionY,
+      width: table.widthPx ?? 220,
+      minHeight: (table.heightPx ?? 96) + 92,
+      transform: table.rotationDeg ? `rotate(${table.rotationDeg}deg)` : undefined,
+    };
+  }
   if (!table.rowNo || !table.columnNo) {
     return {};
   }
   return {
     gridRow: table.rowNo,
     gridColumn: table.columnNo,
+  };
+}
+
+function getTableSurfaceStyle(table: TableGroup): CSSProperties {
+  if (table.widthPx === null && table.heightPx === null) {
+    return {};
+  }
+  return {
+    width: table.widthPx ?? 220,
+    height: table.heightPx ?? 96,
   };
 }
 
@@ -207,19 +264,22 @@ export default function SeatMap({ slots, loading = false, loadingSlotId, onReser
             <strong>{group.timeRange}</strong>
             <span>{group.totalSeats} 个开放座位</span>
           </div>
-          <div className="seat-room-layout">
+          <div className={`seat-room-layout ${hasCoordinateLayout(group.tables) ? 'seat-room-layout-coordinate' : ''}`}>
             <div className="seat-room-feature seat-room-door">入口</div>
             <div className="seat-room-feature seat-room-window">采光窗</div>
-            <div className="seat-map-grid" style={getLayoutStyle(group.tables)}>
+            <div
+              className={`seat-map-grid ${hasCoordinateLayout(group.tables) ? 'seat-map-grid-coordinate' : ''}`}
+              style={getLayoutStyle(group.tables)}
+            >
               {group.tables.map((table) => (
                 <div
-                  className="seat-table"
+                  className={`seat-table ${table.positionX !== null && table.positionY !== null ? 'seat-table-positioned' : ''}`}
                   style={getTableStyle(table)}
                   key={table.key}
                   role="group"
                   aria-label={getTableLabel(table)}
                 >
-                  <div className="seat-table-surface">
+                  <div className="seat-table-surface" style={getTableSurfaceStyle(table)}>
                     <span>{getTableLabel(table)}</span>
                   </div>
                   {tableSeatSides.map((side) => {
@@ -242,7 +302,7 @@ export default function SeatMap({ slots, loading = false, loadingSlotId, onReser
                                 className={`seat-map-cell seat-map-cell-${slot.status.toLowerCase()}`}
                                 disabled={disabled}
                                 loading={loadingSlotId === slot.id}
-                                onClick={() => onReserve(slot.id)}
+                                onClick={() => onReserve(slot)}
                               >
                                 <span>{label}</span>
                                 <Tag color={seatSlotStatusColor[slot.status]}>{seatSlotStatusText[slot.status]}</Tag>

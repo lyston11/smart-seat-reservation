@@ -8,10 +8,12 @@ import org.apache.ibatis.annotations.Select;
 public interface StudyTableMapper extends BaseMapper<StudyTable> {
 
     @Select("""
-            SELECT id, area_id, table_no, name, status, qr_token, row_no, column_no, display_order, created_at, updated_at
+            SELECT id, area_id, table_no, name, status, qr_token, row_no, column_no, display_order,
+                   position_x, position_y, width_px, height_px, rotation_deg, created_at, updated_at
             FROM tables
             WHERE area_id = #{areaId}
-            ORDER BY COALESCE(row_no, 9999), COALESCE(column_no, 9999), COALESCE(display_order, 9999), table_no
+            ORDER BY COALESCE(position_y, 999999), COALESCE(position_x, 999999),
+                     COALESCE(row_no, 9999), COALESCE(column_no, 9999), COALESCE(display_order, 9999), table_no
             """)
     List<StudyTable> findByAreaId(@Param("areaId") Long areaId);
 

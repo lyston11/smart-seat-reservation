@@ -191,6 +191,70 @@ class ReservationServiceTest {
     }
 
     @Test
+    void createReservationShouldCreateCustomSlotFromSeatAndRequestedTimeRange() {
+        seatSlotMapper.reserveRows = 1;
+        seatSlotMapper.attachRows = 1;
+        seatSlotMapper.insertRows = 1;
+        seatSlotMapper.insertedSlotId = 300L;
+        seatSlotMapper.availableWindow = seatSlot(futureDate(), LocalTime.of(8, 0), LocalTime.of(22, 0));
+
+        ReservationResponse response = reservationService.createReservation(
+                new CreateReservationRequest(null, 2L, futureDate(), LocalTime.of(9, 30), LocalTime.of(17, 30)),
+                10L
+        );
+
+        assertThat(response.seatSlotId()).isEqualTo(300L);
+        assertThat(seatSlotMapper.insertedSlot.getSeatId()).isEqualTo(2L);
+        assertThat(seatSlotMapper.insertedSlot.getStartTime()).isEqualTo(LocalTime.of(9, 30));
+        assertThat(seatSlotMapper.insertedSlot.getEndTime()).isEqualTo(LocalTime.of(17, 30));
+        assertThat(reservationMapper.insertedReservation.getExpiresAt())
+                .isEqualTo(LocalDateTime.of(futureDate(), LocalTime.of(9, 30)).plusMinutes(15));
+    }
+
+    @Test
+    void createReservationShouldReuseExistingExactCustomSlotWhenAvailable() {
+        seatSlotMapper.reserveRows = 1;
+        seatSlotMapper.attachRows = 1;
+        seatSlotMapper.insertRows = 1;
+        SeatSlot exactWindow = seatSlot(futureDate(), LocalTime.of(9, 30), LocalTime.of(17, 30));
+        exactWindow.setId(301L);
+        seatSlotMapper.availableWindow = exactWindow;
+
+        ReservationResponse response = reservationService.createReservation(
+                new CreateReservationRequest(null, 2L, futureDate(), LocalTime.of(9, 30), LocalTime.of(17, 30)),
+                10L
+        );
+
+        assertThat(response.seatSlotId()).isEqualTo(301L);
+        assertThat(seatSlotMapper.insertedSlot).isNull();
+    }
+
+    @Test
+    void createReservationShouldRejectCustomTimeOutsideOpenWindow() {
+        seatSlotMapper.availableWindow = seatSlot(futureDate(), LocalTime.of(8, 0), LocalTime.of(22, 0));
+
+        assertThatThrownBy(() -> reservationService.createReservation(
+                new CreateReservationRequest(null, 2L, futureDate(), LocalTime.of(7, 30), LocalTime.of(22, 0)),
+                10L
+        ))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Reservation time is outside opening hours");
+    }
+
+    @Test
+    void createReservationShouldRejectCustomTimeWhenSeatHasOverlappingReservation() {
+        seatSlotMapper.availableWindow = seatSlot(futureDate(), LocalTime.of(8, 0), LocalTime.of(22, 0));
+        seatSlotMapper.activeOverlapBySeatCount = 1;
+
+        assertThatThrownBy(() -> reservationService.createReservation(
+                new CreateReservationRequest(null, 2L, futureDate(), LocalTime.of(9, 30), LocalTime.of(17, 30)),
+                10L
+        ))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Seat already has an active reservation in this period");
+    }
+
+    @Test
     void tableCheckInShouldFailWhenNoReservationMatchesTableTokenOrCode() {
         assertThatThrownBy(() -> reservationService.tableCheckIn(
                 new TableCheckinRequest("wrong-table", "bad-code"),
@@ -287,6 +351,11 @@ class ReservationServiceTest {
         private Long markUsingUserId;
         private int releaseUsingRows;
         private int releaseReservedRows;
+        private int insertRows;
+        private Long insertedSlotId;
+        private SeatSlot insertedSlot;
+        private SeatSlot availableWindow;
+        private int activeOverlapBySeatCount;
 
         SeatSlotMapper proxy() {
             return ReservationServiceTest.proxy(SeatSlotMapper.class, (unused, method, args) -> switch (method.getName()) {
@@ -301,6 +370,13 @@ class ReservationServiceTest {
                 }
                 case "releaseUsingSlot" -> releaseUsingRows;
                 case "releaseReservedSlot" -> releaseReservedRows;
+                case "findAvailableWindowForSeat" -> availableWindow;
+                case "countActiveOverlappingSlotsBySeat" -> activeOverlapBySeatCount;
+                case "insert" -> {
+                    insertedSlot = (SeatSlot) args[0];
+                    insertedSlot.setId(insertedSlotId);
+                    yield insertRows;
+                }
                 case "selectById" -> slot;
                 default -> defaultValue(method.getReturnType());
             });
