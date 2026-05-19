@@ -42,9 +42,9 @@ describe('TableLayoutPreview', () => {
     );
 
     const tableButton = screen.getByRole('button', { name: '编辑 T02' });
-    expect((tableButton as HTMLElement).style.left).toBe('360px');
-    expect((tableButton as HTMLElement).style.top).toBe('80px');
-    expect((tableButton as HTMLElement).style.width).toBe('100px');
+    expect((tableButton as HTMLElement).style.getPropertyValue('--table-left')).toBe('360px');
+    expect((tableButton as HTMLElement).style.getPropertyValue('--table-top')).toBe('80px');
+    expect((tableButton as HTMLElement).style.getPropertyValue('--table-width')).toBe('100px');
     expect(tableButton.className).toContain('table-layout-item-selected');
     expect(tableButton.className).toContain('table-layout-item-two');
     expect(screen.getByText('2人桌')).toBeTruthy();
@@ -119,6 +119,24 @@ describe('TableLayoutPreview', () => {
     );
   });
 
+  it('clamps table movement inside the visible stage bounds', () => {
+    const onMoveTable = vi.fn();
+    render(
+      <TableLayoutPreview
+        editable
+        seatCounts={{ 1: 4 }}
+        onMoveTable={onMoveTable}
+        tables={[makeTable({ id: 1, tableNo: 'T01', positionX: 700, positionY: 80 })]}
+      />,
+    );
+
+    fireEvent.keyDown(screen.getByRole('button', { name: '编辑 T01' }), { key: 'ArrowRight' });
+    expect(onMoveTable).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1, tableNo: 'T01' }),
+      { positionX: 612, positionY: 80 },
+    );
+  });
+
   it('does not render fake room features in the admin layout preview', () => {
     render(
       <TableLayoutPreview
@@ -130,5 +148,6 @@ describe('TableLayoutPreview', () => {
     expect(screen.queryByText('入口')).toBeNull();
     expect(screen.queryByText('采光窗')).toBeNull();
     expect(screen.queryByText('服务台')).toBeNull();
+    expect(document.querySelector('.table-layout-room')).toBeNull();
   });
 });

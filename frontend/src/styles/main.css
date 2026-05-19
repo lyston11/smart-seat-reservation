@@ -262,19 +262,13 @@ body {
 .table-layout-stage {
   position: relative;
   overflow: hidden;
-  min-width: 100%;
-  background: #fbfbfa;
-}
-
-.table-layout-room {
-  position: relative;
+  width: 100%;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(244, 244, 245, 0.78)),
     linear-gradient(90deg, rgba(229, 231, 235, 0.58) 1px, transparent 1px),
     linear-gradient(180deg, rgba(229, 231, 235, 0.58) 1px, transparent 1px),
     #fbfbfa;
   background-size: auto, 42px 42px, 42px 42px, auto;
-  transform-origin: top left;
 }
 
 .table-layout-item {
@@ -413,7 +407,7 @@ body {
   margin-top: 16px;
 }
 
-.table-form-preview .table-layout-room {
+.table-form-preview .table-layout-stage {
   min-width: 420px !important;
   min-height: 260px !important;
 }

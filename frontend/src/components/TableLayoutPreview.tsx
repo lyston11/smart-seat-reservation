@@ -24,6 +24,7 @@ type DragState = {
   startClientY: number;
   startPositionX: number;
   startPositionY: number;
+  bounds: LayoutBounds;
   moved: boolean;
 };
 
@@ -31,12 +32,18 @@ const GRID_SIZE = 10;
 const ROOM_MARGIN = 48;
 const DEFAULT_ROOM_WIDTH = 760;
 const DEFAULT_ROOM_HEIGHT = 420;
-const TARGET_ROOM_WIDTH = 1180;
-const TARGET_ROOM_HEIGHT = 560;
-const MIN_LAYOUT_SCALE = 0.48;
+const MIN_STAGE_HEIGHT = 420;
+const MAX_STAGE_HEIGHT = 560;
 const VISUAL_SIZE_RATIO = 0.56;
 
 type RoomMetrics = {
+  width: number;
+  height: number;
+};
+
+type LayoutBounds = {
+  left: number;
+  top: number;
   width: number;
   height: number;
 };
@@ -105,22 +112,19 @@ function getRoomMetrics(tables: StudyTable[], seatCounts: Record<number, number>
   };
 }
 
-function getRoomScale(metrics: RoomMetrics) {
-  return Math.min(
-    1,
-    Math.max(MIN_LAYOUT_SCALE, TARGET_ROOM_WIDTH / metrics.width, TARGET_ROOM_HEIGHT / metrics.height),
-  );
-}
-
 function getTableStyle(table: StudyTable, seatCount: number): CSSProperties {
   const size = getVisualTableSize(table, seatCount);
-  return {
-    left: table.positionX ?? 80,
-    top: table.positionY ?? 80,
-    width: size.width,
-    height: size.height,
+  return ({
+    '--table-left': `${table.positionX ?? 80}px`,
+    '--table-top': `${table.positionY ?? 80}px`,
+    '--table-width': `${size.width}px`,
+    '--table-height': `${size.height}px`,
+    left: 'clamp(0px, var(--table-left), calc(100% - var(--table-width) - 24px))',
+    top: 'clamp(0px, var(--table-top), calc(100% - var(--table-height) - 24px))',
+    width: 'var(--table-width)',
+    height: 'var(--table-height)',
     transform: table.rotationDeg ? `rotate(${table.rotationDeg}deg)` : undefined,
-  };
+  } as CSSProperties);
 }
 
 function snapToGrid(value: number) {
@@ -136,14 +140,25 @@ function getNextPosition(
   seatCount: number,
   rawX: number,
   rawY: number,
-  metrics: RoomMetrics,
+  bounds: LayoutBounds,
 ): TablePosition {
   const size = getVisualTableSize(table, seatCount);
-  const maxX = Math.max(0, metrics.width - size.width - 24);
-  const maxY = Math.max(0, metrics.height - size.height - 24);
+  const maxX = Math.max(bounds.left, bounds.left + bounds.width - size.width - 24);
+  const maxY = Math.max(bounds.top, bounds.top + bounds.height - size.height - 24);
   return {
-    positionX: clamp(snapToGrid(rawX), 0, maxX),
-    positionY: clamp(snapToGrid(rawY), 0, maxY),
+    positionX: clamp(snapToGrid(rawX), bounds.left, maxX),
+    positionY: clamp(snapToGrid(rawY), bounds.top, maxY),
+  };
+}
+
+function getLayoutBounds(element: HTMLElement): LayoutBounds {
+  const preview = element.closest('.table-layout-preview') as HTMLElement | null;
+  const stage = element.closest('.table-layout-stage') as HTMLElement | null;
+  return {
+    left: preview?.scrollLeft ?? 0,
+    top: 0,
+    width: stage?.clientWidth || preview?.clientWidth || DEFAULT_ROOM_WIDTH,
+    height: stage?.clientHeight || DEFAULT_ROOM_HEIGHT,
   };
 }
 
@@ -196,7 +211,6 @@ export default function TableLayoutPreview({
     .filter((table) => table.status === 'ACTIVE' && isManagedTable(table))
     .sort(byTablePosition);
   const roomMetrics = getRoomMetrics(activeTables, seatCounts);
-  const roomScale = getRoomScale(roomMetrics);
 
   if (activeTables.length === 0) {
     return (
@@ -219,6 +233,7 @@ export default function TableLayoutPreview({
       startClientY: event.clientY,
       startPositionX: table.positionX ?? 80,
       startPositionY: table.positionY ?? 80,
+      bounds: getLayoutBounds(event.currentTarget),
       moved: false,
     });
   }
@@ -227,8 +242,8 @@ export default function TableLayoutPreview({
     if (!editable || dragState?.tableId !== table.id || dragState.pointerId !== event.pointerId) {
       return;
     }
-    const deltaX = (event.clientX - dragState.startClientX) / roomScale;
-    const deltaY = (event.clientY - dragState.startClientY) / roomScale;
+    const deltaX = event.clientX - dragState.startClientX;
+    const deltaY = event.clientY - dragState.startClientY;
     const moved = dragState.moved || Math.abs(deltaX) + Math.abs(deltaY) > 3;
     if (!moved) {
       return;
@@ -238,7 +253,7 @@ export default function TableLayoutPreview({
       seatCounts[table.id] ?? 0,
       dragState.startPositionX + deltaX,
       dragState.startPositionY + deltaY,
-      roomMetrics,
+      dragState.bounds,
     );
     onMoveTable?.(table, nextPosition);
     if (!dragState.moved) {
@@ -290,7 +305,7 @@ export default function TableLayoutPreview({
         seatCounts[table.id] ?? 0,
         (table.positionX ?? 80) + delta.positionX,
         (table.positionY ?? 80) + delta.positionY,
-        roomMetrics,
+        getLayoutBounds(event.currentTarget),
       ),
     );
   }
@@ -299,56 +314,47 @@ export default function TableLayoutPreview({
     <div className={`table-layout-preview ${editable ? 'table-layout-preview-editable' : ''}`}>
       <div
         className="table-layout-stage"
-        style={{ width: roomMetrics.width * roomScale, height: roomMetrics.height * roomScale }}
+        style={{ height: Math.min(Math.max(roomMetrics.height, MIN_STAGE_HEIGHT), MAX_STAGE_HEIGHT) }}
       >
-        <div
-          className="table-layout-room"
-          style={{
-            width: roomMetrics.width,
-            height: roomMetrics.height,
-            transform: `scale(${roomScale})`,
-          }}
-        >
-          {activeTables.map((table) => {
-            const seatCount = seatCounts[table.id] ?? 0;
-            const markerCount = getMarkerCount(seatCount);
-            return (
-              <button
-                type="button"
-                className={[
-                  'table-layout-item',
-                  `table-layout-item-${getSeatCountClass(seatCount)}`,
-                  table.id === selectedTableId ? 'table-layout-item-selected' : '',
-                  dragState?.tableId === table.id ? 'table-layout-item-dragging' : '',
-                ].join(' ')}
-                style={getTableStyle(table, seatCount)}
-                key={table.id}
-                onClick={() => {
-                  if (!editable) {
-                    onSelectTable?.(table);
-                  }
-                }}
-                onPointerDown={(event) => startDrag(table, event)}
-                onPointerMove={(event) => moveDrag(table, event)}
-                onPointerUp={(event) => endDrag(table, event)}
-                onPointerCancel={(event) => cancelDrag(table, event)}
-                onKeyDown={(event) => handleKeyDown(table, event)}
-                aria-label={`编辑 ${table.tableNo}`}
-                title={editable ? '拖动调整桌位' : undefined}
-              >
-                {Array.from({ length: markerCount }).map((_, index) => (
-                  <i
-                    key={`${table.id}-seat-marker-${index + 1}`}
-                    className={`table-seat-marker table-seat-marker-${getSeatCountClass(seatCount)}-${index + 1}`}
-                    aria-hidden="true"
-                  />
-                ))}
-                <span>{table.tableNo}</span>
-                <small>{getSeatCountLabel(seatCount)}</small>
-              </button>
-            );
-          })}
-        </div>
+        {activeTables.map((table) => {
+          const seatCount = seatCounts[table.id] ?? 0;
+          const markerCount = getMarkerCount(seatCount);
+          return (
+            <button
+              type="button"
+              className={[
+                'table-layout-item',
+                `table-layout-item-${getSeatCountClass(seatCount)}`,
+                table.id === selectedTableId ? 'table-layout-item-selected' : '',
+                dragState?.tableId === table.id ? 'table-layout-item-dragging' : '',
+              ].join(' ')}
+              style={getTableStyle(table, seatCount)}
+              key={table.id}
+              onClick={() => {
+                if (!editable) {
+                  onSelectTable?.(table);
+                }
+              }}
+              onPointerDown={(event) => startDrag(table, event)}
+              onPointerMove={(event) => moveDrag(table, event)}
+              onPointerUp={(event) => endDrag(table, event)}
+              onPointerCancel={(event) => cancelDrag(table, event)}
+              onKeyDown={(event) => handleKeyDown(table, event)}
+              aria-label={`编辑 ${table.tableNo}`}
+              title={editable ? '拖动调整桌位' : undefined}
+            >
+              {Array.from({ length: markerCount }).map((_, index) => (
+                <i
+                  key={`${table.id}-seat-marker-${index + 1}`}
+                  className={`table-seat-marker table-seat-marker-${getSeatCountClass(seatCount)}-${index + 1}`}
+                  aria-hidden="true"
+                />
+              ))}
+              <span>{table.tableNo}</span>
+              <small>{getSeatCountLabel(seatCount)}</small>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
