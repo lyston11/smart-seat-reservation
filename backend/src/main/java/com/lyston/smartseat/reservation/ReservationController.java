@@ -85,7 +85,7 @@ public class ReservationController {
     @RequireRole(UserRole.STUDENT)
     public ApiResponse<ReservationResponse> checkOut(
             @PathVariable Long reservationId,
-            @Valid @RequestBody ReservationActionRequest request,
+            @Valid @RequestBody(required = false) ReservationActionRequest request,
             CurrentUser currentUser
     ) {
         return ApiResponse.ok(reservationService.checkOut(reservationId, currentUser.id()));
@@ -95,7 +95,7 @@ public class ReservationController {
     @RequireRole(UserRole.STUDENT)
     public ApiResponse<ReservationResponse> cancel(
             @PathVariable Long reservationId,
-            @Valid @RequestBody ReservationActionRequest request,
+            @Valid @RequestBody(required = false) ReservationActionRequest request,
             CurrentUser currentUser
     ) {
         return ApiResponse.ok(reservationService.cancel(reservationId, currentUser.id()));

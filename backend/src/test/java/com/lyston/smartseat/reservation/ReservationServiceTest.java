@@ -12,14 +12,23 @@ import com.lyston.smartseat.seat.SeatSlot;
 import com.lyston.smartseat.seat.SeatSlotMapper;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 
 class ReservationServiceTest {
+
+    private static final Clock FIXED_CLOCK = Clock.fixed(
+            Instant.parse("2026-05-18T23:00:00Z"),
+            ZoneId.of("Asia/Shanghai")
+    );
+    private static final LocalDate TODAY = LocalDate.now(FIXED_CLOCK);
 
     private SeatSlotMapperFake seatSlotMapper;
     private ReservationMapperFake reservationMapper;
@@ -45,7 +54,8 @@ class ReservationServiceTest {
                 checkinRecordMapper.proxy(),
                 reservationRateLimiter,
                 seatSlotCacheService,
-                reservationRuleService
+                reservationRuleService,
+                FIXED_CLOCK
         );
     }
 
@@ -99,12 +109,12 @@ class ReservationServiceTest {
     }
 
     @Test
-    void createReservationShouldRejectSlotBeyondAdvanceWindow() {
-        seatSlotMapper.slot = seatSlot(LocalDate.now().plusDays(8), LocalTime.of(8, 0), LocalTime.of(10, 0));
+    void createReservationShouldRejectNonTodaySlot() {
+        seatSlotMapper.slot = seatSlot(TODAY.plusDays(1), LocalTime.of(8, 0), LocalTime.of(10, 0));
 
         assertThatThrownBy(() -> reservationService.createReservation(new CreateReservationRequest(1L), 10L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessage("Seat slot is beyond the reservation window");
+                .hasMessage("Only today's reservations are allowed");
 
         assertThat(seatSlotMapper.reserveRows).isZero();
         assertThat(reservationMapper.insertedReservation).isNull();
@@ -260,6 +270,26 @@ class ReservationServiceTest {
     }
 
     @Test
+    void createReservationShouldRejectCustomReservationForAnotherDay() {
+        assertThatThrownBy(() -> reservationService.createReservation(
+                new CreateReservationRequest(null, 2L, TODAY.plusDays(1), LocalTime.of(9, 30), LocalTime.of(17, 30)),
+                10L
+        ))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Only today's reservations are allowed");
+    }
+
+    @Test
+    void createReservationShouldRejectCustomReservationNotOnHalfHourBoundary() {
+        assertThatThrownBy(() -> reservationService.createReservation(
+                new CreateReservationRequest(null, 2L, TODAY, LocalTime.of(9, 15), LocalTime.of(17, 30)),
+                10L
+        ))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Reservation time must use 30-minute intervals");
+    }
+
+    @Test
     void tableCheckInShouldFailWhenNoReservationMatchesTableTokenOrCode() {
         assertThatThrownBy(() -> reservationService.tableCheckIn(
                 new TableCheckinRequest("wrong-table", "bad-code"),
@@ -275,7 +305,7 @@ class ReservationServiceTest {
     @Test
     void tableCheckInShouldFailWhenReservationIsExpired() {
         Reservation reservation = reservedReservation();
-        reservation.setExpiresAt(LocalDateTime.now().minusMinutes(1));
+        reservation.setExpiresAt(LocalDateTime.now(FIXED_CLOCK).minusMinutes(1));
         reservationMapper.tableCheckinReservation = reservation;
 
         assertThatThrownBy(() -> reservationService.tableCheckIn(
@@ -305,7 +335,7 @@ class ReservationServiceTest {
     }
 
     private LocalDate futureDate() {
-        return LocalDate.now().plusDays(7);
+        return TODAY;
     }
 
     private SeatSlot futureSeatSlot() {
@@ -313,7 +343,7 @@ class ReservationServiceTest {
     }
 
     private SeatSlot pastSeatSlot() {
-        return seatSlot(LocalDateTime.now().minusDays(1).toLocalDate(), LocalTime.of(8, 0), LocalTime.of(10, 0));
+        return seatSlot(TODAY, LocalTime.of(6, 0), LocalTime.of(7, 0));
     }
 
     private SeatSlot seatSlot(LocalDate slotDate, LocalTime startTime, LocalTime endTime) {
@@ -341,7 +371,7 @@ class ReservationServiceTest {
         reservation.setSeatSlotId(1L);
         reservation.setStatus(ReservationStatus.CHECKED_IN);
         reservation.setCheckinCode("code");
-        reservation.setExpiresAt(LocalDateTime.now().plusMinutes(10));
+        reservation.setExpiresAt(LocalDateTime.now(FIXED_CLOCK).plusMinutes(10));
         return reservation;
     }
 

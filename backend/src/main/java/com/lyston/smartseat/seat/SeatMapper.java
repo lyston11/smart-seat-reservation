@@ -8,7 +8,13 @@ import org.apache.ibatis.annotations.Select;
 public interface SeatMapper extends BaseMapper<Seat> {
 
     @Select("""
-            SELECT s.id, s.area_id, s.table_id, t.table_no, s.seat_no, s.seat_label, s.seat_side, s.seat_order,
+            SELECT s.id, s.area_id, s.table_id, t.table_no,
+                   t.row_no AS table_row_no, t.column_no AS table_column_no,
+                   t.display_order AS table_display_order,
+                   t.position_x AS table_position_x, t.position_y AS table_position_y,
+                   t.width_px AS table_width_px, t.height_px AS table_height_px,
+                   t.rotation_deg AS table_rotation_deg,
+                   s.seat_no, s.seat_label, s.seat_side, s.seat_order,
                    s.row_no, s.column_no, s.display_order, s.status, s.created_at, s.updated_at
             FROM seats s
             LEFT JOIN tables t

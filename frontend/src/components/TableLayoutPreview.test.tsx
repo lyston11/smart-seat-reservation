@@ -49,4 +49,18 @@ describe('TableLayoutPreview', () => {
     fireEvent.click(tableButton);
     expect(onSelectTable).toHaveBeenCalledWith(expect.objectContaining({ id: 2, tableNo: 'T02' }));
   });
+
+  it('hides legacy fallback tables from the room preview', () => {
+    render(
+      <TableLayoutPreview
+        tables={[
+          makeTable({ id: 1, tableNo: 'LEGACY', positionX: 80, positionY: 80 }),
+          makeTable({ id: 2, tableNo: 'T01', positionX: 120, positionY: 90 }),
+        ]}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: '编辑 LEGACY' })).toBeNull();
+    expect(screen.getByRole('button', { name: '编辑 T01' })).toBeTruthy();
+  });
 });

@@ -152,6 +152,18 @@ body {
   border-radius: 8px;
 }
 
+.admin-tables-table .ant-table {
+  overflow-x: auto;
+}
+
+.admin-tables-table .ant-table-cell-fix-right {
+  background: #ffffff;
+}
+
+.admin-table-actions {
+  min-width: 230px;
+}
+
 .table-layout-preview {
   overflow: auto;
   border: 1px solid #e5e7eb;
@@ -460,6 +472,37 @@ body {
   gap: 16px;
 }
 
+.student-seat-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+  align-items: start;
+}
+
+.student-seat-side-panel {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 16px;
+}
+
+.student-seat-panel-stack {
+  width: 100%;
+}
+
+.student-seat-time-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.student-seat-time-grid label {
+  display: grid;
+  gap: 6px;
+  color: #4b5563;
+  font-size: 12px;
+}
+
 .seat-map-section {
   padding: 16px;
   background: #ffffff;
@@ -560,7 +603,13 @@ body {
 
 .seat-table-positioned {
   position: absolute;
+  width: calc(var(--table-width, 220px) + 172px);
   min-height: 188px;
+  grid-template:
+    ". north ." 48px
+    "west table east" var(--table-height, 96px)
+    ". south ." 48px
+    ". single ." auto / 86px var(--table-width, 220px) 86px;
   transform-origin: center center;
 }
 
@@ -589,6 +638,22 @@ body {
   max-width: 100%;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.seat-table-positioned .seat-table-surface {
+  width: var(--table-width, 220px);
+  height: var(--table-height, 96px);
+}
+
+.seat-table-positioned .seat-table-side-north,
+.seat-table-positioned .seat-table-side-south,
+.seat-table-positioned .seat-table-side-single {
+  grid-column: 2;
+}
+
+.seat-table-positioned .seat-table-side-west,
+.seat-table-positioned .seat-table-side-east {
+  align-self: center;
 }
 
 .seat-map-cell.ant-btn {
@@ -662,6 +727,17 @@ body {
   border-color: #86efac;
 }
 
+.seat-map-cell-unpublished.ant-btn {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.seat-map-cell-selected.ant-btn,
+.seat-map-cell-selected.ant-btn:disabled {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18);
+}
+
 .seat-map-cell-reserved.ant-btn,
 .seat-map-cell-using.ant-btn,
 .seat-map-cell-abnormal.ant-btn {
@@ -672,7 +748,7 @@ body {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .usage-row {
@@ -795,6 +871,8 @@ body {
   .stats-grid,
   .student-summary-grid,
   .student-card-grid,
+  .student-seat-workspace,
+  .student-seat-time-grid,
   .student-area-list,
   .usage-row,
   .rule-form-grid,
@@ -814,6 +892,10 @@ body {
 
   .seat-map-cell.ant-btn {
     height: 46px;
+  }
+
+  .student-seat-side-panel {
+    position: static;
   }
 
   .student-timeline-item {

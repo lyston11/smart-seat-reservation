@@ -44,6 +44,12 @@ function toLocalDateTimeText(value: Date) {
   return `${year}-${month}-${date}T${hours}:${minutes}:${seconds}`;
 }
 
+async function selectComboboxValue(label: string, value: string) {
+  fireEvent.mouseDown(await screen.findByLabelText(label));
+  const options = await screen.findAllByText(value);
+  fireEvent.click(options[options.length - 1]);
+}
+
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
@@ -247,7 +253,7 @@ describe('App', () => {
                 columnNo: 1,
                 displayOrder: 1,
                 areaId: 1,
-                slotDate: '2026-05-18',
+                slotDate: '2026-05-19',
                 startTime: '08:00:00',
                 endTime: '22:00:00',
                 status: 'AVAILABLE',
@@ -259,13 +265,48 @@ describe('App', () => {
         };
       }
 
+      if (url.startsWith('/api/seats?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 9,
+                areaId: 1,
+                tableId: 1,
+                tableNo: 'T01',
+                tableRowNo: 1,
+                tableColumnNo: 1,
+                tableDisplayOrder: 1,
+                tablePositionX: 120,
+                tablePositionY: 80,
+                tableWidthPx: 260,
+                tableHeightPx: 96,
+                tableRotationDeg: 0,
+                seatNo: 'A-001',
+                seatLabel: '1号',
+                seatSide: 'NORTH',
+                seatOrder: 1,
+                rowNo: 1,
+                columnNo: 1,
+                displayOrder: 1,
+                status: 'ACTIVE',
+              },
+            ],
+          }),
+        };
+      }
+
       if (url === '/api/reservations' && init?.method === 'POST') {
         expect(JSON.parse(String(init.body))).toEqual(
           {
             seatId: 9,
-            slotDate: expect.any(String),
+            slotDate: '2026-05-19',
             startTime: '09:30:00',
-            endTime: '17:30:00',
+            endTime: '10:30:00',
           },
         );
         return {
@@ -325,13 +366,10 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(await screen.findByLabelText('开始时间'), {
-      target: { value: '09:30' },
-    });
-    fireEvent.change(screen.getByLabelText('结束时间'), {
-      target: { value: '17:30' },
-    });
     fireEvent.click(await screen.findByRole('button', { name: /1号/ }));
+    await selectComboboxValue('开始时间', '09:30');
+    await selectComboboxValue('结束时间', '10:30');
+    fireEvent.click(await screen.findByRole('button', { name: '预约该座位' }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -339,6 +377,107 @@ describe('App', () => {
         expect.objectContaining({ method: 'POST' }),
       );
     });
+  });
+
+  it('shows real seats as unpublished when the area has no opened slots yet', async () => {
+    storeStudentSession();
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('/api/areas')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                name: 'A 区',
+                floor: '1F',
+                description: null,
+                status: 'ACTIVE',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/seats?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 9,
+                areaId: 1,
+                tableId: 1,
+                tableNo: 'T01',
+                tableRowNo: 1,
+                tableColumnNo: 1,
+                tableDisplayOrder: 1,
+                tablePositionX: 120,
+                tablePositionY: 80,
+                tableWidthPx: 260,
+                tableHeightPx: 96,
+                tableRotationDeg: 0,
+                seatNo: 'A-001',
+                seatLabel: '1号',
+                seatSide: 'NORTH',
+                seatOrder: 1,
+                rowNo: 1,
+                columnNo: 1,
+                displayOrder: 1,
+                status: 'ACTIVE',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/reservations/rules')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: {
+              checkinGraceMinutes: 15,
+              maxAdvanceDays: 7,
+              dailyActiveReservationLimit: 3,
+              updatedBy: null,
+              updatedAt: null,
+            },
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/student/seats']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    const seat = await screen.findByRole('button', { name: /1号/ });
+    expect(seat).toHaveProperty('disabled', false);
+    fireEvent.click(seat);
+    expect((await screen.findAllByText('未开放')).length).toBeGreaterThan(0);
+    expect(await screen.findByRole('button', { name: '预约该座位' })).toHaveProperty('disabled', true);
+    expect(fetchMock).toHaveBeenCalledWith('/api/seats?areaId=1', expect.any(Object));
   });
 
   it('renders the student home dashboard with active reservation details', async () => {

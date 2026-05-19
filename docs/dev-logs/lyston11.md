@@ -1,5 +1,161 @@
 # lyston11 开发日志
 
+## 2026-05-19
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 修复管理员桌子管理页显示问题，避免操作列被裁剪和历史 `LEGACY` 桌位干扰平面图。
+
+### 本次改动
+- 管理员桌子列表隐藏 `LEGACY` 开发兜底桌，只展示真实维护桌子 T01-T04。
+- 管理员桌子平面图同步过滤 `LEGACY`，避免其与 T01 坐标重叠导致桌子叠在一起。
+- 桌子列表移除冗余区域 ID 列，压缩列宽，并将操作列固定到右侧，保证“编辑 / 签到码 / 停用”完整可见。
+- 表格容器从裁剪改为可滚动，避免宽表格在窄屏或浏览器缩放下截断右侧操作。
+- 新增 `V10__disable_legacy_demo_tables.sql`，把历史 `LEGACY` 桌子置为停用，避免新环境继续出现遗留演示桌。
+- 补充桌位平面图测试，覆盖 `LEGACY` 桌不会出现在预览中的场景。
+
+### 涉及文件
+- backend/src/main/resources/db/migration/V10__disable_legacy_demo_tables.sql
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/components/TableLayoutPreview.tsx
+- frontend/src/components/TableLayoutPreview.test.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 3 个测试文件、16 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 45 个测试通过。
+- 已运行 `git diff --check`，通过。
+- 已在浏览器打开 `http://127.0.0.1:5174/admin/tables` 验证：表格只显示 T01-T04，操作列完整可见，平面图没有 `LEGACY` 重叠桌。
+
+### 遗留问题
+- 已存在本地数据库需要应用 V10 后才会把 `LEGACY` 表记录置为停用；前端已同时过滤，未迁移前也不会再影响页面展示。
+
+### 对其他成员的影响
+- 管理员桌子管理页默认不再展示 `LEGACY` 开发兜底桌；如需排查历史数据，可直接查数据库或临时调整过滤。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 收紧学生端预约时间规则，避免分钟级自由输入，并限制学生只能预约当天。
+
+### 本次改动
+- 学生选座页日期从可选日期控件改为只读今日日期，学生端不能再选择明天或未来日期。
+- 已选座位面板的开始/结束时间从原生 time 输入改为半小时档位下拉，时间只能选择 `08:00`、`08:30`、`09:00` 这类整点/半点。
+- 前端规则提示更新为“仅支持预约当天”和“时间最小粒度为半小时”。
+- 后端预约服务新增强校验：自定义预约必须是当天，开始/结束时间必须落在整点或半点，绕过前端直接调接口也会被拒绝。
+- 后端引入统一 `Clock` Bean，预约服务测试使用固定时间，保证当天预约规则可稳定测试。
+- 补充后端测试覆盖非当天预约、非半小时粒度预约的拒绝场景；更新前端测试使用半小时下拉完成预约。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/config/TimeConfig.java
+- backend/src/main/java/com/lyston/smartseat/reservation/ReservationService.java
+- backend/src/test/java/com/lyston/smartseat/reservation/ReservationServiceTest.java
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/App.test.tsx
+- frontend/src/test/setup.ts
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 3 个测试文件、15 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 45 个测试通过。
+- 已运行 `git diff --check`，通过。
+- 已在浏览器打开 `http://127.0.0.1:5174/student/seats` 验证：日期只显示今日，开始/结束时间为半小时下拉选择。
+
+### 遗留问题
+- 管理员端开放时段目前仍可按更细时间发布；学生端预约已收紧为半小时，后续可同步给管理员端时间范围也加半小时步进。
+
+### 对其他成员的影响
+- 学生端预约 API 现在会拒绝非当天或非整点/半点的自定义预约请求。
+- `ReservationService` 构造函数新增 `Clock` 依赖，测试或手动实例化该服务时需要传入时间源。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 修复学生端选座流程和座位平面图展示问题，让学生按“先选位置，再选时间”完成预约，并展示多张真实桌位。
+
+### 本次改动
+- 学生选座页从顶部选择时间改为右侧座位详情面板选择时间，主流程调整为先选区域/日期，再在座位地图中选择位置，最后选择开始/结束时间并预约。
+- 座位地图新增当前选中座位高亮，未开放座位允许点击查看位置和状态，但预约按钮保持禁用并提示等待管理员开放。
+- 修复坐标桌位布局，桌面外层容器会预留上下左右座位空间，避免一张桌四个座位和桌面错位或挤压。
+- 座位图对坐标冲突和 `LEGACY` 开发遗留桌位做兜底归位，避免历史演示数据覆盖正式桌位。
+- 新增 `V9__add_demo_room_tables.sql` 演示数据迁移，为 `Library Area A` 补齐 T01-T04 四张桌、16 个 active 真实座位，并下线 `A-DEV-%` / `B-DEV-%` 开发座位。
+- 学生端不再默认自动选中第一个座位，页面初始态会提示“请先在座位地图中选择一个位置”。
+- 更新前端测试，覆盖新预约流程和坐标桌位偏移后的布局断言。
+
+### 涉及文件
+- backend/src/main/resources/db/migration/V9__add_demo_room_tables.sql
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/components/SeatMap.tsx
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- frontend/src/components/SeatMap.test.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 3 个测试文件、15 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 43 个测试通过。
+- 已用真实本地后端接口验证 `Library Area A` 返回 16 个 active 座位，T01/T02/T03/T04 每张桌 4 个座位。
+- 已在浏览器打开 `http://127.0.0.1:5174/student/seats` 验证学生端显示 4 张桌、16 个座位，初始状态未自动选座，右侧提示先选择位置。
+
+### 遗留问题
+- 当前日期如果管理员没有开放时段，座位会显示“未开放”，比赛演示前建议由管理员发布当天或未来日期的常用开放时段。
+- 后续可以继续把桌位编辑器升级为拖拽式，让管理员直接拖桌子调整平面图。
+
+### 对其他成员的影响
+- 学生端选座交互已变更为“点座位只选中，不立即预约”；真正创建预约需要点击右侧“预约该座位”。
+- 演示数据库会新增多张桌和更多真实座位，旧的 `A-DEV-%` / `B-DEV-%` 开发座位会被置为 `INACTIVE`。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 修复学生端和管理员端数据“不互通、像 mock”的问题，打通真实区域、桌子、座位、开放时段、预约和看板状态链路。
+
+### 本次改动
+- 学生端座位页改为同时读取 `/api/seat-slots` 和 `/api/seats`，以数据库真实座位作为座位地图基础。
+- 当管理员已维护真实座位但当前日期/时段未开放时，学生端不再显示空白，而是显示真实座位并标记为“未开放”且不可预约。
+- 后端开放 `GET /api/seats` 给学生和管理员共同读取，座位新增返回桌位行列、坐标、尺寸、旋转等布局字段。
+- 前端座位地图新增 `UNPUBLISHED` 状态，支持真实座位未开放展示，并把统计口径调整为不把“未开放”算作占用。
+- 修复学生签退/取消接口契约，`POST /api/reservations/{id}/check-out` 和 `/cancel` 支持无请求体，避免前端空 body 调用触发 500。
+- 全局异常处理新增未处理异常日志，并把请求体缺失/不可读统一返回 400，方便开发阶段定位问题。
+- 补充前端测试，覆盖“真实座位存在但没有开放时段时显示未开放座位”的学生端场景。
+- 使用真实本地后端跑通管理员发布时段、学生预约、管理员看板统计、学生取消释放的完整联动链路。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/common/GlobalExceptionHandler.java
+- backend/src/main/java/com/lyston/smartseat/reservation/ReservationController.java
+- backend/src/main/java/com/lyston/smartseat/seat/
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/components/SeatMap.tsx
+- frontend/src/constants/seatSlotStatus.ts
+- frontend/src/types/seat.ts
+- frontend/src/App.test.tsx
+- frontend/src/components/SeatMap.test.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端 3 个测试文件、15 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 43 个测试通过。
+- 已用真实 API 冒烟验证：学生读取真实区域和座位，管理员发布 `2026-05-23 18:00-20:00`，学生预约后座位状态变为 `RESERVED` 且看板活跃预约为 1，学生取消后座位回到 `AVAILABLE` 且看板活跃预约为 0。
+
+### 遗留问题
+- 现在学生端会展示真实未开放座位，但管理员侧还可以继续加“一键开放今日/明日常用时段”，减少比赛演示时手动选择座位和时间段的步骤。
+- 本次真实联调产生的临时预约已通过正式取消接口清理；未来如做自动 E2E，建议使用独立测试库或专门 demo seed 接口。
+
+### 对其他成员的影响
+- 学生端座位地图现在依赖 `/api/seats` 返回桌位布局字段，后端调整座位响应结构时需要同步前端 `Seat` 类型。
+- `UNPUBLISHED` 是前端合成状态，不会写入数据库；后端真实状态仍是 `AVAILABLE`、`RESERVED`、`USING`、`ABNORMAL`。
+- 签退/取消接口无需请求体，前端可以直接按空 body 或无 body 调用。
+
 ## 2026-05-18
 
 ### 任务

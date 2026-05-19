@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, DatePicker, Form, Input, message, Select, Space, Statistic, Tag, Typography } from 'antd';
+import { Button, Card, Form, Input, message, Select, Space, Statistic, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { listAreas } from '../api/areas';
+import { listSeats } from '../api/seats';
 import {
   cancelReservation,
   checkInReservation,
@@ -13,7 +14,7 @@ import {
 } from '../api/seatSlots';
 import SeatMap from '../components/SeatMap';
 import type { ReservationResult, ReservationRule } from '../types/reservation';
-import type { Area, SeatSlot } from '../types/seat';
+import type { Area, Seat, SeatSlot } from '../types/seat';
 import {
   formatDateTime,
   formatReservationLocation,
@@ -26,10 +27,13 @@ export default function SeatSlotsPage() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [areaId, setAreaId] = useState(1);
   const [areaTimeInitialized, setAreaTimeInitialized] = useState(false);
-  const [date, setDate] = useState(dayjs());
+  const [timeInitializedFromSlots, setTimeInitializedFromSlots] = useState(false);
+  const [date] = useState(dayjs());
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('22:00');
   const [slots, setSlots] = useState<SeatSlot[]>([]);
+  const [seats, setSeats] = useState<Seat[]>([]);
+  const [selectedSeatId, setSelectedSeatId] = useState<number | null>(null);
   const [activeReservation, setActiveReservation] = useState<ReservationResult | null>(null);
   const [reservationRules, setReservationRules] = useState<ReservationRule | null>(null);
   const [checkinCode, setCheckinCode] = useState('');
@@ -43,17 +47,25 @@ export default function SeatSlotsPage() {
   const selectedArea = useMemo(() => areas.find((area) => area.id === areaId), [areas, areaId]);
   const startTimeText = useMemo(() => normalizeInputTime(startTime), [startTime]);
   const endTimeText = useMemo(() => normalizeInputTime(endTime), [endTime]);
+  const timeOptions = useMemo(
+    () => buildHalfHourTimeOptions(selectedArea?.openTime, selectedArea?.closeTime, startTime, endTime),
+    [endTime, selectedArea?.closeTime, selectedArea?.openTime, startTime],
+  );
   const visibleSlots = useMemo(
-    () => buildVisibleSlotsForSelectedTime(slots, startTimeText, endTimeText),
-    [endTimeText, slots, startTimeText],
+    () => buildVisibleSlotsForSelectedTime(slots, seats, areaId, dateText, startTimeText, endTimeText),
+    [areaId, dateText, endTimeText, seats, slots, startTimeText],
   );
   const availableSeatCount = useMemo(
     () => visibleSlots.filter((slot) => slot.status === 'AVAILABLE').length,
     [visibleSlots],
   );
   const occupiedSeatCount = useMemo(
-    () => visibleSlots.filter((slot) => slot.status !== 'AVAILABLE').length,
+    () => visibleSlots.filter((slot) => slot.status !== 'AVAILABLE' && slot.status !== 'UNPUBLISHED').length,
     [visibleSlots],
+  );
+  const selectedSlot = useMemo(
+    () => visibleSlots.find((slot) => slot.seatId === selectedSeatId) ?? null,
+    [selectedSeatId, visibleSlots],
   );
 
   function restoreActiveReservation(reservations: ReservationResult[]) {
@@ -86,13 +98,29 @@ export default function SeatSlotsPage() {
   const loadSlots = useCallback(async () => {
     setLoading(true);
     try {
-      setSlots(await listSeatSlots(areaId, dateText));
+      const [nextSlots, nextSeats] = await Promise.all([listSeatSlots(areaId, dateText), listSeats(areaId)]);
+      setSlots(nextSlots);
+      setSeats(nextSeats);
+      setSelectedSeatId((currentSeatId) => {
+        if (currentSeatId && nextSeats.some((seat) => seat.id === currentSeatId && seat.status === 'ACTIVE')) {
+          return currentSeatId;
+        }
+        return null;
+      });
+      if (!timeInitializedFromSlots) {
+        const firstSlot = nextSlots.find((slot) => slot.status === 'AVAILABLE') ?? nextSlots[0];
+        if (firstSlot) {
+          setStartTime(toHalfHourCeil(firstSlot.startTime.slice(0, 5)));
+          setEndTime(toHalfHourFloor(firstSlot.endTime.slice(0, 5)));
+          setTimeInitializedFromSlots(true);
+        }
+      }
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '加载座位失败');
     } finally {
       setLoading(false);
     }
-  }, [areaId, dateText, messageApi]);
+  }, [areaId, dateText, messageApi, timeInitializedFromSlots]);
 
   const loadRules = useCallback(async () => {
     try {
@@ -113,6 +141,14 @@ export default function SeatSlotsPage() {
   async function reserve(slot: SeatSlot) {
     if (startTimeText >= endTimeText) {
       messageApi.warning('开始时间必须早于结束时间');
+      return;
+    }
+    if (!isHalfHourTime(startTime) || !isHalfHourTime(endTime)) {
+      messageApi.warning('预约时间只能按半小时选择');
+      return;
+    }
+    if (slot.status !== 'AVAILABLE') {
+      messageApi.warning(slot.status === 'UNPUBLISHED' ? '该座位当前时间未开放' : '该座位当前时间不可预约');
       return;
     }
 
@@ -178,8 +214,10 @@ export default function SeatSlotsPage() {
 
   function applySelectedArea(area: Area) {
     setAreaId(area.id);
-    setStartTime(area.openTime.slice(0, 5));
-    setEndTime(area.closeTime.slice(0, 5));
+    setStartTime(toHalfHourCeil(area.openTime.slice(0, 5)));
+    setEndTime(toHalfHourFloor(area.closeTime.slice(0, 5)));
+    setSelectedSeatId(null);
+    setTimeInitializedFromSlots(false);
   }
 
   return (
@@ -206,29 +244,11 @@ export default function SeatSlotsPage() {
             />
           </Form.Item>
           <Form.Item label="日期">
-            <DatePicker value={date} onChange={(value) => setDate(value ?? dayjs())} />
-          </Form.Item>
-          <Form.Item label="开始时间">
-            <Input
-              type="time"
-              aria-label="开始时间"
-              value={startTime}
-              step={900}
-              onChange={(event) => setStartTime(event.target.value)}
-            />
-          </Form.Item>
-          <Form.Item label="结束时间">
-            <Input
-              type="time"
-              aria-label="结束时间"
-              value={endTime}
-              step={900}
-              onChange={(event) => setEndTime(event.target.value)}
-            />
+            <Typography.Text strong>{dateText}</Typography.Text>
           </Form.Item>
           <Form.Item>
             <Button type="primary" onClick={loadSlots} loading={loading}>
-              查询
+              刷新座位
             </Button>
           </Form.Item>
         </Form>
@@ -246,63 +266,6 @@ export default function SeatSlotsPage() {
         </Card>
       </div>
 
-      <div className="reservation-panel">
-        <div className="reservation-current">
-          <Typography.Text strong>当前预约</Typography.Text>
-          {activeReservation ? (
-            <>
-              <Space wrap>
-                <Tag color={reservationStatusColor[activeReservation.status] ?? 'default'}>
-                  {reservationStatusText[activeReservation.status] ?? activeReservation.status}
-                </Tag>
-                <Typography.Text>#{activeReservation.reservationId}</Typography.Text>
-              </Space>
-              <Typography.Text>{formatReservationLocation(activeReservation)}</Typography.Text>
-              <Typography.Text type="secondary">{formatReservationTime(activeReservation)}</Typography.Text>
-              <Typography.Text type="secondary">
-                签到截止 {formatDateTime(activeReservation.expiresAt)}
-              </Typography.Text>
-            </>
-          ) : (
-            <Typography.Text type="secondary">暂无活跃预约，选择空闲座位后会显示签到信息。</Typography.Text>
-          )}
-        </div>
-        <div className="reservation-fields">
-          <div className="reservation-code-field reservation-code">
-            <span>签到码</span>
-            <Input
-              value={checkinCode}
-              placeholder="预约成功后自动填入"
-              onChange={(event) => setCheckinCode(event.target.value)}
-            />
-          </div>
-        </div>
-        <Space>
-          <Button
-            disabled={!activeReservation}
-            loading={reservationAction === 'check-in'}
-            onClick={() => runReservationAction('check-in')}
-          >
-            签到
-          </Button>
-          <Button
-            disabled={!activeReservation}
-            loading={reservationAction === 'check-out'}
-            onClick={() => runReservationAction('check-out')}
-          >
-            签退
-          </Button>
-          <Button
-            danger
-            disabled={!activeReservation}
-            loading={reservationAction === 'cancel'}
-            onClick={() => runReservationAction('cancel')}
-          >
-            取消
-          </Button>
-        </Space>
-      </div>
-
       <div className="reservation-rules">
         <span>同一时间仅允许保留一个活跃预约</span>
         <span>
@@ -317,17 +280,196 @@ export default function SeatSlotsPage() {
           每日最多保留 {reservationRules?.dailyActiveReservationLimit ?? '-'} 个活跃预约
         </span>
         <span>已开始或过期时段不可预约</span>
-        <span>最多可提前 {reservationRules?.maxAdvanceDays ?? '-'} 天预约</span>
+        <span>仅支持预约当天</span>
+        <span>时间最小粒度为半小时</span>
         <span>预约后 {reservationRules?.checkinGraceMinutes ?? '-'} 分钟内未签到将自动释放</span>
       </div>
 
-      <SeatMap slots={visibleSlots} loading={loading} loadingSlotId={reservingId} onReserve={reserve} />
+      <div className="student-seat-workspace">
+        <SeatMap
+          slots={visibleSlots}
+          loading={loading}
+          loadingSlotId={reservingId}
+          sectionTitle="选择座位位置"
+          selectedSeatId={selectedSeatId}
+          selectableStatuses={['AVAILABLE', 'UNPUBLISHED']}
+          emptyDescription="当前区域暂无真实座位，请管理员先维护区域、桌子和座位"
+          onReserve={(slot) => setSelectedSeatId(slot.seatId)}
+        />
+
+        <aside className="student-seat-side-panel">
+          <Card title="已选座位">
+            {selectedSlot ? (
+              <Space orientation="vertical" size={12} className="student-seat-panel-stack">
+                <Space wrap>
+                  <Typography.Text strong>
+                    {selectedSlot.seatNo ?? `座位 ${selectedSlot.seatId}`}
+                    {selectedSlot.seatLabel ? ` (${selectedSlot.seatLabel})` : ''}
+                  </Typography.Text>
+                  <Tag color={seatStatusColor(selectedSlot.status)}>
+                    {seatStatusText(selectedSlot.status)}
+                  </Tag>
+                </Space>
+                <Typography.Text type="secondary">
+                  {selectedArea?.name ?? '未知区域'}
+                  {selectedArea?.floor ? ` · ${selectedArea.floor}` : ''}
+                  {selectedSlot.tableNo ? ` · ${selectedSlot.tableNo}` : ''}
+                </Typography.Text>
+                <div className="student-seat-time-grid">
+                  <label>
+                    <span>开始时间</span>
+                    <Select
+                      aria-label="开始时间"
+                      value={startTime}
+                      options={timeOptions.startOptions}
+                      onChange={setStartTime}
+                    />
+                  </label>
+                  <label>
+                    <span>结束时间</span>
+                    <Select
+                      aria-label="结束时间"
+                      value={endTime}
+                      options={timeOptions.endOptions}
+                      onChange={setEndTime}
+                    />
+                  </label>
+                </div>
+                <Button
+                  type="primary"
+                  block
+                  disabled={selectedSlot.status !== 'AVAILABLE'}
+                  loading={reservingId === selectedSlot.id}
+                  onClick={() => reserve(selectedSlot)}
+                >
+                  预约该座位
+                </Button>
+                {selectedSlot.status === 'UNPUBLISHED' ? (
+                  <Typography.Text type="secondary">
+                    当前时间段未开放，可调整时间或等待管理员开放后预约。
+                  </Typography.Text>
+                ) : null}
+              </Space>
+            ) : (
+              <Typography.Text type="secondary">请先在座位地图中选择一个位置。</Typography.Text>
+            )}
+          </Card>
+
+          <Card title="当前预约">
+            {activeReservation ? (
+              <Space orientation="vertical" size={12} className="student-seat-panel-stack">
+                <Space wrap>
+                  <Tag color={reservationStatusColor[activeReservation.status] ?? 'default'}>
+                    {reservationStatusText[activeReservation.status] ?? activeReservation.status}
+                  </Tag>
+                  <Typography.Text>#{activeReservation.reservationId}</Typography.Text>
+                </Space>
+                <Typography.Text>{formatReservationLocation(activeReservation)}</Typography.Text>
+                <Typography.Text type="secondary">{formatReservationTime(activeReservation)}</Typography.Text>
+                <Typography.Text type="secondary">
+                  签到截止 {formatDateTime(activeReservation.expiresAt)}
+                </Typography.Text>
+                <div className="reservation-code-field reservation-code">
+                  <span>签到码</span>
+                  <Input
+                    value={checkinCode}
+                    placeholder="预约成功后自动填入"
+                    onChange={(event) => setCheckinCode(event.target.value)}
+                  />
+                </div>
+                <Space wrap>
+                  <Button
+                    disabled={!activeReservation}
+                    loading={reservationAction === 'check-in'}
+                    onClick={() => runReservationAction('check-in')}
+                  >
+                    签到
+                  </Button>
+                  <Button
+                    disabled={!activeReservation}
+                    loading={reservationAction === 'check-out'}
+                    onClick={() => runReservationAction('check-out')}
+                  >
+                    签退
+                  </Button>
+                  <Button
+                    danger
+                    disabled={!activeReservation}
+                    loading={reservationAction === 'cancel'}
+                    onClick={() => runReservationAction('cancel')}
+                  >
+                    取消
+                  </Button>
+                </Space>
+              </Space>
+            ) : (
+              <Typography.Text type="secondary">暂无活跃预约。</Typography.Text>
+            )}
+          </Card>
+        </aside>
+      </div>
     </div>
   );
 }
 
 function normalizeInputTime(value: string) {
   return value.length === 5 ? `${value}:00` : value;
+}
+
+function toMinutes(value: string) {
+  const [hours, minutes] = value.slice(0, 5).split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+function toTimeText(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+function toHalfHourFloor(value: string) {
+  const minutes = toMinutes(value);
+  return toTimeText(Math.floor(minutes / 30) * 30);
+}
+
+function toHalfHourCeil(value: string) {
+  const minutes = toMinutes(value);
+  return toTimeText(Math.ceil(minutes / 30) * 30);
+}
+
+function isHalfHourTime(value: string) {
+  const minutes = toMinutes(value);
+  return minutes % 30 === 0;
+}
+
+function buildHalfHourTimeOptions(
+  openTime = '08:00:00',
+  closeTime = '22:00:00',
+  startTime = '08:00',
+  endTime = '22:00',
+) {
+  const startBoundary = toMinutes(toHalfHourCeil(openTime.slice(0, 5)));
+  const endBoundary = toMinutes(toHalfHourFloor(closeTime.slice(0, 5)));
+  const selectedStart = toMinutes(startTime);
+  const selectedEnd = toMinutes(endTime);
+  const startOptions = [];
+  const endOptions = [];
+
+  for (let minutes = startBoundary; minutes < endBoundary; minutes += 30) {
+    if (minutes < selectedEnd) {
+      const value = toTimeText(minutes);
+      startOptions.push({ label: value, value });
+    }
+  }
+
+  for (let minutes = startBoundary + 30; minutes <= endBoundary; minutes += 30) {
+    if (minutes > selectedStart) {
+      const value = toTimeText(minutes);
+      endOptions.push({ label: value, value });
+    }
+  }
+
+  return { startOptions, endOptions };
 }
 
 function overlaps(slot: SeatSlot, startTime: string, endTime: string) {
@@ -346,14 +488,23 @@ function getAvailableWindow(slots: SeatSlot[], startTime: string, endTime: strin
   return slots.find((slot) => slot.status === 'AVAILABLE' && contains(slot, startTime, endTime));
 }
 
-function buildVisibleSlotsForSelectedTime(slots: SeatSlot[], startTime: string, endTime: string) {
+function buildVisibleSlotsForSelectedTime(
+  slots: SeatSlot[],
+  seats: Seat[],
+  areaId: number,
+  slotDate: string,
+  startTime: string,
+  endTime: string,
+) {
   const bySeat = new Map<number, SeatSlot[]>();
   slots.forEach((slot) => {
     bySeat.set(slot.seatId, [...(bySeat.get(slot.seatId) ?? []), slot]);
   });
 
-  return Array.from(bySeat.values())
-    .map((seatSlots) => {
+  return seats
+    .filter((seat) => seat.status === 'ACTIVE')
+    .map((seat) => {
+      const seatSlots = bySeat.get(seat.id) ?? [];
       const busySlot = getBusySlot(seatSlots, startTime, endTime);
       if (busySlot) {
         return { ...busySlot, startTime, endTime };
@@ -362,7 +513,78 @@ function buildVisibleSlotsForSelectedTime(slots: SeatSlot[], startTime: string, 
       if (availableWindow) {
         return { ...availableWindow, startTime, endTime };
       }
-      return null;
+      return buildUnpublishedSlot(seat, areaId, slotDate, startTime, endTime);
     })
-    .filter((slot): slot is SeatSlot => slot !== null);
+    .sort(bySeatMapPosition);
+}
+
+function buildUnpublishedSlot(
+  seat: Seat,
+  areaId: number,
+  slotDate: string,
+  startTime: string,
+  endTime: string,
+): SeatSlot {
+  return {
+    id: -seat.id,
+    seatId: seat.id,
+    seatNo: seat.seatNo,
+    tableId: seat.tableId,
+    tableNo: seat.tableNo,
+    tableRowNo: seat.tableRowNo,
+    tableColumnNo: seat.tableColumnNo,
+    tableDisplayOrder: seat.tableDisplayOrder,
+    tablePositionX: seat.tablePositionX,
+    tablePositionY: seat.tablePositionY,
+    tableWidthPx: seat.tableWidthPx,
+    tableHeightPx: seat.tableHeightPx,
+    tableRotationDeg: seat.tableRotationDeg,
+    seatLabel: seat.seatLabel,
+    seatSide: seat.seatSide,
+    seatOrder: seat.seatOrder,
+    rowNo: seat.rowNo,
+    columnNo: seat.columnNo,
+    displayOrder: seat.displayOrder,
+    areaId,
+    slotDate,
+    startTime,
+    endTime,
+    status: 'UNPUBLISHED',
+    reservedBy: null,
+    reservationId: null,
+  };
+}
+
+function bySeatMapPosition(left: SeatSlot, right: SeatSlot) {
+  const tableCompare = (left.tableNo ?? '').localeCompare(right.tableNo ?? '');
+  if (tableCompare !== 0) {
+    return tableCompare;
+  }
+  const seatOrderCompare = (left.seatOrder ?? Number.MAX_SAFE_INTEGER) - (right.seatOrder ?? Number.MAX_SAFE_INTEGER);
+  if (seatOrderCompare !== 0) {
+    return seatOrderCompare;
+  }
+  return (left.seatNo ?? String(left.seatId)).localeCompare(right.seatNo ?? String(right.seatId));
+}
+
+function seatStatusText(status: SeatSlot['status']) {
+  const text: Record<SeatSlot['status'], string> = {
+    AVAILABLE: '可预约',
+    RESERVED: '已预约',
+    USING: '使用中',
+    ABNORMAL: '异常占用',
+    UNPUBLISHED: '未开放',
+  };
+  return text[status];
+}
+
+function seatStatusColor(status: SeatSlot['status']) {
+  const color: Record<SeatSlot['status'], string> = {
+    AVAILABLE: 'green',
+    RESERVED: 'blue',
+    USING: 'orange',
+    ABNORMAL: 'red',
+    UNPUBLISHED: 'default',
+  };
+  return color[status];
 }

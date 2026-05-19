@@ -9,6 +9,7 @@ import com.lyston.smartseat.common.BusinessException;
 import com.lyston.smartseat.seat.SeatSlot;
 import com.lyston.smartseat.seat.SeatSlotMapper;
 import com.lyston.smartseat.seat.SeatSlotStatus;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -26,6 +27,7 @@ public class ReservationService {
     private final ReservationRateLimiter reservationRateLimiter;
     private final SeatSlotCacheService seatSlotCacheService;
     private final ReservationRuleService reservationRuleService;
+    private final Clock clock;
 
     public ReservationService(
             SeatSlotMapper seatSlotMapper,
@@ -33,7 +35,8 @@ public class ReservationService {
             CheckinRecordMapper checkinRecordMapper,
             ReservationRateLimiter reservationRateLimiter,
             SeatSlotCacheService seatSlotCacheService,
-            ReservationRuleService reservationRuleService
+            ReservationRuleService reservationRuleService,
+            Clock clock
     ) {
         this.seatSlotMapper = seatSlotMapper;
         this.reservationMapper = reservationMapper;
@@ -41,12 +44,13 @@ public class ReservationService {
         this.reservationRateLimiter = reservationRateLimiter;
         this.seatSlotCacheService = seatSlotCacheService;
         this.reservationRuleService = reservationRuleService;
+        this.clock = clock;
     }
 
     @Transactional
     public ReservationResponse createReservation(CreateReservationRequest request, Long userId) {
         reservationRateLimiter.check(userId);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         ReservationRuleResponse rules = reservationRuleService.getRules();
         SeatSlot slot = resolveReservationSlot(request, now, rules);
         ensureSlotIsReservableByTime(slot, now, rules);
@@ -79,14 +83,14 @@ public class ReservationService {
 
     @Transactional
     public ReservationResponse checkIn(Long reservationId, CheckinRequest request, Long userId) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         Reservation reservation = requireReservation(reservationId);
         return completeCheckIn(reservation, request.checkinCode(), userId, now);
     }
 
     @Transactional
     public ReservationResponse tableCheckIn(TableCheckinRequest request, Long userId) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         Reservation reservation = reservationMapper.findReservedForTableCheckin(
                 userId,
                 request.tableQrToken(),
@@ -135,7 +139,7 @@ public class ReservationService {
 
     @Transactional
     public ReservationResponse checkOut(Long reservationId, Long userId) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         Reservation reservation = requireReservation(reservationId);
 
         int reservationRows = reservationMapper.markCheckedOut(reservationId, userId, now);
@@ -161,7 +165,7 @@ public class ReservationService {
 
     @Transactional
     public ReservationResponse cancel(Long reservationId, Long userId) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         Reservation reservation = requireReservation(reservationId);
 
         int reservationRows = reservationMapper.markCancelled(reservationId, userId, now);
@@ -187,7 +191,7 @@ public class ReservationService {
 
     @Transactional
     public int expireOverdueReservations(int limit) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         List<Reservation> expiredReservations = reservationMapper.findExpiredReservations(now, limit);
         int expiredCount = 0;
 
@@ -305,6 +309,16 @@ public class ReservationService {
         if (!startTime.isBefore(endTime)) {
             throw new BusinessException("INVALID_RESERVATION_TIME_RANGE", "Reservation start time must be before end time");
         }
+        if (!request.slotDate().equals(LocalDate.now(clock))) {
+            throw new BusinessException("RESERVATION_ONLY_TODAY_ALLOWED", "Only today's reservations are allowed");
+        }
+        if (!isHalfHourBoundary(startTime) || !isHalfHourBoundary(endTime)) {
+            throw new BusinessException("INVALID_RESERVATION_TIME_GRANULARITY", "Reservation time must use 30-minute intervals");
+        }
+    }
+
+    private boolean isHalfHourBoundary(LocalTime time) {
+        return time.getSecond() == 0 && time.getNano() == 0 && (time.getMinute() == 0 || time.getMinute() == 30);
     }
 
     private void ensureWithinAvailableWindow(CreateReservationRequest request, SeatSlot availableWindow) {
@@ -355,9 +369,8 @@ public class ReservationService {
     }
 
     private void ensureSlotIsReservableByTime(SeatSlot slot, LocalDateTime now, ReservationRuleResponse rules) {
-        LocalDate latestReservableDate = now.toLocalDate().plusDays(rules.maxAdvanceDays());
-        if (slot.getSlotDate().isAfter(latestReservableDate)) {
-            throw new BusinessException("SEAT_SLOT_TOO_FAR_AHEAD", "Seat slot is beyond the reservation window");
+        if (!slot.getSlotDate().equals(now.toLocalDate())) {
+            throw new BusinessException("RESERVATION_ONLY_TODAY_ALLOWED", "Only today's reservations are allowed");
         }
         LocalDateTime slotStartAt = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
         if (!slotStartAt.isAfter(now)) {
