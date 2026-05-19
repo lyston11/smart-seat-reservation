@@ -31,16 +31,54 @@ class ReservationRuleServiceTest {
     void getRulesShouldFallbackToPropertiesWhenDatabaseRuleMissing() {
         ReservationRuleProperties properties = new ReservationRuleProperties();
         properties.setCheckinGraceMinutes(20);
+        properties.setCheckinLeadMinutes(8);
         properties.setMaxAdvanceDays(5);
+        properties.setReservationOpenHour(18);
         properties.setDailyActiveReservationLimit(2);
+        properties.setWifiOfflineReleaseMinutes(18);
+        properties.setSeatLockMinutes(60);
         reservationRuleService = new ReservationRuleService(reservationRuleMapper.proxy(), properties, auditService);
 
         ReservationRuleResponse response = reservationRuleService.getRules();
 
         assertThat(response.checkinGraceMinutes()).isEqualTo(20);
+        assertThat(response.checkinLeadMinutes()).isEqualTo(8);
         assertThat(response.maxAdvanceDays()).isEqualTo(5);
+        assertThat(response.reservationOpenHour()).isEqualTo(18);
         assertThat(response.dailyActiveReservationLimit()).isEqualTo(2);
+        assertThat(response.wifiOfflineReleaseMinutes()).isEqualTo(18);
+        assertThat(response.seatLockMinutes()).isEqualTo(60);
         assertThat(response.updatedBy()).isNull();
+    }
+
+    @Test
+    void getRulesShouldMergePropertiesWhenDatabaseRuleHasNullNewFields() {
+        ReservationRuleProperties properties = new ReservationRuleProperties();
+        properties.setCheckinGraceMinutes(10);
+        properties.setCheckinLeadMinutes(12);
+        properties.setMaxAdvanceDays(7);
+        properties.setReservationOpenHour(18);
+        properties.setDailyActiveReservationLimit(3);
+        properties.setWifiOfflineReleaseMinutes(15);
+        properties.setSeatLockMinutes(60);
+        ReservationRule rule = reservationRule();
+        rule.setCheckinLeadMinutes(null);
+        rule.setReservationOpenHour(null);
+        rule.setWifiOfflineReleaseMinutes(null);
+        rule.setSeatLockMinutes(null);
+        reservationRuleMapper.rule = rule;
+        reservationRuleService = new ReservationRuleService(reservationRuleMapper.proxy(), properties, auditService);
+
+        ReservationRuleResponse response = reservationRuleService.getRules();
+
+        assertThat(response.checkinGraceMinutes()).isEqualTo(15);
+        assertThat(response.checkinLeadMinutes()).isEqualTo(12);
+        assertThat(response.maxAdvanceDays()).isEqualTo(7);
+        assertThat(response.reservationOpenHour()).isEqualTo(18);
+        assertThat(response.dailyActiveReservationLimit()).isEqualTo(3);
+        assertThat(response.wifiOfflineReleaseMinutes()).isEqualTo(15);
+        assertThat(response.seatLockMinutes()).isEqualTo(60);
+        assertThat(response.updatedAt()).isEqualTo(LocalDateTime.of(2026, 5, 15, 10, 0));
     }
 
     @Test
@@ -49,13 +87,17 @@ class ReservationRuleServiceTest {
         reservationRuleMapper.rule = rule;
 
         ReservationRuleResponse response = reservationRuleService.updateRules(
-                new UpdateReservationRuleRequest(30, 10, 4),
+                new UpdateReservationRuleRequest(30, 12, 10, 18, 4, 20, 60),
                 2L
         );
 
         assertThat(response.checkinGraceMinutes()).isEqualTo(30);
+        assertThat(response.checkinLeadMinutes()).isEqualTo(12);
         assertThat(response.maxAdvanceDays()).isEqualTo(10);
+        assertThat(response.reservationOpenHour()).isEqualTo(18);
         assertThat(response.dailyActiveReservationLimit()).isEqualTo(4);
+        assertThat(response.wifiOfflineReleaseMinutes()).isEqualTo(20);
+        assertThat(response.seatLockMinutes()).isEqualTo(60);
         assertThat(response.updatedBy()).isEqualTo(2L);
         assertThat(reservationRuleMapper.updatedRule).isSameAs(rule);
         assertThat(auditService.action).isEqualTo(AuditAction.RESERVATION_RULE_UPDATE);
@@ -66,8 +108,12 @@ class ReservationRuleServiceTest {
         ReservationRule rule = new ReservationRule();
         rule.setId(1L);
         rule.setCheckinGraceMinutes(15);
+        rule.setCheckinLeadMinutes(10);
         rule.setMaxAdvanceDays(7);
+        rule.setReservationOpenHour(18);
         rule.setDailyActiveReservationLimit(3);
+        rule.setWifiOfflineReleaseMinutes(15);
+        rule.setSeatLockMinutes(60);
         rule.setUpdatedAt(LocalDateTime.of(2026, 5, 15, 10, 0));
         return rule;
     }

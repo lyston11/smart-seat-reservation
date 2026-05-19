@@ -6,6 +6,7 @@ export type Area = {
   status: AreaStatus;
   openTime: string;
   closeTime: string;
+  checkinIpCidrs: string;
 };
 
 export type AreaStatus = 'ACTIVE' | 'INACTIVE';

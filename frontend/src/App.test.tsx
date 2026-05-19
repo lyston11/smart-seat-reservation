@@ -26,11 +26,34 @@ function makeReservation(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function makeReservationRules(overrides: Record<string, unknown> = {}) {
+  return {
+    checkinGraceMinutes: 10,
+    checkinLeadMinutes: 10,
+    maxAdvanceDays: 7,
+    reservationOpenHour: 18,
+    dailyActiveReservationLimit: 3,
+    wifiOfflineReleaseMinutes: 15,
+    seatLockMinutes: 60,
+    updatedBy: null,
+    updatedAt: null,
+    ...overrides,
+  };
+}
+
 function storeStudentSession() {
   window.localStorage.setItem('smart-seat-auth-token', 'test-token');
   window.localStorage.setItem(
     'smart-seat-auth-user',
     JSON.stringify({ id: 1, name: 'Demo Student', studentNo: '20260001', role: 'STUDENT' }),
+  );
+}
+
+function storeAdminSession() {
+  window.localStorage.setItem('smart-seat-auth-token', 'test-token');
+  window.localStorage.setItem(
+    'smart-seat-auth-user',
+    JSON.stringify({ id: 2, name: 'Demo Admin', studentNo: 'admin', role: 'ADMIN' }),
   );
 }
 
@@ -49,6 +72,12 @@ function toLocalDateText(value: Date) {
   const month = String(value.getMonth() + 1).padStart(2, '0');
   const date = String(value.getDate()).padStart(2, '0');
   return `${year}-${month}-${date}`;
+}
+
+function dayAfterTodayText() {
+  const value = new Date();
+  value.setDate(value.getDate() + 1);
+  return toLocalDateText(value);
 }
 
 async function selectComboboxValue(label: string, value: string) {
@@ -206,6 +235,7 @@ describe('App', () => {
 
   it('submits a concrete seat reservation with the selected custom time range', async () => {
     storeStudentSession();
+    const tomorrowText = dayAfterTodayText();
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -225,6 +255,7 @@ describe('App', () => {
                 status: 'ACTIVE',
                 openTime: '08:00:00',
                 closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
               },
             ],
           }),
@@ -260,7 +291,7 @@ describe('App', () => {
                 columnNo: 1,
                 displayOrder: 1,
                 areaId: 1,
-                slotDate: '2026-05-19',
+                slotDate: tomorrowText,
                 startTime: '08:00:00',
                 endTime: '22:00:00',
                 status: 'AVAILABLE',
@@ -311,7 +342,7 @@ describe('App', () => {
         expect(JSON.parse(String(init.body))).toEqual(
           {
             seatId: 9,
-            slotDate: '2026-05-19',
+            slotDate: tomorrowText,
             startTime: '09:30:00',
             endTime: '10:30:00',
           },
@@ -342,13 +373,7 @@ describe('App', () => {
             success: true,
             code: 'OK',
             message: 'ok',
-            data: {
-              checkinGraceMinutes: 15,
-              maxAdvanceDays: 7,
-              dailyActiveReservationLimit: 3,
-              updatedBy: null,
-              updatedAt: null,
-            },
+            data: makeReservationRules({ reservationOpenHour: 0 }),
           }),
         };
       }
@@ -373,7 +398,7 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: /1号/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /A-001|1号/ }));
     await selectComboboxValue('开始时间', '09:30');
     await selectComboboxValue('结束时间', '10:30');
     fireEvent.click(await screen.findByRole('button', { name: '预约该座位' }));
@@ -407,6 +432,7 @@ describe('App', () => {
                 status: 'ACTIVE',
                 openTime: '08:00:00',
                 closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
               },
             ],
           }),
@@ -455,13 +481,7 @@ describe('App', () => {
             success: true,
             code: 'OK',
             message: 'ok',
-            data: {
-              checkinGraceMinutes: 15,
-              maxAdvanceDays: 7,
-              dailyActiveReservationLimit: 3,
-              updatedBy: null,
-              updatedAt: null,
-            },
+            data: makeReservationRules(),
           }),
         };
       }
@@ -524,13 +544,7 @@ describe('App', () => {
             success: true,
             code: 'OK',
             message: 'ok',
-            data: {
-              checkinGraceMinutes: 15,
-              maxAdvanceDays: 7,
-              dailyActiveReservationLimit: 3,
-              updatedBy: null,
-              updatedAt: null,
-            },
+            data: makeReservationRules(),
           }),
         };
       }
@@ -598,7 +612,8 @@ describe('App', () => {
     );
 
     expect((await screen.findAllByText('A 区 · 1F · T01 · A-001 (1号)')).length).toBeGreaterThan(0);
-    fireEvent.click(await screen.findByRole('button', { name: /签\s*到/ }));
+    const checkinButtons = await screen.findAllByRole('button', { name: /^签\s*到$/ });
+    fireEvent.click(checkinButtons[0]);
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -704,11 +719,7 @@ describe('App', () => {
   });
 
   it('renders admin table management route for administrators', async () => {
-    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
-    window.localStorage.setItem(
-      'smart-seat-auth-user',
-      JSON.stringify({ id: 2, name: 'Demo Admin', studentNo: 'admin', role: 'ADMIN' }),
-    );
+    storeAdminSession();
 
     vi.stubGlobal(
       'fetch',
@@ -728,12 +739,42 @@ describe('App', () => {
     expect(await screen.findByRole('link', { name: '桌子管理' })).toBeTruthy();
   });
 
-  it('saves dragged admin table layout changes without exposing coordinate inputs', async () => {
-    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
-    window.localStorage.setItem(
-      'smart-seat-auth-user',
-      JSON.stringify({ id: 2, name: 'Demo Admin', studentNo: 'admin', role: 'ADMIN' }),
+  it('normalizes nullable reservation rule fields on the admin rule page', async () => {
+    storeAdminSession();
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          code: 'OK',
+          message: 'ok',
+          data: makeReservationRules({
+            checkinLeadMinutes: null,
+            reservationOpenHour: null,
+            wifiOfflineReleaseMinutes: null,
+            seatLockMinutes: null,
+          }),
+        }),
+      }),
     );
+
+    render(
+      <MemoryRouter initialEntries={['/admin/reservation-rules']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 3, name: '预约规则' })).toBeTruthy();
+    expect(await screen.findByText('WiFi 离线释放')).toBeTruthy();
+    expect(await screen.findByDisplayValue('18')).toBeTruthy();
+    expect(await screen.findByDisplayValue('60')).toBeTruthy();
+    expect(await screen.findByDisplayValue('15')).toBeTruthy();
+  });
+
+  it('saves dragged admin table layout changes without exposing coordinate inputs', async () => {
+    storeAdminSession();
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -753,6 +794,7 @@ describe('App', () => {
                 status: 'ACTIVE',
                 openTime: '08:00:00',
                 closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
               },
             ],
           }),
@@ -936,11 +978,7 @@ describe('App', () => {
   });
 
   it('offers admin table presets and hides custom size fields by default', async () => {
-    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
-    window.localStorage.setItem(
-      'smart-seat-auth-user',
-      JSON.stringify({ id: 2, name: 'Demo Admin', studentNo: 'admin', role: 'ADMIN' }),
-    );
+    storeAdminSession();
 
     vi.stubGlobal(
       'fetch',
@@ -960,8 +998,9 @@ describe('App', () => {
                   floor: '1F',
                   description: null,
                   status: 'ACTIVE',
-                  openTime: '08:00:00',
-                  closeTime: '22:00:00',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
                 },
               ],
             }),
@@ -998,11 +1037,7 @@ describe('App', () => {
   });
 
   it('uses table preset seat count in the admin layout when seats are not configured yet', async () => {
-    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
-    window.localStorage.setItem(
-      'smart-seat-auth-user',
-      JSON.stringify({ id: 2, name: 'Demo Admin', studentNo: 'admin', role: 'ADMIN' }),
-    );
+    storeAdminSession();
 
     vi.stubGlobal(
       'fetch',
@@ -1022,8 +1057,9 @@ describe('App', () => {
                   floor: '1F',
                   description: null,
                   status: 'ACTIVE',
-                  openTime: '08:00:00',
-                  closeTime: '22:00:00',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
                 },
               ],
             }),
@@ -1075,11 +1111,7 @@ describe('App', () => {
   });
 
   it('publishes admin seat slots with table batch selection and time templates', async () => {
-    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
-    window.localStorage.setItem(
-      'smart-seat-auth-user',
-      JSON.stringify({ id: 2, name: 'Demo Admin', studentNo: 'admin', role: 'ADMIN' }),
-    );
+    storeAdminSession();
     const todayText = toLocalDateText(new Date());
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -1100,6 +1132,7 @@ describe('App', () => {
                 status: 'ACTIVE',
                 openTime: '08:00:00',
                 closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
               },
             ],
           }),

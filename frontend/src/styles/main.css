@@ -18,6 +18,10 @@ body {
   min-height: 100vh;
 }
 
+.app-shell > .ant-layout {
+  min-width: 0;
+}
+
 .app-sider {
   border-right: 1px solid #e5e7eb;
 }
@@ -57,6 +61,7 @@ body {
 }
 
 .app-content {
+  min-width: 0;
   padding: 24px;
   background: #f5f5f4;
 }
@@ -944,8 +949,24 @@ body {
   margin-top: 8px;
 }
 
+.reservation-rule-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.reservation-rule-stat-card {
+  min-width: 0;
+  height: 100%;
+}
+
+.reservation-rule-stat-card .ant-card-body {
+  height: 100%;
+}
+
 .rule-form {
-  max-width: 860px;
+  max-width: 100%;
 }
 
 .rule-form-grid {
@@ -978,8 +999,14 @@ body {
 }
 
 @media (max-width: 860px) {
-  .app-shell {
+  .app-shell,
+  .app-shell.ant-layout-has-sider {
     flex-direction: column;
+  }
+
+  .app-shell.ant-layout-has-sider > .ant-layout {
+    width: 100% !important;
+    flex: none !important;
   }
 
   .app-sider {
@@ -1043,6 +1070,7 @@ body {
   }
 
   .stats-grid,
+  .reservation-rule-stats-grid,
   .student-summary-grid,
   .student-card-grid,
   .student-seat-workspace,

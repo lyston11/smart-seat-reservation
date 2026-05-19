@@ -11,6 +11,7 @@ export type CreateAreaPayload = {
   description?: string;
   openTime?: string;
   closeTime?: string;
+  checkinIpCidrs?: string;
 };
 
 export type UpdateAreaPayload = {
@@ -20,6 +21,7 @@ export type UpdateAreaPayload = {
   status: AreaStatus;
   openTime?: string;
   closeTime?: string;
+  checkinIpCidrs?: string;
 };
 
 export function createArea(payload: CreateAreaPayload) {

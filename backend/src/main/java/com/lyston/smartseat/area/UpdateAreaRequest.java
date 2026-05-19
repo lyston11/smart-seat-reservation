@@ -11,10 +11,11 @@ public record UpdateAreaRequest(
         @Size(max = 255) String description,
         @NotNull String status,
         LocalTime openTime,
-        LocalTime closeTime
+        LocalTime closeTime,
+        @Size(max = 512) String checkinIpCidrs
 ) {
 
     public UpdateAreaRequest(String name, String floor, String description, String status) {
-        this(name, floor, description, status, null, null);
+        this(name, floor, description, status, null, null, null);
     }
 }

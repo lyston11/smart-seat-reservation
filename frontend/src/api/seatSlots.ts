@@ -6,7 +6,10 @@ import type {
   ReservationRule,
   ReservationResult,
   TableCheckinPayload,
+  WifiPresencePayload,
+  WifiPresenceResult,
 } from '../types/reservation';
+import type { ReservationRuleValues } from '../utils/reservationRules';
 import type { PublishSeatSlotPeriod, PublishSeatSlotsResult, SeatSlot } from '../types/seat';
 
 export type PublishSeatSlotsPayload = {
@@ -66,10 +69,7 @@ export function getReservationRules() {
   return request<ReservationRule>('/api/reservations/rules');
 }
 
-export function updateReservationRules(payload: Pick<
-  ReservationRule,
-  'checkinGraceMinutes' | 'maxAdvanceDays' | 'dailyActiveReservationLimit'
->) {
+export function updateReservationRules(payload: ReservationRuleValues) {
   return request<ReservationRule>('/api/reservations/rules', {
     method: 'PUT',
     body: JSON.stringify(payload),
@@ -98,6 +98,34 @@ export function checkInReservation(reservationId: number, payload: CheckinPayloa
   return request<ReservationResult>(`/api/reservations/${reservationId}/check-in`, {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export function markReservationWifiPresence(reservationId: number, payload: WifiPresencePayload = {}) {
+  return request<WifiPresenceResult>(`/api/reservations/${reservationId}/wifi-presence`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function lockReservationSeat(reservationId: number) {
+  return request<ReservationResult>(`/api/reservations/${reservationId}/seat-lock`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export function reactivateSeatLock(reservationId: number, payload: CheckinPayload) {
+  return request<ReservationResult>(`/api/reservations/${reservationId}/seat-lock/reactivate`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function releaseSeatLock(reservationId: number) {
+  return request<ReservationResult>(`/api/reservations/${reservationId}/seat-lock/release`, {
+    method: 'POST',
+    body: JSON.stringify({}),
   });
 }
 

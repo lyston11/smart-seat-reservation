@@ -3,7 +3,9 @@ package com.lyston.smartseat.reservation;
 import com.lyston.smartseat.auth.CurrentUser;
 import com.lyston.smartseat.auth.RequireRole;
 import com.lyston.smartseat.common.ApiResponse;
+import com.lyston.smartseat.network.ClientIpResolver;
 import com.lyston.smartseat.user.UserRole;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,13 +23,16 @@ public class ReservationController {
 
     private final ReservationService reservationService;
     private final ReservationRuleService reservationRuleService;
+    private final ClientIpResolver clientIpResolver;
 
     public ReservationController(
             ReservationService reservationService,
-            ReservationRuleService reservationRuleService
+            ReservationRuleService reservationRuleService,
+            ClientIpResolver clientIpResolver
     ) {
         this.reservationService = reservationService;
         this.reservationRuleService = reservationRuleService;
+        this.clientIpResolver = clientIpResolver;
     }
 
     @GetMapping("/rules")
@@ -67,18 +72,81 @@ public class ReservationController {
     public ApiResponse<ReservationResponse> checkIn(
             @PathVariable Long reservationId,
             @Valid @RequestBody CheckinRequest request,
-            CurrentUser currentUser
+            CurrentUser currentUser,
+            HttpServletRequest servletRequest
     ) {
-        return ApiResponse.ok(reservationService.checkIn(reservationId, request, currentUser.id()));
+        return ApiResponse.ok(reservationService.checkIn(
+                reservationId,
+                request,
+                currentUser.id(),
+                clientIpResolver.resolve(servletRequest)
+        ));
     }
 
     @PostMapping("/table-check-in")
     @RequireRole(UserRole.STUDENT)
     public ApiResponse<ReservationResponse> tableCheckIn(
             @Valid @RequestBody TableCheckinRequest request,
+            CurrentUser currentUser,
+            HttpServletRequest servletRequest
+    ) {
+        return ApiResponse.ok(reservationService.tableCheckIn(
+                request,
+                currentUser.id(),
+                clientIpResolver.resolve(servletRequest)
+        ));
+    }
+
+    @PostMapping("/{reservationId}/wifi-presence")
+    @RequireRole(UserRole.STUDENT)
+    public ApiResponse<WifiPresenceResponse> markWifiPresence(
+            @PathVariable Long reservationId,
+            @Valid @RequestBody(required = false) WifiPresenceRequest request,
+            CurrentUser currentUser,
+            HttpServletRequest servletRequest
+    ) {
+        return ApiResponse.ok(reservationService.markWifiPresence(
+                reservationId,
+                request,
+                currentUser.id(),
+                clientIpResolver.resolve(servletRequest)
+        ));
+    }
+
+    @PostMapping("/{reservationId}/seat-lock")
+    @RequireRole(UserRole.STUDENT)
+    public ApiResponse<ReservationResponse> lockSeat(
+            @PathVariable Long reservationId,
+            @Valid @RequestBody(required = false) ReservationActionRequest request,
             CurrentUser currentUser
     ) {
-        return ApiResponse.ok(reservationService.tableCheckIn(request, currentUser.id()));
+        return ApiResponse.ok(reservationService.lockSeat(reservationId, currentUser.id()));
+    }
+
+    @PostMapping("/{reservationId}/seat-lock/reactivate")
+    @RequireRole(UserRole.STUDENT)
+    public ApiResponse<ReservationResponse> reactivateSeatLock(
+            @PathVariable Long reservationId,
+            @Valid @RequestBody CheckinRequest request,
+            CurrentUser currentUser,
+            HttpServletRequest servletRequest
+    ) {
+        return ApiResponse.ok(reservationService.reactivateSeatLock(
+                reservationId,
+                request,
+                currentUser.id(),
+                clientIpResolver.resolve(servletRequest)
+        ));
+    }
+
+    @PostMapping("/{reservationId}/seat-lock/release")
+    @RequireRole(UserRole.STUDENT)
+    public ApiResponse<ReservationResponse> releaseSeatLock(
+            @PathVariable Long reservationId,
+            @Valid @RequestBody(required = false) ReservationActionRequest request,
+            CurrentUser currentUser
+    ) {
+        return ApiResponse.ok(reservationService.releaseSeatLock(reservationId, currentUser.id()));
     }
 
     @PostMapping("/{reservationId}/check-out")
@@ -105,5 +173,17 @@ public class ReservationController {
     @RequireRole(UserRole.ADMIN)
     public ApiResponse<Integer> expireOverdueReservations(@RequestParam(defaultValue = "100") int limit) {
         return ApiResponse.ok(reservationService.expireOverdueReservations(limit));
+    }
+
+    @PostMapping("/release-wifi-offline")
+    @RequireRole(UserRole.ADMIN)
+    public ApiResponse<Integer> releaseWifiOfflineReservations(@RequestParam(defaultValue = "100") int limit) {
+        return ApiResponse.ok(reservationService.releaseWifiOfflineReservations(limit));
+    }
+
+    @PostMapping("/release-expired-seat-locks")
+    @RequireRole(UserRole.ADMIN)
+    public ApiResponse<Integer> releaseExpiredSeatLocks(@RequestParam(defaultValue = "100") int limit) {
+        return ApiResponse.ok(reservationService.releaseExpiredSeatLocks(limit));
     }
 }

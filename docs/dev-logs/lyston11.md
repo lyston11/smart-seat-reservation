@@ -4,6 +4,103 @@
 
 ### 任务
 - Issue: 暂无
+- 分支: feature/lyston11-wifi-checkin
+- 目标: 修复管理员预约规则页新增规则字段显示为 0、表单为空、统计卡布局不对齐的问题。
+
+### 本次改动
+- 后端 `ReservationRuleResponse` 支持将数据库规则与配置默认值合并，兼容旧库或旧数据中新增字段为空的情况。
+- `ReservationRuleService` 查询和更新后都返回合并后的规则，保证业务服务和接口响应使用同一套兜底规则。
+- 前端新增 `reservationRules` 工具，统一预约规则默认值和归一化逻辑。
+- 管理员预约规则页、学生选座页、学生首页全部接入规则归一化，避免接口缺字段时显示 0 或空输入框。
+- 管理员预约规则页统计卡改为专用等宽网格，表单保持 3 列对齐，移动端自动收为 1 列。
+- 补充规则服务单测和前端页面测试，覆盖旧数据新增字段为空时的默认值展示。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/reservation/ReservationRuleResponse.java
+- backend/src/main/java/com/lyston/smartseat/reservation/ReservationRuleService.java
+- backend/src/test/java/com/lyston/smartseat/reservation/ReservationRuleServiceTest.java
+- frontend/src/utils/reservationRules.ts
+- frontend/src/pages/AdminReservationRulesPage.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/pages/StudentHomePage.tsx
+- frontend/src/api/seatSlots.ts
+- frontend/src/types/reservation.ts
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 58 个测试通过。
+- 已运行 `npm run test`，前端 3 个测试文件、25 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，通过。
+- 已用浏览器实测 `/admin/reservation-rules`，确认窄屏下内容区宽度恢复正常，规则字段显示为 10、15、18、60 等默认/真实值，不再显示 0 或空输入框。
+
+### 遗留问题
+- 当前运行中的本地后端若未重启，接口仍可能是旧代码响应；需要重启后端服务后才能看到后端合并默认值生效。
+
+### 对其他成员的影响
+- 前端展示预约规则时应统一使用 `normalizeReservationRules`，不要在页面里各自写 `?? 0` 兜底。
+- 后续新增规则字段需要同步更新后端响应合并、前端默认值、类型和规则页表单。
+
+## 2026-05-19
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-wifi-checkin
+- 目标: 从最新 `main` 新建分支，开发“签到必须连接指定校园网 IP 网段、预约开始前后 10 分钟内签到、使用中超过 15 分钟未检测到 WiFi IP 自动释放座位”。
+
+### 本次改动
+- 新增 `V11__add_wifi_checkin_rules.sql`，为区域增加 `checkin_ip_cidrs`，为预约规则增加 `checkin_lead_minutes` 和 `wifi_offline_release_minutes`，为预约增加 `last_wifi_seen_at` 与 `last_wifi_ip`。
+- 新增 `network` 模块，包含 `ClientIpResolver` 和 `IpRangeMatcher`，用于解析请求 IP 并匹配区域 CIDR 网段。
+- 普通签到和桌码签到都增加区域 WiFi IP 校验；后端会校验服务端解析到的请求 IP 是否属于区域配置网段。
+- 签到时间窗改为规则化：默认可在预约开始前 10 分钟到开始后 10 分钟内签到。
+- 新增学生端 WiFi 在线心跳接口 `POST /api/reservations/{reservationId}/wifi-presence`，使用中预约会刷新 `lastWifiSeenAt`。
+- 新增 WiFi 离线自动释放逻辑和定时任务，默认每 60 秒扫描一次，超过 15 分钟没有有效 WiFi 心跳的使用中预约会变为 `WIFI_RELEASED`，座位重新开放。
+- 管理员区域页面支持维护“签到校园网 IP 网段”，管理员预约规则页支持维护可提前签到、开始后可签到、WiFi 离线释放时间。
+- 学生“我的预约”页面对使用中预约自动发送 WiFi 在线心跳，并显示最近检测时间。
+- 前端预约状态新增 `WIFI_RELEASED` 文案和筛选项。
+- 补充后端测试覆盖 WiFi IP 拒绝、签到时间窗拒绝、WiFi 心跳刷新、WiFi 离线释放；补充规则服务测试字段。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/network/
+- backend/src/main/java/com/lyston/smartseat/area/
+- backend/src/main/java/com/lyston/smartseat/reservation/
+- backend/src/main/java/com/lyston/smartseat/schedule/ReservationExpirationJob.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotMapper.java
+- backend/src/main/resources/db/migration/V11__add_wifi_checkin_rules.sql
+- backend/src/test/java/com/lyston/smartseat/reservation/
+- frontend/src/api/
+- frontend/src/pages/AdminAreasPage.tsx
+- frontend/src/pages/AdminReservationRulesPage.tsx
+- frontend/src/pages/MyReservationsPage.tsx
+- frontend/src/types/
+- frontend/src/utils/reservationDisplay.ts
+- docs/API_EXAMPLES.md
+- docs/architecture/ARCHITECTURE.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 49 个测试通过。
+- 已运行 `npm run test`，前端 3 个测试文件、24 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 浏览器无法直接读取真实 WiFi SSID，本实现以服务端可见的请求 IP/CIDR 作为校园网校验依据；部署在反向代理后需要正确传递可信的 `X-Forwarded-For` 或 `X-Real-IP`。
+- 比赛演示时本地调试默认允许 `127.0.0.1/32,::1/128`，正式部署应把区域 `checkin_ip_cidrs` 改成学校各区域真实校园网网段。
+- 学生端心跳依赖页面打开，后续如做 App/小程序可提升为后台保活或 WebSocket。
+
+### 对其他成员的影响
+- 新增区域时必须维护 `checkinIpCidrs`，多个网段用英文逗号分隔。
+- 预约状态新增 `WIFI_RELEASED`，统计、筛选、审计或导出功能需要识别该终态。
+- 影响签到规则的代码应继续通过 `ReservationRuleService` 读取 `checkinLeadMinutes`、`checkinGraceMinutes` 和 `wifiOfflineReleaseMinutes`。
+
+## 2026-05-19
+
+### 任务
+- Issue: 暂无
 - 分支: feature/lyston11-visual-table-layout-editor
 - 目标: 继续缩小桌位图桌子尺寸，并在管理员新增/编辑桌子时提供二人桌、三人桌、四人桌默认参数。
 
@@ -1284,6 +1381,54 @@
 - 新增学生端选座展示建议继续复用 `SeatMap`，避免回到页面内堆表格逻辑。
 - 新增管理员时段操作按钮时优先扩展 `AdminSeatSlotActions`。
 - 管理员新页面路由应挂在 `RoleRoute allowedRoles={['ADMIN']}` 下。
+
+## 2026-05-19
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-wifi-checkin
+- 目标: 在 WiFi 签到基础上补明日预约开放规则和连续预约锁位机制。
+
+### 本次改动
+- 新增预约规则字段 `reservationOpenHour` 和 `seatLockMinutes`，默认每日 18:00 开放次日预约，单次锁位 60 分钟。
+- 预约创建改为只允许预约次日，并且必须在当日开放时间之后提交。
+- 预约仍采用连续开始/结束时间选择，不做三段多选；后端按连续预约是否跨过 12:00、18:00 自动计算锁位次数。
+- 新增预约字段 `seatLockQuota`、`seatLockUsedCount`、`lockedUntilAt`，预约创建时写入锁位额度。
+- 新增状态 `LOCKED`、`LOCK_RELEASED` 和锁位动作记录。
+- 新增学生锁位、重新签到恢复、主动释放锁位接口；锁位到期或预约结束时间先到时，定时任务会强制释放座位。
+- WiFi 离线释放只扫描 `CHECKED_IN`，锁位期间不会因为 WiFi 断联释放。
+- 前端学生选座页显示明日预约、开放时间、连续跨时段锁位规则和预约后的锁位额度。
+- 前端“我的预约”和学生首页接入锁位、重新签到恢复、释放锁位展示与操作。
+- 管理员预约规则页新增开放明日预约时间和单次锁位时长配置。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/reservation/
+- backend/src/main/java/com/lyston/smartseat/schedule/ReservationExpirationJob.java
+- backend/src/main/resources/application.yml
+- backend/src/main/resources/db/migration/V12__add_seat_lock_quota.sql
+- backend/src/test/java/com/lyston/smartseat/reservation/
+- frontend/src/api/seatSlots.ts
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/pages/MyReservationsPage.tsx
+- frontend/src/pages/StudentHomePage.tsx
+- frontend/src/pages/AdminReservationRulesPage.tsx
+- frontend/src/types/reservation.ts
+- frontend/src/utils/reservationDisplay.ts
+- docs/API_EXAMPLES.md
+- docs/architecture/ARCHITECTURE.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 56 个测试通过。
+- 已运行 `npm run test`，前端 24 个测试通过。
+
+### 遗留问题
+- 业务时段边界当前固定为 12:00 和 18:00，后续如果不同区域存在差异，可扩展为可配置时段表。
+- 锁位期间座位时段仍显示为 `USING`，比赛演示够用；后续可增加独立 `LOCKED` 座位时段状态，方便座位图区分展示。
+
+### 对其他成员的影响
+- 新增活跃状态时要同步 `countActiveOverlappingReservations`、`countDailyActiveReservations` 和前端状态筛选。
+- 涉及预约开放时间和锁位时长的代码应继续通过 `/api/reservations/rules` 和 `ReservationRuleService` 读取规则。
 
 ## 2026-05-15
 

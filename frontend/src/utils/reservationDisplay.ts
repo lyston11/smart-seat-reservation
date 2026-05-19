@@ -1,6 +1,16 @@
 import type { ReservationResult } from '../types/reservation';
 
-export type ReservationStatusFilter = 'ALL' | 'RESERVED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED' | 'EXPIRED';
+export type ReservationStatusFilter =
+  | 'ALL'
+  | 'RESERVED'
+  | 'CHECKED_IN'
+  | 'CHECKED_OUT'
+  | 'CANCELLED'
+  | 'EXPIRED'
+  | 'ADMIN_RELEASED'
+  | 'WIFI_RELEASED'
+  | 'LOCKED'
+  | 'LOCK_RELEASED';
 
 export const reservationStatusColor: Record<string, string> = {
   RESERVED: 'blue',
@@ -9,6 +19,9 @@ export const reservationStatusColor: Record<string, string> = {
   CANCELLED: 'default',
   EXPIRED: 'red',
   ADMIN_RELEASED: 'purple',
+  WIFI_RELEASED: 'volcano',
+  LOCKED: 'gold',
+  LOCK_RELEASED: 'magenta',
 };
 
 export const reservationStatusText: Record<string, string> = {
@@ -18,6 +31,9 @@ export const reservationStatusText: Record<string, string> = {
   CANCELLED: '已取消',
   EXPIRED: '已过期',
   ADMIN_RELEASED: '管理员释放',
+  WIFI_RELEASED: 'WiFi 离线释放',
+  LOCKED: '已锁位',
+  LOCK_RELEASED: '锁位释放',
 };
 
 export const reservationStatusFilterOptions: Array<{ label: string; value: ReservationStatusFilter }> = [
@@ -27,10 +43,14 @@ export const reservationStatusFilterOptions: Array<{ label: string; value: Reser
   { label: '已完成', value: 'CHECKED_OUT' },
   { label: '已取消', value: 'CANCELLED' },
   { label: '已过期', value: 'EXPIRED' },
+  { label: '管理员释放', value: 'ADMIN_RELEASED' },
+  { label: 'WiFi 离线释放', value: 'WIFI_RELEASED' },
+  { label: '已锁位', value: 'LOCKED' },
+  { label: '锁位释放', value: 'LOCK_RELEASED' },
 ];
 
 export function isActiveReservation(reservation: ReservationResult) {
-  return reservation.status === 'RESERVED' || reservation.status === 'CHECKED_IN';
+  return reservation.status === 'RESERVED' || reservation.status === 'CHECKED_IN' || reservation.status === 'LOCKED';
 }
 
 export function canCheckInReservation(reservation: ReservationResult) {
@@ -39,6 +59,20 @@ export function canCheckInReservation(reservation: ReservationResult) {
 
 export function canCheckOutReservation(reservation: ReservationResult) {
   return reservation.status === 'CHECKED_IN';
+}
+
+export function canLockReservation(reservation: ReservationResult) {
+  const quota = reservation.seatLockQuota ?? 0;
+  const usedCount = reservation.seatLockUsedCount ?? 0;
+  return reservation.status === 'CHECKED_IN' && usedCount < quota;
+}
+
+export function canReactivateSeatLock(reservation: ReservationResult) {
+  return reservation.status === 'LOCKED';
+}
+
+export function canReleaseSeatLock(reservation: ReservationResult) {
+  return reservation.status === 'LOCKED';
 }
 
 export function canCancelReservation(reservation: ReservationResult) {

@@ -6,6 +6,7 @@ import com.lyston.smartseat.checkin.CheckinAction;
 import com.lyston.smartseat.checkin.CheckinRecord;
 import com.lyston.smartseat.checkin.CheckinRecordMapper;
 import com.lyston.smartseat.common.BusinessException;
+import com.lyston.smartseat.network.IpRangeMatcher;
 import com.lyston.smartseat.seat.SeatSlot;
 import com.lyston.smartseat.seat.SeatSlotMapper;
 import com.lyston.smartseat.seat.SeatSlotStatus;
@@ -21,12 +22,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ReservationService {
 
+    private static final LocalTime MORNING_AFTERNOON_BOUNDARY = LocalTime.of(12, 0);
+    private static final LocalTime AFTERNOON_EVENING_BOUNDARY = LocalTime.of(18, 0);
+
     private final SeatSlotMapper seatSlotMapper;
     private final ReservationMapper reservationMapper;
     private final CheckinRecordMapper checkinRecordMapper;
     private final ReservationRateLimiter reservationRateLimiter;
     private final SeatSlotCacheService seatSlotCacheService;
     private final ReservationRuleService reservationRuleService;
+    private final IpRangeMatcher ipRangeMatcher;
     private final Clock clock;
 
     public ReservationService(
@@ -36,6 +41,7 @@ public class ReservationService {
             ReservationRateLimiter reservationRateLimiter,
             SeatSlotCacheService seatSlotCacheService,
             ReservationRuleService reservationRuleService,
+            IpRangeMatcher ipRangeMatcher,
             Clock clock
     ) {
         this.seatSlotMapper = seatSlotMapper;
@@ -44,6 +50,7 @@ public class ReservationService {
         this.reservationRateLimiter = reservationRateLimiter;
         this.seatSlotCacheService = seatSlotCacheService;
         this.reservationRuleService = reservationRuleService;
+        this.ipRangeMatcher = ipRangeMatcher;
         this.clock = clock;
     }
 
@@ -70,6 +77,9 @@ public class ReservationService {
         reservation.setCheckinCode(generateCheckinCode());
         reservation.setReservedAt(now);
         reservation.setExpiresAt(resolveExpiresAt(slot, rules));
+        reservation.setSeatLockQuota(calculateSeatLockQuota(slot.getStartTime(), slot.getEndTime()));
+        reservation.setSeatLockUsedCount(0);
+        reservation.setLockedUntilAt(null);
         reservationMapper.insert(reservation);
 
         int attachedRows = seatSlotMapper.attachReservation(slot.getId(), reservation.getId(), userId, now);
@@ -82,14 +92,20 @@ public class ReservationService {
     }
 
     @Transactional
-    public ReservationResponse checkIn(Long reservationId, CheckinRequest request, Long userId) {
+    public ReservationResponse checkIn(Long reservationId, CheckinRequest request, Long userId, String clientIp) {
         LocalDateTime now = LocalDateTime.now(clock);
         Reservation reservation = requireReservation(reservationId);
-        return completeCheckIn(reservation, request.checkinCode(), userId, now);
+        return completeCheckIn(
+                reservation,
+                request.checkinCode(),
+                userId,
+                normalizeClientIp(clientIp),
+                now
+        );
     }
 
     @Transactional
-    public ReservationResponse tableCheckIn(TableCheckinRequest request, Long userId) {
+    public ReservationResponse tableCheckIn(TableCheckinRequest request, Long userId, String clientIp) {
         LocalDateTime now = LocalDateTime.now(clock);
         Reservation reservation = reservationMapper.findReservedForTableCheckin(
                 userId,
@@ -102,19 +118,32 @@ public class ReservationService {
         if (reservation.getExpiresAt() != null && reservation.getExpiresAt().isBefore(now)) {
             throw new BusinessException("RESERVATION_EXPIRED", "Reservation has expired");
         }
-        return completeCheckIn(reservation, request.checkinCode(), userId, now);
+        return completeCheckIn(
+                reservation,
+                request.checkinCode(),
+                userId,
+                normalizeClientIp(clientIp),
+                now
+        );
     }
 
     private ReservationResponse completeCheckIn(
             Reservation reservation,
             String checkinCode,
             Long userId,
+            String clientIp,
             LocalDateTime now
     ) {
+        SeatSlot slot = requireSeatSlotWithLayout(reservation.getSeatSlotId());
+        ReservationRuleResponse rules = reservationRuleService.getRules();
+        ensureWithinCheckinWindow(slot, now, rules);
+        ensureAllowedCheckinIp(slot, clientIp);
+
         int reservationRows = reservationMapper.markCheckedIn(
                 reservation.getId(),
                 userId,
                 checkinCode,
+                clientIp,
                 now
         );
         if (reservationRows != 1) {
@@ -131,9 +160,115 @@ public class ReservationService {
             throw new BusinessException("SEAT_SLOT_CHECKIN_FAILED", "Seat slot cannot be checked in");
         }
 
-        evictReservationSlotCache(reservation);
+        evictSlotCache(slot);
         recordAction(reservation.getId(), userId, CheckinAction.CHECK_IN, now);
         Reservation updated = requireReservation(reservation.getId());
+        return toResponse(updated);
+    }
+
+    @Transactional
+    public WifiPresenceResponse markWifiPresence(Long reservationId, WifiPresenceRequest request, Long userId, String clientIp) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        String effectiveIp = normalizeClientIp(clientIp);
+        Reservation reservation = requireReservation(reservationId);
+        if (!ReservationStatus.CHECKED_IN.equals(reservation.getStatus())) {
+            throw new BusinessException("RESERVATION_NOT_USING", "Reservation is not currently checked in");
+        }
+
+        SeatSlot slot = requireSeatSlotWithLayout(reservation.getSeatSlotId());
+        ensureAllowedCheckinIp(slot, effectiveIp);
+
+        int rows = reservationMapper.markWifiSeen(reservationId, userId, effectiveIp, now);
+        if (rows != 1) {
+            throw new BusinessException("WIFI_PRESENCE_FAILED", "WiFi presence cannot be updated");
+        }
+
+        recordAction(reservationId, userId, CheckinAction.WIFI_HEARTBEAT, now);
+        Reservation updated = requireReservation(reservationId);
+        return WifiPresenceResponse.from(updated, reservationRuleService.getRules().wifiOfflineReleaseMinutes());
+    }
+
+    @Transactional
+    public ReservationResponse lockSeat(Long reservationId, Long userId) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        Reservation reservation = requireReservation(reservationId);
+        if (!ReservationStatus.CHECKED_IN.equals(reservation.getStatus())) {
+            throw new BusinessException("RESERVATION_NOT_USING", "Only checked-in reservations can be locked");
+        }
+        int quota = safeCount(reservation.getSeatLockQuota());
+        int usedCount = safeCount(reservation.getSeatLockUsedCount());
+        if (quota <= usedCount) {
+            throw new BusinessException("SEAT_LOCK_QUOTA_EXHAUSTED", "No seat lock quota available for this reservation");
+        }
+
+        SeatSlot slot = requireSeatSlotWithLayout(reservation.getSeatSlotId());
+        LocalDateTime slotEndAt = LocalDateTime.of(slot.getSlotDate(), slot.getEndTime());
+        if (!now.isBefore(slotEndAt)) {
+            throw new BusinessException("RESERVATION_ALREADY_ENDED", "Reservation period has already ended");
+        }
+
+        ReservationRuleResponse rules = reservationRuleService.getRules();
+        LocalDateTime lockedUntilAt = min(now.plusMinutes(rules.seatLockMinutes()), slotEndAt);
+        int reservationRows = reservationMapper.markSeatLocked(reservationId, userId, lockedUntilAt, now);
+        if (reservationRows != 1) {
+            throw new BusinessException("SEAT_LOCK_FAILED", "Seat cannot be locked");
+        }
+
+        recordAction(reservationId, userId, CheckinAction.SEAT_LOCK, now);
+        Reservation updated = requireReservation(reservationId);
+        return toResponse(updated);
+    }
+
+    @Transactional
+    public ReservationResponse reactivateSeatLock(
+            Long reservationId,
+            CheckinRequest request,
+            Long userId,
+            String clientIp
+    ) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        String effectiveIp = normalizeClientIp(clientIp);
+        Reservation reservation = requireReservation(reservationId);
+        if (!ReservationStatus.LOCKED.equals(reservation.getStatus())) {
+            throw new BusinessException("RESERVATION_NOT_LOCKED", "Reservation is not locked");
+        }
+
+        SeatSlot slot = requireSeatSlotWithLayout(reservation.getSeatSlotId());
+        ensureAllowedCheckinIp(slot, effectiveIp);
+        LocalDateTime slotEndAt = LocalDateTime.of(slot.getSlotDate(), slot.getEndTime());
+        if (!now.isBefore(slotEndAt)
+                || (reservation.getLockedUntilAt() != null && !reservation.getLockedUntilAt().isAfter(now))) {
+            forceReleaseLockedReservation(reservation, now, CheckinAction.SEAT_LOCK_EXPIRE);
+            Reservation updated = requireReservation(reservationId);
+            return toResponse(updated);
+        }
+
+        int reservationRows = reservationMapper.markLockReactivated(
+                reservationId,
+                userId,
+                request.checkinCode(),
+                effectiveIp,
+                now
+        );
+        if (reservationRows != 1) {
+            throw new BusinessException("SEAT_LOCK_REACTIVATE_FAILED", "Locked seat cannot be reactivated");
+        }
+
+        recordAction(reservationId, userId, CheckinAction.SEAT_LOCK_REACTIVATE, now);
+        Reservation updated = requireReservation(reservationId);
+        return toResponse(updated);
+    }
+
+    @Transactional
+    public ReservationResponse releaseSeatLock(Long reservationId, Long userId) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        Reservation reservation = requireReservation(reservationId);
+        if (!ReservationStatus.LOCKED.equals(reservation.getStatus())) {
+            throw new BusinessException("RESERVATION_NOT_LOCKED", "Reservation is not locked");
+        }
+
+        releaseLockedReservation(reservation, now, CheckinAction.SEAT_LOCK_RELEASE);
+        Reservation updated = requireReservation(reservationId);
         return toResponse(updated);
     }
 
@@ -219,6 +354,54 @@ public class ReservationService {
         return expiredCount;
     }
 
+    @Transactional
+    public int releaseWifiOfflineReservations(int limit) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        ReservationRuleResponse rules = reservationRuleService.getRules();
+        LocalDateTime deadline = now.minusMinutes(rules.wifiOfflineReleaseMinutes());
+        List<Reservation> offlineReservations = reservationMapper.findWifiOfflineReservations(deadline, limit);
+        int releasedCount = 0;
+
+        for (Reservation reservation : offlineReservations) {
+            int reservationRows = reservationMapper.markWifiReleased(reservation.getId(), reservation.getUserId(), now);
+            if (reservationRows != 1) {
+                continue;
+            }
+
+            int slotRows = seatSlotMapper.releaseUsingSlotIfNotEnded(
+                    reservation.getSeatSlotId(),
+                    reservation.getId(),
+                    reservation.getUserId(),
+                    now.toLocalTime(),
+                    now
+            );
+            if (slotRows == 1) {
+                evictReservationSlotCache(reservation);
+                recordAction(reservation.getId(), reservation.getUserId(), CheckinAction.WIFI_RELEASE, now);
+                releasedCount++;
+            } else {
+                throw new BusinessException("SEAT_SLOT_WIFI_RELEASE_FAILED", "WiFi offline seat slot cannot be released");
+            }
+        }
+
+        return releasedCount;
+    }
+
+    @Transactional
+    public int releaseExpiredSeatLocks(int limit) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        List<Reservation> expiredLocks = reservationMapper.findExpiredLockedReservations(now, limit);
+        int releasedCount = 0;
+
+        for (Reservation reservation : expiredLocks) {
+            if (forceReleaseLockedReservation(reservation, now, CheckinAction.SEAT_LOCK_EXPIRE)) {
+                releasedCount++;
+            }
+        }
+
+        return releasedCount;
+    }
+
     public List<ReservationResponse> listUserReservations(Long userId, int limit) {
         int safeLimit = Math.max(1, Math.min(limit, 100));
         return reservationMapper.findByUserId(userId, safeLimit)
@@ -247,6 +430,14 @@ public class ReservationService {
         return slot;
     }
 
+    private SeatSlot requireSeatSlotWithLayout(Long seatSlotId) {
+        SeatSlot slot = seatSlotMapper.findByIdWithLayout(seatSlotId);
+        if (slot == null) {
+            throw new BusinessException("SEAT_SLOT_NOT_FOUND", "Seat slot not found");
+        }
+        return slot;
+    }
+
     private SeatSlot resolveReservationSlot(
             CreateReservationRequest request,
             LocalDateTime now,
@@ -264,6 +455,7 @@ public class ReservationService {
             ReservationRuleResponse rules
     ) {
         validateCustomReservationRequest(request);
+        ensureReservationDateIsOpen(request.slotDate(), now, rules);
         SeatSlot availableWindow = seatSlotMapper.findAvailableWindowForSeat(
                 request.seatId(),
                 request.slotDate(),
@@ -308,9 +500,6 @@ public class ReservationService {
         LocalTime endTime = request.endTime();
         if (!startTime.isBefore(endTime)) {
             throw new BusinessException("INVALID_RESERVATION_TIME_RANGE", "Reservation start time must be before end time");
-        }
-        if (!request.slotDate().equals(LocalDate.now(clock))) {
-            throw new BusinessException("RESERVATION_ONLY_TODAY_ALLOWED", "Only today's reservations are allowed");
         }
         if (!isHalfHourBoundary(startTime) || !isHalfHourBoundary(endTime)) {
             throw new BusinessException("INVALID_RESERVATION_TIME_GRANULARITY", "Reservation time must use 30-minute intervals");
@@ -369,13 +558,36 @@ public class ReservationService {
     }
 
     private void ensureSlotIsReservableByTime(SeatSlot slot, LocalDateTime now, ReservationRuleResponse rules) {
-        if (!slot.getSlotDate().equals(now.toLocalDate())) {
-            throw new BusinessException("RESERVATION_ONLY_TODAY_ALLOWED", "Only today's reservations are allowed");
-        }
+        ensureReservationDateIsOpen(slot.getSlotDate(), now, rules);
         LocalDateTime slotStartAt = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
         if (!slotStartAt.isAfter(now)) {
             throw new BusinessException("SEAT_SLOT_ALREADY_STARTED", "Past seat slots cannot be reserved");
         }
+    }
+
+    private void ensureWithinCheckinWindow(SeatSlot slot, LocalDateTime now, ReservationRuleResponse rules) {
+        LocalDateTime startAt = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
+        LocalDateTime earliestCheckinAt = startAt.minusMinutes(rules.checkinLeadMinutes());
+        LocalDateTime latestCheckinAt = startAt.plusMinutes(rules.checkinGraceMinutes());
+        if (now.isBefore(earliestCheckinAt) || now.isAfter(latestCheckinAt)) {
+            throw new BusinessException(
+                    "RESERVATION_CHECKIN_TIME_NOT_ALLOWED",
+                    "Check-in is only allowed within the configured time window"
+            );
+        }
+    }
+
+    private void ensureAllowedCheckinIp(SeatSlot slot, String clientIp) {
+        if (!ipRangeMatcher.matches(clientIp, slot.getCheckinIpCidrs())) {
+            throw new BusinessException(
+                    "CHECKIN_WIFI_IP_NOT_ALLOWED",
+                    "Check-in requires connecting to the area's allowed campus WiFi"
+            );
+        }
+    }
+
+    private String normalizeClientIp(String clientIp) {
+        return clientIp == null ? "" : clientIp.trim();
     }
 
     private void ensureNoActiveOverlap(Long userId, SeatSlot slot) {
@@ -405,6 +617,82 @@ public class ReservationService {
                     "User has reached the daily active reservation limit"
             );
         }
+    }
+
+    private void ensureReservationDateIsOpen(LocalDate slotDate, LocalDateTime now, ReservationRuleResponse rules) {
+        LocalDate targetDate = now.toLocalDate().plusDays(1);
+        if (!slotDate.equals(targetDate)) {
+            throw new BusinessException(
+                    "RESERVATION_ONLY_TOMORROW_ALLOWED",
+                    "Only tomorrow's reservations are allowed"
+            );
+        }
+        LocalDateTime openAt = LocalDateTime.of(now.toLocalDate(), LocalTime.of(rules.reservationOpenHour(), 0));
+        if (now.isBefore(openAt)) {
+            throw new BusinessException(
+                    "RESERVATION_NOT_OPEN",
+                    "Tomorrow's reservations open at the configured hour"
+            );
+        }
+    }
+
+    private int calculateSeatLockQuota(LocalTime startTime, LocalTime endTime) {
+        int quota = 0;
+        if (crossesBoundary(startTime, endTime, MORNING_AFTERNOON_BOUNDARY)) {
+            quota++;
+        }
+        if (crossesBoundary(startTime, endTime, AFTERNOON_EVENING_BOUNDARY)) {
+            quota++;
+        }
+        return quota;
+    }
+
+    private boolean crossesBoundary(LocalTime startTime, LocalTime endTime, LocalTime boundary) {
+        return startTime.isBefore(boundary) && endTime.isAfter(boundary);
+    }
+
+    private int safeCount(Integer value) {
+        return value == null ? 0 : value;
+    }
+
+    private LocalDateTime min(LocalDateTime left, LocalDateTime right) {
+        return left.isBefore(right) ? left : right;
+    }
+
+    private void releaseLockedReservation(Reservation reservation, LocalDateTime now, String action) {
+        int reservationRows = reservationMapper.markLockReleased(reservation.getId(), reservation.getUserId(), now);
+        if (reservationRows != 1) {
+            throw new BusinessException("SEAT_LOCK_RELEASE_FAILED", "Locked seat cannot be released");
+        }
+
+        releaseLockedSlotAndRecord(reservation, now, action);
+    }
+
+    private boolean forceReleaseLockedReservation(Reservation reservation, LocalDateTime now, String action) {
+        int reservationRows = ReservationStatus.LOCKED.equals(reservation.getStatus())
+                ? reservationMapper.markExpiredLockReleased(reservation.getId(), reservation.getUserId(), now)
+                : 0;
+        if (reservationRows != 1) {
+            return false;
+        }
+
+        releaseLockedSlotAndRecord(reservation, now, action);
+        return true;
+    }
+
+    private void releaseLockedSlotAndRecord(Reservation reservation, LocalDateTime now, String action) {
+        int slotRows = seatSlotMapper.releaseUsingSlot(
+                reservation.getSeatSlotId(),
+                reservation.getId(),
+                reservation.getUserId(),
+                now
+        );
+        if (slotRows != 1) {
+            throw new BusinessException("SEAT_LOCK_SLOT_RELEASE_FAILED", "Locked seat slot cannot be released");
+        }
+
+        evictReservationSlotCache(reservation);
+        recordAction(reservation.getId(), reservation.getUserId(), action, now);
     }
 
     private LocalDateTime resolveExpiresAt(SeatSlot slot, ReservationRuleResponse rules) {

@@ -52,6 +52,8 @@ public class SeatSlot {
     private String areaName;
     @TableField(exist = false)
     private String floor;
+    @TableField(exist = false)
+    private String checkinIpCidrs;
     private LocalDate slotDate;
     private LocalTime startTime;
     private LocalTime endTime;
@@ -236,6 +238,14 @@ public class SeatSlot {
 
     public void setFloor(String floor) {
         this.floor = floor;
+    }
+
+    public String getCheckinIpCidrs() {
+        return checkinIpCidrs;
+    }
+
+    public void setCheckinIpCidrs(String checkinIpCidrs) {
+        this.checkinIpCidrs = checkinIpCidrs;
     }
 
     public LocalDate getSlotDate() {

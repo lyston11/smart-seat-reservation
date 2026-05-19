@@ -52,7 +52,7 @@ public interface SeatSlotMapper extends BaseMapper<SeatSlot> {
                    t.rotation_deg AS table_rotation_deg,
                    s.seat_label, s.seat_side, s.seat_order,
                    s.row_no, s.column_no, s.display_order,
-                   ss.area_id, a.name AS area_name, a.floor,
+                   ss.area_id, a.name AS area_name, a.floor, a.checkin_ip_cidrs,
                    ss.slot_date, ss.start_time, ss.end_time, ss.status,
                    ss.reserved_by, ss.reservation_id, ss.version, ss.created_at, ss.updated_at
             FROM seat_slots ss
@@ -106,7 +106,7 @@ public interface SeatSlotMapper extends BaseMapper<SeatSlot> {
                    t.rotation_deg AS table_rotation_deg,
                    s.seat_label, s.seat_side, s.seat_order,
                    s.row_no, s.column_no, s.display_order,
-                   ss.area_id, a.name AS area_name, a.floor,
+                   ss.area_id, a.name AS area_name, a.floor, a.checkin_ip_cidrs,
                    ss.slot_date, ss.start_time, ss.end_time, ss.status,
                    ss.reserved_by, ss.reservation_id, ss.version, ss.created_at, ss.updated_at,
                    a.open_time, a.close_time
@@ -269,6 +269,27 @@ public interface SeatSlotMapper extends BaseMapper<SeatSlot> {
             @Param("seatSlotId") Long seatSlotId,
             @Param("reservationId") Long reservationId,
             @Param("userId") Long userId,
+            @Param("now") LocalDateTime now
+    );
+
+    @Update("""
+            UPDATE seat_slots
+            SET status = 'AVAILABLE',
+                reserved_by = NULL,
+                reservation_id = NULL,
+                version = version + 1,
+                updated_at = #{now}
+            WHERE id = #{seatSlotId}
+              AND reservation_id = #{reservationId}
+              AND reserved_by = #{userId}
+              AND status = 'USING'
+              AND end_time > #{currentTime}
+            """)
+    int releaseUsingSlotIfNotEnded(
+            @Param("seatSlotId") Long seatSlotId,
+            @Param("reservationId") Long reservationId,
+            @Param("userId") Long userId,
+            @Param("currentTime") LocalTime currentTime,
             @Param("now") LocalDateTime now
     );
 

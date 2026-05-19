@@ -16,6 +16,7 @@ public class AreaService {
 
     private static final LocalTime DEFAULT_OPEN_TIME = LocalTime.of(8, 0);
     private static final LocalTime DEFAULT_CLOSE_TIME = LocalTime.of(22, 0);
+    private static final String DEFAULT_CHECKIN_IP_CIDRS = "127.0.0.1/32,::1/128";
 
     private final AreaMapper areaMapper;
     private final SeatMapper seatMapper;
@@ -55,6 +56,7 @@ public class AreaService {
         area.setOpenTime(resolveOpenTime(request.openTime()));
         area.setCloseTime(resolveCloseTime(request.closeTime()));
         ensureOpeningWindow(area.getOpenTime(), area.getCloseTime());
+        area.setCheckinIpCidrs(normalizeCheckinIpCidrs(request.checkinIpCidrs()));
         area.setCreatedAt(now);
         area.setUpdatedAt(now);
         areaMapper.insert(area);
@@ -78,6 +80,7 @@ public class AreaService {
         area.setOpenTime(resolveOpenTime(request.openTime()));
         area.setCloseTime(resolveCloseTime(request.closeTime()));
         ensureOpeningWindow(area.getOpenTime(), area.getCloseTime());
+        area.setCheckinIpCidrs(normalizeCheckinIpCidrs(request.checkinIpCidrs()));
         area.setUpdatedAt(LocalDateTime.now());
         areaMapper.updateById(area);
         auditService.record(actorUserId, AuditAction.AREA_UPDATE, "AREA", area.getId(), "update area");
@@ -128,6 +131,13 @@ public class AreaService {
         if (!openTime.isBefore(closeTime)) {
             throw new BusinessException("INVALID_AREA_OPENING_WINDOW", "Area open time must be before close time");
         }
+    }
+
+    private String normalizeCheckinIpCidrs(String value) {
+        if (value == null || value.isBlank()) {
+            return DEFAULT_CHECKIN_IP_CIDRS;
+        }
+        return value.trim().replaceAll("\\s+", "");
     }
 
     private Area requireArea(Long areaId) {

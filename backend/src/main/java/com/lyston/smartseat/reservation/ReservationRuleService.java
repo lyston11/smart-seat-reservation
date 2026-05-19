@@ -31,7 +31,7 @@ public class ReservationRuleService {
         if (rule == null) {
             return ReservationRuleResponse.from(reservationRuleProperties);
         }
-        return ReservationRuleResponse.from(rule);
+        return ReservationRuleResponse.from(rule, reservationRuleProperties);
     }
 
     @Transactional
@@ -42,13 +42,17 @@ public class ReservationRuleService {
         }
 
         rule.setCheckinGraceMinutes(request.checkinGraceMinutes());
+        rule.setCheckinLeadMinutes(request.checkinLeadMinutes());
         rule.setMaxAdvanceDays(request.maxAdvanceDays());
+        rule.setReservationOpenHour(request.reservationOpenHour());
         rule.setDailyActiveReservationLimit(request.dailyActiveReservationLimit());
+        rule.setWifiOfflineReleaseMinutes(request.wifiOfflineReleaseMinutes());
+        rule.setSeatLockMinutes(request.seatLockMinutes());
         rule.setUpdatedBy(actorUserId);
         rule.setUpdatedAt(LocalDateTime.now());
         reservationRuleMapper.updateById(rule);
 
         auditService.record(actorUserId, AuditAction.RESERVATION_RULE_UPDATE, "RESERVATION_RULE", RULE_ID, "update rules");
-        return ReservationRuleResponse.from(rule);
+        return ReservationRuleResponse.from(rule, reservationRuleProperties);
     }
 }

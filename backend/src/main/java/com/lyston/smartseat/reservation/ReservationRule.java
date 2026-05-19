@@ -10,8 +10,12 @@ public class ReservationRule {
     @TableId
     private Long id;
     private Integer checkinGraceMinutes;
+    private Integer checkinLeadMinutes;
     private Integer maxAdvanceDays;
+    private Integer reservationOpenHour;
     private Integer dailyActiveReservationLimit;
+    private Integer wifiOfflineReleaseMinutes;
+    private Integer seatLockMinutes;
     private Long updatedBy;
     private LocalDateTime updatedAt;
 
@@ -31,6 +35,14 @@ public class ReservationRule {
         this.checkinGraceMinutes = checkinGraceMinutes;
     }
 
+    public Integer getCheckinLeadMinutes() {
+        return checkinLeadMinutes;
+    }
+
+    public void setCheckinLeadMinutes(Integer checkinLeadMinutes) {
+        this.checkinLeadMinutes = checkinLeadMinutes;
+    }
+
     public Integer getMaxAdvanceDays() {
         return maxAdvanceDays;
     }
@@ -39,12 +51,36 @@ public class ReservationRule {
         this.maxAdvanceDays = maxAdvanceDays;
     }
 
+    public Integer getReservationOpenHour() {
+        return reservationOpenHour;
+    }
+
+    public void setReservationOpenHour(Integer reservationOpenHour) {
+        this.reservationOpenHour = reservationOpenHour;
+    }
+
     public Integer getDailyActiveReservationLimit() {
         return dailyActiveReservationLimit;
     }
 
     public void setDailyActiveReservationLimit(Integer dailyActiveReservationLimit) {
         this.dailyActiveReservationLimit = dailyActiveReservationLimit;
+    }
+
+    public Integer getWifiOfflineReleaseMinutes() {
+        return wifiOfflineReleaseMinutes;
+    }
+
+    public void setWifiOfflineReleaseMinutes(Integer wifiOfflineReleaseMinutes) {
+        this.wifiOfflineReleaseMinutes = wifiOfflineReleaseMinutes;
+    }
+
+    public Integer getSeatLockMinutes() {
+        return seatLockMinutes;
+    }
+
+    public void setSeatLockMinutes(Integer seatLockMinutes) {
+        this.seatLockMinutes = seatLockMinutes;
     }
 
     public Long getUpdatedBy() {
