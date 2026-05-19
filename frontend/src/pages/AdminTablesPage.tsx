@@ -96,6 +96,10 @@ function getTablePresetLabel(table: StudyTable, seatCount: number) {
   return preset.label;
 }
 
+function getDisplaySeatCount(table: StudyTable, seatCount: number) {
+  return Math.max(seatCount, tablePresets[inferTablePreset(table)].seatCount ?? 0);
+}
+
 function applyPresetValues(values: TableFormValues, presetKey: TablePresetKey): TableFormValues {
   const preset = tablePresets[presetKey];
   if (!preset.widthPx || !preset.heightPx) {
@@ -139,6 +143,14 @@ export default function AdminTablesPage() {
         return counts;
       }, {}),
     [seats],
+  );
+  const displaySeatCountsByTable = useMemo(
+    () =>
+      managedTables.reduce<Record<number, number>>((counts, table) => {
+        counts[table.id] = getDisplaySeatCount(table, seatCountsByTable[table.id] ?? 0);
+        return counts;
+      }, {}),
+    [managedTables, seatCountsByTable],
   );
   const layoutTables = useMemo(
     () =>
@@ -374,7 +386,7 @@ export default function AdminTablesPage() {
     {
       title: '桌型',
       width: 130,
-      render: (_, record) => getTablePresetLabel(record, seatCountsByTable[record.id] ?? 0),
+      render: (_, record) => getTablePresetLabel(record, displaySeatCountsByTable[record.id] ?? 0),
     },
     { title: '展示顺序', dataIndex: 'displayOrder', width: 110, render: (value) => value ?? '-' },
     {
@@ -482,7 +494,7 @@ export default function AdminTablesPage() {
         <TableLayoutPreview
           editable
           tables={layoutTables}
-          seatCounts={seatCountsByTable}
+          seatCounts={displaySeatCountsByTable}
           onSelectTable={openEditModal}
           selectedTableId={editingTable?.id}
           onMoveTable={(table, position) => {

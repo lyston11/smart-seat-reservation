@@ -997,6 +997,83 @@ describe('App', () => {
     expect(await screen.findByLabelText('桌高 px')).toBeTruthy();
   });
 
+  it('uses table preset seat count in the admin layout when seats are not configured yet', async () => {
+    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
+    window.localStorage.setItem(
+      'smart-seat-auth-user',
+      JSON.stringify({ id: 2, name: 'Demo Admin', studentNo: 'admin', role: 'ADMIN' }),
+    );
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith('/api/areas')) {
+          return {
+            ok: true,
+            json: async () => ({
+              success: true,
+              code: 'OK',
+              message: 'ok',
+              data: [
+                {
+                  id: 1,
+                  name: 'A 区',
+                  floor: '1F',
+                  description: null,
+                  status: 'ACTIVE',
+                  openTime: '08:00:00',
+                  closeTime: '22:00:00',
+                },
+              ],
+            }),
+          };
+        }
+        if (url.startsWith('/api/tables?')) {
+          return {
+            ok: true,
+            json: async () => ({
+              success: true,
+              code: 'OK',
+              message: 'ok',
+              data: [
+                {
+                  id: 12,
+                  areaId: 1,
+                  tableNo: 'T09',
+                  name: null,
+                  status: 'ACTIVE',
+                  rowNo: null,
+                  columnNo: null,
+                  displayOrder: 6,
+                  positionX: 260,
+                  positionY: 180,
+                  widthPx: 180,
+                  heightPx: 84,
+                  rotationDeg: 0,
+                },
+              ],
+            }),
+          };
+        }
+        return {
+          ok: true,
+          json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+        };
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/admin/tables']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('button', { name: '编辑 T09' })).toBeTruthy();
+    expect((await screen.findAllByText('2人桌')).length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText('未配置座位')).toBeNull();
+  });
+
   it('publishes admin seat slots with table batch selection and time templates', async () => {
     window.localStorage.setItem('smart-seat-auth-token', 'test-token');
     window.localStorage.setItem(

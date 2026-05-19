@@ -14,7 +14,8 @@
 - 新增桌子默认使用 `4人桌` 参数；切换预设会立即应用对应默认宽高并刷新实时预览。
 - 默认预设模式隐藏 `桌宽 px`、`桌高 px`、`旋转角度`，仅在选择 `自定义` 时展示，减少管理员理解像素参数的负担。
 - 桌子列表将“桌面尺寸”调整为“桌型”，优先按 active 座位数显示二/三/四人桌，未配置时按尺寸预设或自定义显示。
-- 补充测试覆盖桌子缩小后的渲染尺寸、学生端坐标桌缩放，以及管理员桌型预设默认隐藏自定义尺寸字段。
+- 管理员平面图展示座位数改为取真实 active 座位数和桌型预设座位数的较大值，避免 T09 这类已保存为 `2人桌` 但尚未配置座位的桌子在地图上显示“未配置座位”。
+- 补充测试覆盖桌子缩小后的渲染尺寸、学生端坐标桌缩放、管理员桌型预设默认隐藏自定义尺寸字段，以及无座位时按桌型预设显示地图标签。
 
 ### 涉及文件
 - frontend/src/components/TableLayoutPreview.tsx
@@ -27,7 +28,7 @@
 - docs/dev-logs/lyston11.md
 
 ### 验证方式
-- 已运行 `npm run test`，前端 3 个测试文件、22 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run test`，前端 3 个测试文件、23 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
 - 已运行 `npm run lint`，前端 lint 通过且无告警。
 - 已运行 `npm run build`，前端生产构建通过。
 - 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 45 个测试通过。
@@ -39,7 +40,7 @@
 
 ### 对其他成员的影响
 - 后端接口和数据库结构未变，桌型预设只在前端转成现有 `widthPx/heightPx/rotationDeg` 字段提交。
-- 主平面图仍按真实 active 座位数识别桌型，座位未配置的桌子会按尺寸预设给出列表文案，但平面图会提示“未配置座位”。
+- 主平面图按真实 active 座位数和桌型预设座位数共同识别桌型，座位未配置的预设桌也能展示为 `2人桌`、`3人桌` 或 `4人桌`。
 
 ### 任务
 - Issue: 暂无
