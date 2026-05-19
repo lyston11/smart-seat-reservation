@@ -6,20 +6,21 @@ import {
   InputNumber,
   message,
   Modal,
-  Popconfirm,
   QRCode,
   Segmented,
   Select,
   Space,
+  Statistic,
   Table,
   Tag,
   Typography,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { RotateCcw, Save } from 'lucide-react';
+import { Edit3, Power, QrCode, RotateCcw, Save } from 'lucide-react';
 import { listAreas } from '../api/areas';
 import { listSeats } from '../api/seats';
 import { createTable, getTableCheckinQr, listTables, updateTable, updateTableStatus } from '../api/tables';
+import AdminResourceActions from '../components/AdminResourceActions';
 import TableLayoutPreview from '../components/TableLayoutPreview';
 import type { Area, Seat, StudyTable, StudyTableQr, StudyTableStatus } from '../types/seat';
 
@@ -76,8 +77,12 @@ function buildCheckinUrl(checkinPath: string) {
   return `${window.location.origin}${checkinPath}`;
 }
 
+function isManagedTableNo(tableNo?: string | null) {
+  return (tableNo ?? '').toUpperCase() !== 'LEGACY';
+}
+
 function isManagedTable(table: StudyTable) {
-  return table.tableNo.toUpperCase() !== 'LEGACY';
+  return isManagedTableNo(table.tableNo);
 }
 
 function inferTablePreset(table: StudyTable): TablePresetKey {
@@ -98,6 +103,13 @@ function getTablePresetLabel(table: StudyTable, seatCount: number) {
 
 function getDisplaySeatCount(table: StudyTable, seatCount: number) {
   return Math.max(seatCount, tablePresets[inferTablePreset(table)].seatCount ?? 0);
+}
+
+function formatPlanePosition(table: StudyTable) {
+  const hasPosition = table.positionX !== null && table.positionY !== null;
+  const positionText = hasPosition ? `x ${table.positionX} / y ${table.positionY}` : '未放置';
+  const sizeText = `${table.widthPx ?? 0} x ${table.heightPx ?? 0}`;
+  return { positionText, sizeText };
 }
 
 function applyPresetValues(values: TableFormValues, presetKey: TablePresetKey): TableFormValues {
@@ -134,6 +146,7 @@ export default function AdminTablesPage() {
 
   const selectedArea = useMemo(() => areas.find((area) => area.id === areaId), [areaId, areas]);
   const managedTables = useMemo(() => tables.filter(isManagedTable), [tables]);
+  const managedTableIds = useMemo(() => new Set(managedTables.map((table) => table.id)), [managedTables]);
   const seatCountsByTable = useMemo(
     () =>
       seats.reduce<Record<number, number>>((counts, seat) => {
@@ -151,6 +164,14 @@ export default function AdminTablesPage() {
         return counts;
       }, {}),
     [managedTables, seatCountsByTable],
+  );
+  const activeTableCount = useMemo(
+    () => managedTables.filter((table) => table.status === 'ACTIVE').length,
+    [managedTables],
+  );
+  const activeSeatCount = useMemo(
+    () => seats.filter((seat) => seat.status === 'ACTIVE' && managedTableIds.has(seat.tableId)).length,
+    [managedTableIds, seats],
   );
   const layoutTables = useMemo(
     () =>
@@ -374,21 +395,53 @@ export default function AdminTablesPage() {
   }, [loadAreas, loadTables]);
 
   const columns: TableColumnsType<StudyTable> = [
-    { title: '桌子 ID', dataIndex: 'id', width: 90 },
-    { title: '桌号', dataIndex: 'tableNo', width: 120 },
-    { title: '名称', dataIndex: 'name', width: 180, ellipsis: true, render: (value) => value ?? '-' },
+    { title: '桌子 ID', dataIndex: 'id', width: 90, fixed: 'left' },
     {
-      title: '布局位置',
-      width: 150,
-      render: (_, record) =>
-        record.rowNo && record.columnNo ? `第 ${record.rowNo} 排 / 第 ${record.columnNo} 列` : '-',
+      title: '桌位信息',
+      width: 220,
+      fixed: 'left',
+      render: (_, record) => (
+        <Space direction="vertical" size={2}>
+          <Typography.Text strong>{record.tableNo}</Typography.Text>
+          <Typography.Text type="secondary">{record.name ?? '未命名桌位'}</Typography.Text>
+        </Space>
+      ),
+    },
+    {
+      title: '平面位置',
+      width: 190,
+      render: (_, record) => {
+        const { positionText, sizeText } = formatPlanePosition(record);
+        return (
+          <Space direction="vertical" size={2}>
+            <Typography.Text>{positionText}</Typography.Text>
+            <Typography.Text type="secondary">{sizeText}</Typography.Text>
+          </Space>
+        );
+      },
+    },
+    {
+      title: '网格顺序',
+      width: 160,
+      render: (_, record) => (
+        <Space direction="vertical" size={2}>
+          <Typography.Text>
+            {record.rowNo && record.columnNo ? `第 ${record.rowNo} 排 / 第 ${record.columnNo} 列` : '未配置行列'}
+          </Typography.Text>
+          <Typography.Text type="secondary">顺序 {record.displayOrder ?? '-'}</Typography.Text>
+        </Space>
+      ),
     },
     {
       title: '桌型',
       width: 130,
-      render: (_, record) => getTablePresetLabel(record, displaySeatCountsByTable[record.id] ?? 0),
+      render: (_, record) => (
+        <Space direction="vertical" size={2}>
+          <Typography.Text>{getTablePresetLabel(record, displaySeatCountsByTable[record.id] ?? 0)}</Typography.Text>
+          <Typography.Text type="secondary">{displaySeatCountsByTable[record.id] ?? 0} 个座位</Typography.Text>
+        </Space>
+      ),
     },
-    { title: '展示顺序', dataIndex: 'displayOrder', width: 110, render: (value) => value ?? '-' },
     {
       title: '状态',
       dataIndex: 'status',
@@ -400,31 +453,30 @@ export default function AdminTablesPage() {
       width: 260,
       fixed: 'right',
       render: (_, record) => (
-        <Space wrap size={8} className="admin-table-actions">
-          <Button size="small" onClick={() => openEditModal(record)}>
-            编辑
-          </Button>
-          <Button size="small" onClick={() => openQrModal(record)}>
-            签到码
-          </Button>
-          {record.status === 'ACTIVE' ? (
-            <Popconfirm
-              title="停用桌子"
-              description="停用后该桌子不能承载启用座位，已有活跃预约时后端会拒绝。"
-              okText="停用"
-              cancelText="取消"
-              onConfirm={() => changeStatus(record, 'INACTIVE')}
-            >
-              <Button size="small" danger>
-                停用
-              </Button>
-            </Popconfirm>
-          ) : (
-            <Button size="small" type="primary" onClick={() => changeStatus(record, 'ACTIVE')}>
-              启用
-            </Button>
-          )}
-        </Space>
+        <AdminResourceActions
+          actions={[
+            { key: 'edit', label: '编辑', icon: <Edit3 size={14} />, onClick: () => openEditModal(record) },
+            { key: 'qr', label: '签到码', icon: <QrCode size={14} />, onClick: () => openQrModal(record) },
+            record.status === 'ACTIVE'
+              ? {
+                  key: 'disable',
+                  label: '停用',
+                  icon: <Power size={14} />,
+                  danger: true,
+                  confirmTitle: '停用桌子',
+                  confirmDescription: '停用后该桌子不能承载启用座位，已有活跃预约时后端会拒绝。',
+                  confirmOkText: '停用',
+                  onClick: () => changeStatus(record, 'INACTIVE'),
+                }
+              : {
+                  key: 'enable',
+                  label: '启用',
+                  icon: <Power size={14} />,
+                  type: 'primary',
+                  onClick: () => changeStatus(record, 'ACTIVE'),
+                },
+          ]}
+        />
       ),
     },
   ];
@@ -459,8 +511,20 @@ export default function AdminTablesPage() {
         </Form>
       </div>
 
+      <div className="admin-resource-summary-grid">
+        <div className="admin-resource-summary-item">
+          <Statistic title="当前区域桌子" value={managedTables.length} suffix="张" />
+        </div>
+        <div className="admin-resource-summary-item">
+          <Statistic title="启用桌子" value={activeTableCount} suffix="张" />
+        </div>
+        <div className="admin-resource-summary-item">
+          <Statistic title="启用座位" value={activeSeatCount} suffix="个" />
+        </div>
+      </div>
+
       <Table
-        className="admin-tables-table"
+        className="admin-resource-table admin-tables-table"
         rowKey="id"
         loading={loading}
         dataSource={managedTables}

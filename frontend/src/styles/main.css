@@ -241,16 +241,37 @@ body {
   border-radius: 8px;
 }
 
-.admin-tables-table .ant-table {
+.admin-resource-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.admin-resource-summary-item {
+  min-width: 0;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.admin-resource-table .ant-table {
   overflow-x: auto;
 }
 
-.admin-tables-table .ant-table-cell-fix-right {
+.admin-resource-table .ant-table-cell-fix-left,
+.admin-resource-table .ant-table-cell-fix-right {
   background: #ffffff;
 }
 
-.admin-table-actions {
-  min-width: 230px;
+.admin-resource-actions {
+  min-width: 150px;
+}
+
+.admin-resource-actions .ant-btn {
+  display: inline-flex;
+  align-items: center;
 }
 
 .table-layout-actions {
@@ -1082,6 +1103,7 @@ body {
   .student-area-list,
   .usage-row,
   .rule-form-grid,
+  .admin-resource-summary-grid,
   .resource-layout-fields,
   .seat-table-layout-fields,
   .slot-publish-grid,
