@@ -52,6 +52,10 @@ function buildCheckinUrl(checkinPath: string) {
   return `${window.location.origin}${checkinPath}`;
 }
 
+function isManagedTable(table: StudyTable) {
+  return table.tableNo.toUpperCase() !== 'LEGACY';
+}
+
 export default function AdminTablesPage() {
   const [form] = Form.useForm<TableFormValues>();
   const [areaId, setAreaId] = useState(1);
@@ -68,6 +72,7 @@ export default function AdminTablesPage() {
   const [messageApi, contextHolder] = message.useMessage();
 
   const selectedArea = useMemo(() => areas.find((area) => area.id === areaId), [areaId, areas]);
+  const managedTables = useMemo(() => tables.filter(isManagedTable), [tables]);
   const checkinUrl = tableQr ? buildCheckinUrl(tableQr.checkinPath) : '';
 
   const loadAreas = useCallback(async () => {
@@ -214,38 +219,38 @@ export default function AdminTablesPage() {
   }, [loadAreas, loadTables]);
 
   const columns: TableColumnsType<StudyTable> = [
-    { title: '桌子 ID', dataIndex: 'id', width: 110 },
-    { title: '区域 ID', dataIndex: 'areaId', width: 110 },
-    { title: '桌号', dataIndex: 'tableNo', width: 140 },
-    { title: '名称', dataIndex: 'name', ellipsis: true, render: (value) => value ?? '-' },
+    { title: '桌子 ID', dataIndex: 'id', width: 90 },
+    { title: '桌号', dataIndex: 'tableNo', width: 120 },
+    { title: '名称', dataIndex: 'name', width: 180, ellipsis: true, render: (value) => value ?? '-' },
     {
       title: '布局位置',
-      width: 160,
+      width: 150,
       render: (_, record) =>
         record.rowNo && record.columnNo ? `第 ${record.rowNo} 排 / 第 ${record.columnNo} 列` : '-',
     },
     {
       title: '平面坐标',
-      width: 180,
+      width: 150,
       render: (_, record) => `x ${record.positionX ?? 80}, y ${record.positionY ?? 80}`,
     },
     {
       title: '桌面尺寸',
-      width: 150,
+      width: 130,
       render: (_, record) => `${record.widthPx ?? 260} × ${record.heightPx ?? 96}`,
     },
-    { title: '展示顺序', dataIndex: 'displayOrder', width: 120, render: (value) => value ?? '-' },
+    { title: '展示顺序', dataIndex: 'displayOrder', width: 110, render: (value) => value ?? '-' },
     {
       title: '状态',
       dataIndex: 'status',
-      width: 120,
+      width: 100,
       render: (status: StudyTableStatus) => <Tag color={statusColors[status]}>{statusLabels[status]}</Tag>,
     },
     {
       title: '操作',
-      width: 320,
+      width: 260,
+      fixed: 'right',
       render: (_, record) => (
-        <Space>
+        <Space wrap size={8} className="admin-table-actions">
           <Button size="small" onClick={() => openEditModal(record)}>
             编辑
           </Button>
@@ -304,14 +309,22 @@ export default function AdminTablesPage() {
         </Form>
       </div>
 
-      <Table rowKey="id" loading={loading} dataSource={tables} columns={columns} pagination={false} />
+      <Table
+        className="admin-tables-table"
+        rowKey="id"
+        loading={loading}
+        dataSource={managedTables}
+        columns={columns}
+        pagination={false}
+        scroll={{ x: 1290 }}
+      />
 
       <div className="layout-preview-panel">
         <div className="seat-map-section-header">
           <strong>区域桌位平面图</strong>
           <span>点击桌子可直接编辑位置和尺寸</span>
         </div>
-        <TableLayoutPreview tables={tables} onSelectTable={openEditModal} selectedTableId={editingTable?.id} />
+        <TableLayoutPreview tables={managedTables} onSelectTable={openEditModal} selectedTableId={editingTable?.id} />
       </div>
 
       <Modal

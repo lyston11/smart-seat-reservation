@@ -152,6 +152,18 @@ body {
   border-radius: 8px;
 }
 
+.admin-tables-table .ant-table {
+  overflow-x: auto;
+}
+
+.admin-tables-table .ant-table-cell-fix-right {
+  background: #ffffff;
+}
+
+.admin-table-actions {
+  min-width: 230px;
+}
+
 .table-layout-preview {
   overflow: auto;
   border: 1px solid #e5e7eb;
@@ -736,7 +748,7 @@ body {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .usage-row {

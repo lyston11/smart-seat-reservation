@@ -24,8 +24,12 @@ function byTablePosition(left: StudyTable, right: StudyTable) {
   return left.tableNo.localeCompare(right.tableNo);
 }
 
+function isManagedTable(table: StudyTable) {
+  return table.tableNo.toUpperCase() !== 'LEGACY';
+}
+
 function getRoomStyle(tables: StudyTable[]): CSSProperties {
-  const activeTables = tables.filter((table) => table.status === 'ACTIVE');
+  const activeTables = tables.filter((table) => table.status === 'ACTIVE' && isManagedTable(table));
   if (activeTables.length === 0) {
     return {};
   }
@@ -48,7 +52,9 @@ function getTableStyle(table: StudyTable): CSSProperties {
 }
 
 export default function TableLayoutPreview({ tables, selectedTableId, onSelectTable }: TableLayoutPreviewProps) {
-  const activeTables = tables.filter((table) => table.status === 'ACTIVE').sort(byTablePosition);
+  const activeTables = tables
+    .filter((table) => table.status === 'ACTIVE' && isManagedTable(table))
+    .sort(byTablePosition);
 
   if (activeTables.length === 0) {
     return (

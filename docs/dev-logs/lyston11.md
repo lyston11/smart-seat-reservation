@@ -5,6 +5,41 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 修复管理员桌子管理页显示问题，避免操作列被裁剪和历史 `LEGACY` 桌位干扰平面图。
+
+### 本次改动
+- 管理员桌子列表隐藏 `LEGACY` 开发兜底桌，只展示真实维护桌子 T01-T04。
+- 管理员桌子平面图同步过滤 `LEGACY`，避免其与 T01 坐标重叠导致桌子叠在一起。
+- 桌子列表移除冗余区域 ID 列，压缩列宽，并将操作列固定到右侧，保证“编辑 / 签到码 / 停用”完整可见。
+- 表格容器从裁剪改为可滚动，避免宽表格在窄屏或浏览器缩放下截断右侧操作。
+- 新增 `V10__disable_legacy_demo_tables.sql`，把历史 `LEGACY` 桌子置为停用，避免新环境继续出现遗留演示桌。
+- 补充桌位平面图测试，覆盖 `LEGACY` 桌不会出现在预览中的场景。
+
+### 涉及文件
+- backend/src/main/resources/db/migration/V10__disable_legacy_demo_tables.sql
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/components/TableLayoutPreview.tsx
+- frontend/src/components/TableLayoutPreview.test.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 3 个测试文件、16 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 45 个测试通过。
+- 已运行 `git diff --check`，通过。
+- 已在浏览器打开 `http://127.0.0.1:5174/admin/tables` 验证：表格只显示 T01-T04，操作列完整可见，平面图没有 `LEGACY` 重叠桌。
+
+### 遗留问题
+- 已存在本地数据库需要应用 V10 后才会把 `LEGACY` 表记录置为停用；前端已同时过滤，未迁移前也不会再影响页面展示。
+
+### 对其他成员的影响
+- 管理员桌子管理页默认不再展示 `LEGACY` 开发兜底桌；如需排查历史数据，可直接查数据库或临时调整过滤。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
 - 目标: 收紧学生端预约时间规则，避免分钟级自由输入，并限制学生只能预约当天。
 
 ### 本次改动
