@@ -44,6 +44,13 @@ function toLocalDateTimeText(value: Date) {
   return `${year}-${month}-${date}T${hours}:${minutes}:${seconds}`;
 }
 
+function toLocalDateText(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const date = String(value.getDate()).padStart(2, '0');
+  return `${year}-${month}-${date}`;
+}
+
 async function selectComboboxValue(label: string, value: string) {
   fireEvent.mouseDown(await screen.findByLabelText(label));
   const options = await screen.findAllByText(value);
@@ -719,5 +726,163 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { level: 3, name: '桌子管理' })).toBeTruthy();
     expect(await screen.findByRole('link', { name: '桌子管理' })).toBeTruthy();
+  });
+
+  it('publishes admin seat slots with table batch selection and time templates', async () => {
+    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
+    window.localStorage.setItem(
+      'smart-seat-auth-user',
+      JSON.stringify({ id: 2, name: 'Demo Admin', studentNo: 'admin', role: 'ADMIN' }),
+    );
+    const todayText = toLocalDateText(new Date());
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.startsWith('/api/areas')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                name: 'A 区',
+                floor: '1F',
+                description: null,
+                status: 'ACTIVE',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/seats?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                areaId: 1,
+                tableId: 1,
+                tableNo: 'T01',
+                tableRowNo: 1,
+                tableColumnNo: 1,
+                tableDisplayOrder: 1,
+                tablePositionX: 120,
+                tablePositionY: 80,
+                tableWidthPx: 260,
+                tableHeightPx: 96,
+                tableRotationDeg: 0,
+                seatNo: 'A-001',
+                seatLabel: '1号',
+                seatSide: 'NORTH',
+                seatOrder: 1,
+                rowNo: 1,
+                columnNo: 1,
+                displayOrder: 1,
+                status: 'ACTIVE',
+              },
+              {
+                id: 2,
+                areaId: 1,
+                tableId: 1,
+                tableNo: 'T01',
+                tableRowNo: 1,
+                tableColumnNo: 1,
+                tableDisplayOrder: 1,
+                tablePositionX: 120,
+                tablePositionY: 80,
+                tableWidthPx: 260,
+                tableHeightPx: 96,
+                tableRotationDeg: 0,
+                seatNo: 'A-002',
+                seatLabel: '2号',
+                seatSide: 'SOUTH',
+                seatOrder: 2,
+                rowNo: 1,
+                columnNo: 2,
+                displayOrder: 2,
+                status: 'ACTIVE',
+              },
+              {
+                id: 3,
+                areaId: 1,
+                tableId: 2,
+                tableNo: 'T02',
+                tableRowNo: 1,
+                tableColumnNo: 2,
+                tableDisplayOrder: 2,
+                tablePositionX: 420,
+                tablePositionY: 80,
+                tableWidthPx: 260,
+                tableHeightPx: 96,
+                tableRotationDeg: 0,
+                seatNo: 'A-003',
+                seatLabel: '3号',
+                seatSide: 'NORTH',
+                seatOrder: 1,
+                rowNo: 1,
+                columnNo: 1,
+                displayOrder: 1,
+                status: 'ACTIVE',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url === '/api/seat-slots/publish' && init?.method === 'POST') {
+        expect(JSON.parse(String(init.body))).toEqual({
+          areaId: 1,
+          slotDate: todayText,
+          periods: [
+            { startTime: '18:00:00', endTime: '22:00:00' },
+          ],
+          seatIds: [1, 2],
+        });
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: { createdCount: 2, skippedCount: 0, createdSlots: [] },
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/admin/seat-slots']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 3, name: '开放时段' })).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: /晚\s*间/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'T01 0/2' }));
+    expect(await screen.findByText('预计发布 2 个座位时段')).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: /发布\s*时段/ }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/seat-slots/publish',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
   });
 });

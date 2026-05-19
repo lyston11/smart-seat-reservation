@@ -5,6 +5,41 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 优化管理员开放时段批量发布交互，解决座位逐个选择效率低、时间段模板不清晰的问题。
+
+### 本次改动
+- 管理员开放时段页从单行表单升级为批量发布工作区，拆分为基础信息、开放时间、发布座位和发布预览。
+- 开放时间新增“上午 / 下午 / 晚间 / 全天常用”快捷模板，仍保持半小时步进，并在前端校验空时段、重复时段、结束早于开始和超过 12 段。
+- 座位选择新增“全选当前区域座位”“清空”和按桌选择按钮，管理员可以按 T01/T02 等桌号批量选中或反选座位。
+- 座位下拉按桌分组，选项显示 `桌号 · 座位编号 (标签)`，同时过滤历史 `LEGACY` 桌位，避免开发遗留数据出现在发布范围。
+- 发布前展示预计发布数量，按“已选座位数 x 有效时间段数”计算，便于比赛演示时解释批量生成逻辑。
+- 开放时段列表的座位列从裸座位 ID 改为展示真实座位编号和桌号，减少管理员排查成本。
+- 补充前端测试，覆盖按桌批量选座、应用快捷时间模板并提交 `periods + seatIds` 的发布 payload。
+
+### 涉及文件
+- frontend/src/pages/AdminSeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 3 个测试文件、17 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过且无告警。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 45 个测试通过。
+- 已运行 `git diff --check`，通过。
+- 已在浏览器打开 `http://127.0.0.1:5174/admin/seat-slots` 验证：页面展示批量发布工作区，点击“晚间”和 T01 后显示 `T01 4/4`、`已选 4 / 16 个座位`、`预计发布 4 个座位时段`。
+
+### 遗留问题
+- 当前按桌批量选择基于已有桌号分组；后续如果做拖拽式平面图发布，可以继续把桌面布局预览嵌入开放时段页。
+
+### 对其他成员的影响
+- 本次未改后端接口，继续复用 `/api/seat-slots/publish` 的 `periods` 和 `seatIds` 批量发布能力。
+- 管理员端发布座位时不再展示 `LEGACY` 开发兜底桌，真实数据维护仍以桌子管理和座位管理页为准。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
 - 目标: 修复管理员桌子管理页显示问题，避免操作列被裁剪和历史 `LEGACY` 桌位干扰平面图。
 
 ### 本次改动
