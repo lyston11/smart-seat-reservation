@@ -787,6 +787,63 @@ describe('App', () => {
         };
       }
 
+      if (url.startsWith('/api/seats?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                areaId: 1,
+                tableId: 1,
+                tableNo: 'T01',
+                tableRowNo: 1,
+                tableColumnNo: 1,
+                tableDisplayOrder: 1,
+                tablePositionX: 120,
+                tablePositionY: 80,
+                tableWidthPx: 260,
+                tableHeightPx: 96,
+                tableRotationDeg: 0,
+                seatNo: 'A-001',
+                seatLabel: '1号',
+                seatSide: 'NORTH',
+                seatOrder: 1,
+                rowNo: 1,
+                columnNo: 1,
+                displayOrder: 1,
+                status: 'ACTIVE',
+              },
+              {
+                id: 2,
+                areaId: 1,
+                tableId: 1,
+                tableNo: 'T01',
+                tableRowNo: 1,
+                tableColumnNo: 1,
+                tableDisplayOrder: 1,
+                tablePositionX: 120,
+                tablePositionY: 80,
+                tableWidthPx: 260,
+                tableHeightPx: 96,
+                tableRotationDeg: 0,
+                seatNo: 'A-002',
+                seatLabel: '2号',
+                seatSide: 'SOUTH',
+                seatOrder: 2,
+                rowNo: 1,
+                columnNo: 2,
+                displayOrder: 2,
+                status: 'ACTIVE',
+              },
+            ],
+          }),
+        };
+      }
+
       if (url === '/api/tables/1' && init?.method === 'PUT') {
         expect(JSON.parse(String(init.body))).toEqual({
           areaId: 1,
@@ -842,6 +899,10 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { level: 3, name: '桌子管理' })).toBeTruthy();
     expect(screen.queryByText('平面坐标')).toBeNull();
+    expect(screen.queryByText('入口')).toBeNull();
+    expect(screen.queryByText('采光窗')).toBeNull();
+    expect(screen.queryByText('服务台')).toBeNull();
+    expect(await screen.findByText('2人桌')).toBeTruthy();
     const tableButton = await screen.findByRole('button', { name: '编辑 T01' }) as HTMLElement;
     tableButton.setPointerCapture = vi.fn();
     tableButton.releasePointerCapture = vi.fn();

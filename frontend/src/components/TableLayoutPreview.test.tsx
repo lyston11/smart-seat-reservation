@@ -32,6 +32,7 @@ describe('TableLayoutPreview', () => {
       <TableLayoutPreview
         selectedTableId={2}
         onSelectTable={onSelectTable}
+        seatCounts={{ 1: 4, 2: 2 }}
         tables={[
           makeTable({ id: 1, tableNo: 'T01', positionX: 120, positionY: 80 }),
           makeTable({ id: 2, tableNo: 'T02', name: '靠窗桌', positionX: 360, positionY: 80 }),
@@ -43,7 +44,10 @@ describe('TableLayoutPreview', () => {
     const tableButton = screen.getByRole('button', { name: '编辑 T02' });
     expect((tableButton as HTMLElement).style.left).toBe('360px');
     expect((tableButton as HTMLElement).style.top).toBe('80px');
+    expect((tableButton as HTMLElement).style.width).toBe('180px');
     expect(tableButton.className).toContain('table-layout-item-selected');
+    expect(tableButton.className).toContain('table-layout-item-two');
+    expect(screen.getByText('2人桌')).toBeTruthy();
     expect(screen.queryByRole('button', { name: '编辑 T03' })).toBeNull();
 
     fireEvent.click(tableButton);
@@ -69,6 +73,7 @@ describe('TableLayoutPreview', () => {
     render(
       <TableLayoutPreview
         editable
+        seatCounts={{ 1: 4 }}
         onMoveTable={onMoveTable}
         tables={[makeTable({ id: 1, tableNo: 'T01', positionX: 120, positionY: 80 })]}
       />,
@@ -101,6 +106,7 @@ describe('TableLayoutPreview', () => {
     render(
       <TableLayoutPreview
         editable
+        seatCounts={{ 1: 4 }}
         onMoveTable={onMoveTable}
         tables={[makeTable({ id: 1, tableNo: 'T01', positionX: 120, positionY: 80 })]}
       />,
@@ -111,5 +117,18 @@ describe('TableLayoutPreview', () => {
       expect.objectContaining({ id: 1, tableNo: 'T01' }),
       { positionX: 130, positionY: 80 },
     );
+  });
+
+  it('does not render fake room features in the admin layout preview', () => {
+    render(
+      <TableLayoutPreview
+        seatCounts={{ 1: 4 }}
+        tables={[makeTable({ id: 1, tableNo: 'T01', positionX: 120, positionY: 80 })]}
+      />,
+    );
+
+    expect(screen.queryByText('入口')).toBeNull();
+    expect(screen.queryByText('采光窗')).toBeNull();
+    expect(screen.queryByText('服务台')).toBeNull();
   });
 });

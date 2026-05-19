@@ -326,8 +326,6 @@ export default function SeatMap({
             <span>{group.totalSeats} 个座位</span>
           </div>
           <div className={`seat-room-layout ${hasCoordinateLayout(group.tables) ? 'seat-room-layout-coordinate' : ''}`}>
-            <div className="seat-room-feature seat-room-door">入口</div>
-            <div className="seat-room-feature seat-room-window">采光窗</div>
             <div
               className={`seat-map-grid ${hasCoordinateLayout(group.tables) ? 'seat-map-grid-coordinate' : ''}`}
               style={getLayoutStyle(group.tables)}
@@ -381,7 +379,6 @@ export default function SeatMap({
                 </div>
               ))}
             </div>
-            <div className="seat-room-feature seat-room-desk">服务台</div>
           </div>
         </section>
       ))}

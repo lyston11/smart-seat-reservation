@@ -17,9 +17,10 @@ import {
 import type { TableColumnsType } from 'antd';
 import { RotateCcw, Save } from 'lucide-react';
 import { listAreas } from '../api/areas';
+import { listSeats } from '../api/seats';
 import { createTable, getTableCheckinQr, listTables, updateTable, updateTableStatus } from '../api/tables';
 import TableLayoutPreview from '../components/TableLayoutPreview';
-import type { Area, StudyTable, StudyTableQr, StudyTableStatus } from '../types/seat';
+import type { Area, Seat, StudyTable, StudyTableQr, StudyTableStatus } from '../types/seat';
 
 type TableFormValues = {
   areaId: number;
@@ -62,6 +63,7 @@ export default function AdminTablesPage() {
   const [areaId, setAreaId] = useState(1);
   const [areas, setAreas] = useState<Area[]>([]);
   const [tables, setTables] = useState<StudyTable[]>([]);
+  const [seats, setSeats] = useState<Seat[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -76,6 +78,16 @@ export default function AdminTablesPage() {
 
   const selectedArea = useMemo(() => areas.find((area) => area.id === areaId), [areaId, areas]);
   const managedTables = useMemo(() => tables.filter(isManagedTable), [tables]);
+  const seatCountsByTable = useMemo(
+    () =>
+      seats.reduce<Record<number, number>>((counts, seat) => {
+        if (seat.status === 'ACTIVE' && seat.tableId) {
+          counts[seat.tableId] = (counts[seat.tableId] ?? 0) + 1;
+        }
+        return counts;
+      }, {}),
+    [seats],
+  );
   const layoutTables = useMemo(
     () =>
       managedTables.map((table) => ({
@@ -103,7 +115,9 @@ export default function AdminTablesPage() {
   const loadTables = useCallback(async (targetAreaId = areaId) => {
     setLoading(true);
     try {
-      setTables(await listTables(targetAreaId));
+      const [nextTables, nextSeats] = await Promise.all([listTables(targetAreaId), listSeats(targetAreaId)]);
+      setTables(nextTables);
+      setSeats(nextSeats);
       setLayoutDrafts({});
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '加载桌子失败');
@@ -393,6 +407,7 @@ export default function AdminTablesPage() {
         <TableLayoutPreview
           editable
           tables={layoutTables}
+          seatCounts={seatCountsByTable}
           onSelectTable={openEditModal}
           selectedTableId={editingTable?.id}
           onMoveTable={(table, position) => {
@@ -482,6 +497,7 @@ export default function AdminTablesPage() {
           </div>
           <TableLayoutPreview
             editable
+            seatCounts={editingTable ? seatCountsByTable : {}}
             tables={[
               {
                 id: editingTable?.id ?? -1,

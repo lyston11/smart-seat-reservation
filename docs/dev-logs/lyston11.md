@@ -5,6 +5,44 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 继续优化桌位平面图，移除硬编码场地元素，合理压缩桌子显示，并区分二人桌、三人桌、四人桌等桌型。
+
+### 本次改动
+- 桌位平面图移除固定写死的“入口 / 采光窗 / 服务台”，避免展示不存在的场地设施。
+- 平面图新增缩放舞台，根据桌位范围自动压缩到可视区域，避免桌子过大或区域无法一次性观察。
+- 桌子视觉尺寸从数据库保存尺寸中解耦，预览会按桌型采用更适合管理界面的尺寸，保存仍沿用原有 `positionX/positionY/widthPx/heightPx` 数据。
+- 管理员桌位图会读取当前区域座位数量，按 active 座位数显示 `2人桌`、`3人桌`、`4人桌`、`单人桌` 或 `未配置座位`。
+- 不同桌型使用不同轮廓：二人桌偏圆角胶囊形，三人桌三角形，四人桌矩形，并用座位小圆点表达座位分布。
+- 学生端座位地图同步移除固定“入口 / 采光窗 / 服务台”，避免前后体验不一致。
+- 补充测试覆盖桌型文案、二人桌样式、无硬编码场地元素，以及管理员页面加载座位后展示桌型。
+
+### 涉及文件
+- frontend/src/components/TableLayoutPreview.tsx
+- frontend/src/components/TableLayoutPreview.test.tsx
+- frontend/src/components/SeatMap.tsx
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/App.test.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 3 个测试文件、21 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过且无告警。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 45 个测试通过。
+- 已运行 `git diff --check`，通过。
+- 已在浏览器打开 `http://127.0.0.1:5174/admin/tables` 验证：桌位图展示 `4人桌` 和 `未配置座位`，且不再展示“入口 / 采光窗 / 服务台”。
+
+### 遗留问题
+- 当前桌型根据座位数量推断，后续如果需要更精细的圆桌、吧台、沙发位等类型，建议后端新增 `tableType` 字段。
+
+### 对其他成员的影响
+- 管理员桌位图会额外请求 `/api/seats?areaId=...` 来统计桌型；后端接口无变化。
+- 平面图不再展示硬编码设施，若后续确实需要入口、窗户等设施，应该作为可配置场地元素建模，而不是写死在前端。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
 - 目标: 修正管理员桌子位置编辑体验，避免要求管理员手填 `X/Y 坐标`，改为平面图拖拽式布局管理。
 
 ### 本次改动

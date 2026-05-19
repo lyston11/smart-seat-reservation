@@ -250,8 +250,16 @@ body {
 
 .table-layout-preview {
   overflow: auto;
+  width: 100%;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
+}
+
+.table-layout-stage {
+  position: relative;
+  overflow: hidden;
+  min-width: 100%;
+  background: #fbfbfa;
 }
 
 .table-layout-room {
@@ -262,15 +270,17 @@ body {
     linear-gradient(180deg, rgba(229, 231, 235, 0.58) 1px, transparent 1px),
     #fbfbfa;
   background-size: auto, 42px 42px, 42px 42px, auto;
+  transform-origin: top left;
 }
 
 .table-layout-item {
   position: absolute;
   padding: 8px;
   display: grid;
+  grid-template-rows: 1fr auto;
   place-items: center;
   border: 2px solid #78716c;
-  border-radius: 8px;
+  border-radius: 6px;
   background:
     linear-gradient(90deg, rgba(255, 255, 255, 0.24), transparent 24%, rgba(255, 255, 255, 0.18) 52%, transparent),
     repeating-linear-gradient(90deg, #d6b47c 0 28px, #c99f68 28px 32px, #e0bf86 32px 60px);
@@ -280,6 +290,24 @@ body {
   font: inherit;
   text-align: center;
   transform-origin: center center;
+}
+
+.table-layout-item-two {
+  border-radius: 999px;
+}
+
+.table-layout-item-three {
+  clip-path: polygon(50% 0, 100% 88%, 0 88%);
+  padding-top: 22px;
+}
+
+.table-layout-item-four {
+  border-radius: 6px;
+}
+
+.table-layout-item-single,
+.table-layout-item-unknown {
+  border-radius: 12px;
 }
 
 .table-layout-preview-editable .table-layout-item {
@@ -307,6 +335,54 @@ body {
   z-index: 2;
   border-color: #16a34a;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.38), 0 0 0 3px rgba(22, 163, 74, 0.2), 0 12px 24px rgba(17, 24, 39, 0.14);
+}
+
+.table-seat-marker {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 1px solid #9ca3af;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.08);
+}
+
+.table-seat-marker-two-1,
+.table-seat-marker-four-1,
+.table-seat-marker-single-1 {
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.table-seat-marker-two-2,
+.table-seat-marker-four-2 {
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.table-seat-marker-three-1 {
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
+}
+
+.table-seat-marker-three-2,
+.table-seat-marker-four-3 {
+  left: 26px;
+  bottom: 10px;
+}
+
+.table-seat-marker-three-3,
+.table-seat-marker-four-4 {
+  right: 26px;
+  bottom: 10px;
+}
+
+.table-seat-marker-four-5,
+.table-seat-marker-four-6 {
+  display: none;
 }
 
 .table-layout-item span {
