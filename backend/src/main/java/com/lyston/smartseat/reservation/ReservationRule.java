@@ -12,8 +12,10 @@ public class ReservationRule {
     private Integer checkinGraceMinutes;
     private Integer checkinLeadMinutes;
     private Integer maxAdvanceDays;
+    private Integer reservationOpenHour;
     private Integer dailyActiveReservationLimit;
     private Integer wifiOfflineReleaseMinutes;
+    private Integer seatLockMinutes;
     private Long updatedBy;
     private LocalDateTime updatedAt;
 
@@ -49,6 +51,14 @@ public class ReservationRule {
         this.maxAdvanceDays = maxAdvanceDays;
     }
 
+    public Integer getReservationOpenHour() {
+        return reservationOpenHour;
+    }
+
+    public void setReservationOpenHour(Integer reservationOpenHour) {
+        this.reservationOpenHour = reservationOpenHour;
+    }
+
     public Integer getDailyActiveReservationLimit() {
         return dailyActiveReservationLimit;
     }
@@ -63,6 +73,14 @@ public class ReservationRule {
 
     public void setWifiOfflineReleaseMinutes(Integer wifiOfflineReleaseMinutes) {
         this.wifiOfflineReleaseMinutes = wifiOfflineReleaseMinutes;
+    }
+
+    public Integer getSeatLockMinutes() {
+        return seatLockMinutes;
+    }
+
+    public void setSeatLockMinutes(Integer seatLockMinutes) {
+        this.seatLockMinutes = seatLockMinutes;
     }
 
     public Long getUpdatedBy() {

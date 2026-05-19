@@ -24,13 +24,19 @@ import {
   checkInReservation,
   checkOutReservation,
   listUserReservations,
+  lockReservationSeat,
   markReservationWifiPresence,
+  reactivateSeatLock,
+  releaseSeatLock,
 } from '../api/seatSlots';
 import type { ReservationResult } from '../types/reservation';
 import {
   canCancelReservation,
   canCheckInReservation,
   canCheckOutReservation,
+  canLockReservation,
+  canReactivateSeatLock,
+  canReleaseSeatLock,
   filterReservations,
   formatDate,
   formatDateTime,
@@ -119,7 +125,10 @@ export default function MyReservationsPage() {
     };
   }, [messageApi, reservations]);
 
-  async function runAction(reservation: ReservationResult, action: 'check-in' | 'check-out' | 'cancel') {
+  async function runAction(
+    reservation: ReservationResult,
+    action: 'check-in' | 'check-out' | 'cancel' | 'lock' | 'reactivate-lock' | 'release-lock',
+  ) {
     setActionId(reservation.reservationId);
     try {
       if (action === 'check-in') {
@@ -128,8 +137,16 @@ export default function MyReservationsPage() {
         });
       } else if (action === 'check-out') {
         await checkOutReservation(reservation.reservationId);
-      } else {
+      } else if (action === 'cancel') {
         await cancelReservation(reservation.reservationId);
+      } else if (action === 'lock') {
+        await lockReservationSeat(reservation.reservationId);
+      } else if (action === 'reactivate-lock') {
+        await reactivateSeatLock(reservation.reservationId, {
+          checkinCode: checkinCodes[reservation.reservationId] ?? reservation.checkinCode,
+        });
+      } else {
+        await releaseSeatLock(reservation.reservationId);
       }
       messageApi.success('操作成功');
       await loadReservations();
@@ -146,6 +163,7 @@ export default function MyReservationsPage() {
   const activeReservations = reservations.filter(isActiveReservation);
   const reservedCount = reservations.filter((reservation) => reservation.status === 'RESERVED').length;
   const checkedInCount = reservations.filter((reservation) => reservation.status === 'CHECKED_IN').length;
+  const lockedCount = reservations.filter((reservation) => reservation.status === 'LOCKED').length;
   const filteredReservations = useMemo(
     () => filterReservations(reservations, statusFilter, dateFilter),
     [dateFilter, reservations, statusFilter],
@@ -196,6 +214,36 @@ export default function MyReservationsPage() {
             取消
           </Button>
         </Popconfirm>
+        <Button
+          disabled={!canLockReservation(reservation)}
+          loading={actionId === reservation.reservationId}
+          onClick={() => runAction(reservation, 'lock')}
+        >
+          锁位
+        </Button>
+        <Button
+          type="primary"
+          disabled={!canReactivateSeatLock(reservation)}
+          loading={actionId === reservation.reservationId}
+          onClick={() => runAction(reservation, 'reactivate-lock')}
+        >
+          重新签到
+        </Button>
+        <Popconfirm
+          title="释放锁位"
+          description="释放后该座位会开放给其他同学。"
+          okText="释放座位"
+          cancelText="返回"
+          onConfirm={() => runAction(reservation, 'release-lock')}
+        >
+          <Button
+            danger
+            disabled={!canReleaseSeatLock(reservation)}
+            loading={actionId === reservation.reservationId}
+          >
+            释放锁位
+          </Button>
+        </Popconfirm>
       </Space>
     );
   }
@@ -222,6 +270,22 @@ export default function MyReservationsPage() {
     },
     { title: '签到码', dataIndex: 'checkinCode', ellipsis: true },
     { title: '签到截止', dataIndex: 'expiresAt', width: 180, render: (value) => formatDateTime(value) },
+    {
+      title: '锁位',
+      width: 170,
+      render: (_, record) => {
+        const quota = record.seatLockQuota ?? 0;
+        const usedCount = record.seatLockUsedCount ?? 0;
+        return (
+          <Space orientation="vertical" size={2}>
+            <Typography.Text>{usedCount}/{quota} 次</Typography.Text>
+            {record.lockedUntilAt ? (
+              <Typography.Text type="secondary">{formatDateTime(record.lockedUntilAt)}</Typography.Text>
+            ) : null}
+          </Space>
+        );
+      },
+    },
     {
       title: '倒计时',
       width: 150,
@@ -277,6 +341,9 @@ export default function MyReservationsPage() {
         <Card>
           <Statistic title="使用中" value={checkedInCount} suffix="个" />
         </Card>
+        <Card>
+          <Statistic title="锁位中" value={lockedCount} suffix="个" />
+        </Card>
       </div>
 
       <div className="student-section">
@@ -303,6 +370,14 @@ export default function MyReservationsPage() {
                       WiFi 在线检测 {formatDateTime(wifiHeartbeatAt[reservation.reservationId] ?? reservation.lastWifiSeenAt)}
                     </Typography.Text>
                   ) : null}
+                  {reservation.status === 'LOCKED' ? (
+                    <Typography.Text type="secondary">
+                      已锁位至 {formatDateTime(reservation.lockedUntilAt)}，可重新签到恢复使用。
+                    </Typography.Text>
+                  ) : null}
+                  <Typography.Text type="secondary">
+                    锁位次数 {reservation.seatLockUsedCount ?? 0}/{reservation.seatLockQuota ?? 0}
+                  </Typography.Text>
                   <div className="reservation-code-field">
                     <span>签到码</span>
                     <Input
@@ -367,9 +442,17 @@ export default function MyReservationsPage() {
               <Descriptions.Item label="签到码">{detailReservation.checkinCode}</Descriptions.Item>
               <Descriptions.Item label="签到截止">{formatDateTime(detailReservation.expiresAt)}</Descriptions.Item>
               <Descriptions.Item label="签到倒计时">{renderCountdown(detailReservation)}</Descriptions.Item>
+              <Descriptions.Item label="锁位次数">
+                {detailReservation.seatLockUsedCount ?? 0}/{detailReservation.seatLockQuota ?? 0}
+              </Descriptions.Item>
+              <Descriptions.Item label="锁位截止">
+                {formatDateTime(detailReservation.lockedUntilAt)}
+              </Descriptions.Item>
               <Descriptions.Item label="校园网检测">
                 {detailReservation.status === 'CHECKED_IN'
                   ? `最近在线 ${formatDateTime(wifiHeartbeatAt[detailReservation.reservationId] ?? detailReservation.lastWifiSeenAt)}`
+                  : detailReservation.status === 'LOCKED'
+                    ? '锁位期间暂停 WiFi 离线释放，超时或预约结束会自动释放'
                   : '签到和使用中需要保持连接区域校园网'}
               </Descriptions.Item>
             </Descriptions>

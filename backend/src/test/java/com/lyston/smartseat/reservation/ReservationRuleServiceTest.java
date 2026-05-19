@@ -33,8 +33,10 @@ class ReservationRuleServiceTest {
         properties.setCheckinGraceMinutes(20);
         properties.setCheckinLeadMinutes(8);
         properties.setMaxAdvanceDays(5);
+        properties.setReservationOpenHour(18);
         properties.setDailyActiveReservationLimit(2);
         properties.setWifiOfflineReleaseMinutes(18);
+        properties.setSeatLockMinutes(60);
         reservationRuleService = new ReservationRuleService(reservationRuleMapper.proxy(), properties, auditService);
 
         ReservationRuleResponse response = reservationRuleService.getRules();
@@ -42,8 +44,10 @@ class ReservationRuleServiceTest {
         assertThat(response.checkinGraceMinutes()).isEqualTo(20);
         assertThat(response.checkinLeadMinutes()).isEqualTo(8);
         assertThat(response.maxAdvanceDays()).isEqualTo(5);
+        assertThat(response.reservationOpenHour()).isEqualTo(18);
         assertThat(response.dailyActiveReservationLimit()).isEqualTo(2);
         assertThat(response.wifiOfflineReleaseMinutes()).isEqualTo(18);
+        assertThat(response.seatLockMinutes()).isEqualTo(60);
         assertThat(response.updatedBy()).isNull();
     }
 
@@ -53,15 +57,17 @@ class ReservationRuleServiceTest {
         reservationRuleMapper.rule = rule;
 
         ReservationRuleResponse response = reservationRuleService.updateRules(
-                new UpdateReservationRuleRequest(30, 12, 10, 4, 20),
+                new UpdateReservationRuleRequest(30, 12, 10, 18, 4, 20, 60),
                 2L
         );
 
         assertThat(response.checkinGraceMinutes()).isEqualTo(30);
         assertThat(response.checkinLeadMinutes()).isEqualTo(12);
         assertThat(response.maxAdvanceDays()).isEqualTo(10);
+        assertThat(response.reservationOpenHour()).isEqualTo(18);
         assertThat(response.dailyActiveReservationLimit()).isEqualTo(4);
         assertThat(response.wifiOfflineReleaseMinutes()).isEqualTo(20);
+        assertThat(response.seatLockMinutes()).isEqualTo(60);
         assertThat(response.updatedBy()).isEqualTo(2L);
         assertThat(reservationRuleMapper.updatedRule).isSameAs(rule);
         assertThat(auditService.action).isEqualTo(AuditAction.RESERVATION_RULE_UPDATE);
@@ -74,8 +80,10 @@ class ReservationRuleServiceTest {
         rule.setCheckinGraceMinutes(15);
         rule.setCheckinLeadMinutes(10);
         rule.setMaxAdvanceDays(7);
+        rule.setReservationOpenHour(18);
         rule.setDailyActiveReservationLimit(3);
         rule.setWifiOfflineReleaseMinutes(15);
+        rule.setSeatLockMinutes(60);
         rule.setUpdatedAt(LocalDateTime.of(2026, 5, 15, 10, 0));
         return rule;
     }

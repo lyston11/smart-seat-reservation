@@ -113,6 +113,42 @@ public class ReservationController {
         ));
     }
 
+    @PostMapping("/{reservationId}/seat-lock")
+    @RequireRole(UserRole.STUDENT)
+    public ApiResponse<ReservationResponse> lockSeat(
+            @PathVariable Long reservationId,
+            @Valid @RequestBody(required = false) ReservationActionRequest request,
+            CurrentUser currentUser
+    ) {
+        return ApiResponse.ok(reservationService.lockSeat(reservationId, currentUser.id()));
+    }
+
+    @PostMapping("/{reservationId}/seat-lock/reactivate")
+    @RequireRole(UserRole.STUDENT)
+    public ApiResponse<ReservationResponse> reactivateSeatLock(
+            @PathVariable Long reservationId,
+            @Valid @RequestBody CheckinRequest request,
+            CurrentUser currentUser,
+            HttpServletRequest servletRequest
+    ) {
+        return ApiResponse.ok(reservationService.reactivateSeatLock(
+                reservationId,
+                request,
+                currentUser.id(),
+                clientIpResolver.resolve(servletRequest)
+        ));
+    }
+
+    @PostMapping("/{reservationId}/seat-lock/release")
+    @RequireRole(UserRole.STUDENT)
+    public ApiResponse<ReservationResponse> releaseSeatLock(
+            @PathVariable Long reservationId,
+            @Valid @RequestBody(required = false) ReservationActionRequest request,
+            CurrentUser currentUser
+    ) {
+        return ApiResponse.ok(reservationService.releaseSeatLock(reservationId, currentUser.id()));
+    }
+
     @PostMapping("/{reservationId}/check-out")
     @RequireRole(UserRole.STUDENT)
     public ApiResponse<ReservationResponse> checkOut(
@@ -143,5 +179,11 @@ public class ReservationController {
     @RequireRole(UserRole.ADMIN)
     public ApiResponse<Integer> releaseWifiOfflineReservations(@RequestParam(defaultValue = "100") int limit) {
         return ApiResponse.ok(reservationService.releaseWifiOfflineReservations(limit));
+    }
+
+    @PostMapping("/release-expired-seat-locks")
+    @RequireRole(UserRole.ADMIN)
+    public ApiResponse<Integer> releaseExpiredSeatLocks(@RequestParam(defaultValue = "100") int limit) {
+        return ApiResponse.ok(reservationService.releaseExpiredSeatLocks(limit));
     }
 }

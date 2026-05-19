@@ -33,4 +33,12 @@ public class ReservationExpirationJob {
             log.info("Released {} reservations after WiFi presence timeout", releasedCount);
         }
     }
+
+    @Scheduled(fixedDelayString = "${smart-seat.seat-lock.fixed-delay-ms:60000}")
+    public void releaseExpiredSeatLocks() {
+        int releasedCount = reservationService.releaseExpiredSeatLocks(EXPIRE_BATCH_SIZE);
+        if (releasedCount > 0) {
+            log.info("Released {} reservations after seat lock timeout", releasedCount);
+        }
+    }
 }

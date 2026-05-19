@@ -22,6 +22,9 @@ public class Reservation {
     private LocalDateTime checkedOutAt;
     private LocalDateTime lastWifiSeenAt;
     private String lastWifiIp;
+    private Integer seatLockQuota;
+    private Integer seatLockUsedCount;
+    private LocalDateTime lockedUntilAt;
     private LocalDateTime expiresAt;
     @TableField(exist = false)
     private String seatNo;
@@ -132,6 +135,30 @@ public class Reservation {
 
     public void setLastWifiIp(String lastWifiIp) {
         this.lastWifiIp = lastWifiIp;
+    }
+
+    public Integer getSeatLockQuota() {
+        return seatLockQuota;
+    }
+
+    public void setSeatLockQuota(Integer seatLockQuota) {
+        this.seatLockQuota = seatLockQuota;
+    }
+
+    public Integer getSeatLockUsedCount() {
+        return seatLockUsedCount;
+    }
+
+    public void setSeatLockUsedCount(Integer seatLockUsedCount) {
+        this.seatLockUsedCount = seatLockUsedCount;
+    }
+
+    public LocalDateTime getLockedUntilAt() {
+        return lockedUntilAt;
+    }
+
+    public void setLockedUntilAt(LocalDateTime lockedUntilAt) {
+        this.lockedUntilAt = lockedUntilAt;
     }
 
     public LocalDateTime getExpiresAt() {

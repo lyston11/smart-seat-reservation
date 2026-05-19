@@ -2,11 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, Empty, message, Space, Statistic, Tag, Typography } from 'antd';
 import { Link } from 'react-router-dom';
 import { getStoredUser } from '../api/http';
-import { checkInReservation, checkOutReservation, getReservationRules, listUserReservations } from '../api/seatSlots';
+import {
+  checkInReservation,
+  checkOutReservation,
+  getReservationRules,
+  listUserReservations,
+  reactivateSeatLock,
+} from '../api/seatSlots';
 import type { ReservationResult, ReservationRule } from '../types/reservation';
 import {
   canCheckInReservation,
   canCheckOutReservation,
+  canReactivateSeatLock,
   compareReservationsByStartTime,
   formatDateTime,
   formatReservationLocation,
@@ -67,13 +74,15 @@ export default function StudentHomePage() {
       .slice(0, 3);
   }, [reservations]);
 
-  async function runQuickAction(reservation: ReservationResult, action: 'check-in' | 'check-out') {
+  async function runQuickAction(reservation: ReservationResult, action: 'check-in' | 'check-out' | 'reactivate-lock') {
     setActionId(reservation.reservationId);
     try {
       if (action === 'check-in') {
         await checkInReservation(reservation.reservationId, { checkinCode: reservation.checkinCode });
-      } else {
+      } else if (action === 'check-out') {
         await checkOutReservation(reservation.reservationId);
+      } else {
+        await reactivateSeatLock(reservation.reservationId, { checkinCode: reservation.checkinCode });
       }
       messageApi.success('操作成功');
       await loadHomeData();
@@ -115,6 +124,17 @@ export default function StudentHomePage() {
         </Button>
       );
     }
+    if (canReactivateSeatLock(reservation)) {
+      return (
+        <Button
+          type="primary"
+          loading={actionId === reservation.reservationId}
+          onClick={() => runQuickAction(reservation, 'reactivate-lock')}
+        >
+          恢复使用
+        </Button>
+      );
+    }
     return null;
   }
 
@@ -150,7 +170,7 @@ export default function StudentHomePage() {
           />
         </Card>
         <Card loading={loading}>
-          <Statistic title="最多提前" value={rules?.maxAdvanceDays ?? 0} suffix="天" />
+          <Statistic title="开放明日预约" value={rules?.reservationOpenHour ?? 0} suffix="点" />
         </Card>
       </div>
 
@@ -173,6 +193,10 @@ export default function StudentHomePage() {
                   <Typography.Text>{formatReservationLocation(reservation)}</Typography.Text>
                   <Typography.Text type="secondary">
                     签到码 {reservation.checkinCode} · 截止 {formatDateTime(reservation.expiresAt)}
+                  </Typography.Text>
+                  <Typography.Text type="secondary">
+                    锁位 {reservation.seatLockUsedCount ?? 0}/{reservation.seatLockQuota ?? 0}
+                    {reservation.lockedUntilAt ? ` · 至 ${formatDateTime(reservation.lockedUntilAt)}` : ''}
                   </Typography.Text>
                   <Space wrap>
                     {renderCountdown(reservation)}

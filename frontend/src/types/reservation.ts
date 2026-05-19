@@ -9,6 +9,9 @@ export type ReservationResult = {
   checkedInAt?: string | null;
   checkedOutAt?: string | null;
   lastWifiSeenAt?: string | null;
+  seatLockQuota?: number | null;
+  seatLockUsedCount?: number | null;
+  lockedUntilAt?: string | null;
   seatNo?: string | null;
   seatLabel?: string | null;
   tableId?: number | null;
@@ -59,8 +62,10 @@ export type ReservationRule = {
   checkinGraceMinutes: number;
   checkinLeadMinutes: number;
   maxAdvanceDays: number;
+  reservationOpenHour: number;
   dailyActiveReservationLimit: number;
   wifiOfflineReleaseMinutes: number;
+  seatLockMinutes: number;
   updatedBy: number | null;
   updatedAt: string | null;
 };

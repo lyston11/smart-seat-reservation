@@ -31,8 +31,10 @@ function makeReservationRules(overrides: Record<string, unknown> = {}) {
     checkinGraceMinutes: 10,
     checkinLeadMinutes: 10,
     maxAdvanceDays: 7,
+    reservationOpenHour: 18,
     dailyActiveReservationLimit: 3,
     wifiOfflineReleaseMinutes: 15,
+    seatLockMinutes: 60,
     updatedBy: null,
     updatedAt: null,
     ...overrides,
@@ -62,6 +64,12 @@ function toLocalDateText(value: Date) {
   const month = String(value.getMonth() + 1).padStart(2, '0');
   const date = String(value.getDate()).padStart(2, '0');
   return `${year}-${month}-${date}`;
+}
+
+function dayAfterTodayText() {
+  const value = new Date();
+  value.setDate(value.getDate() + 1);
+  return toLocalDateText(value);
 }
 
 async function selectComboboxValue(label: string, value: string) {
@@ -219,6 +227,7 @@ describe('App', () => {
 
   it('submits a concrete seat reservation with the selected custom time range', async () => {
     storeStudentSession();
+    const tomorrowText = dayAfterTodayText();
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -274,7 +283,7 @@ describe('App', () => {
                 columnNo: 1,
                 displayOrder: 1,
                 areaId: 1,
-                slotDate: '2026-05-19',
+                slotDate: tomorrowText,
                 startTime: '08:00:00',
                 endTime: '22:00:00',
                 status: 'AVAILABLE',
@@ -325,7 +334,7 @@ describe('App', () => {
         expect(JSON.parse(String(init.body))).toEqual(
           {
             seatId: 9,
-            slotDate: '2026-05-19',
+            slotDate: tomorrowText,
             startTime: '09:30:00',
             endTime: '10:30:00',
           },
@@ -356,7 +365,7 @@ describe('App', () => {
             success: true,
             code: 'OK',
             message: 'ok',
-            data: makeReservationRules(),
+            data: makeReservationRules({ reservationOpenHour: 0 }),
           }),
         };
       }
@@ -381,7 +390,7 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: /1号/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /A-001|1号/ }));
     await selectComboboxValue('开始时间', '09:30');
     await selectComboboxValue('结束时间', '10:30');
     fireEvent.click(await screen.findByRole('button', { name: '预约该座位' }));
@@ -595,7 +604,8 @@ describe('App', () => {
     );
 
     expect((await screen.findAllByText('A 区 · 1F · T01 · A-001 (1号)')).length).toBeGreaterThan(0);
-    fireEvent.click(await screen.findByRole('button', { name: /签\s*到/ }));
+    const checkinButtons = await screen.findAllByRole('button', { name: /^签\s*到$/ });
+    fireEvent.click(checkinButtons[0]);
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(

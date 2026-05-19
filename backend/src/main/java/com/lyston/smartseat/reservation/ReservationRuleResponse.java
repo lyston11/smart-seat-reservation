@@ -6,8 +6,10 @@ public record ReservationRuleResponse(
         int checkinGraceMinutes,
         int checkinLeadMinutes,
         int maxAdvanceDays,
+        int reservationOpenHour,
         int dailyActiveReservationLimit,
         int wifiOfflineReleaseMinutes,
+        int seatLockMinutes,
         Long updatedBy,
         LocalDateTime updatedAt
 ) {
@@ -17,8 +19,10 @@ public record ReservationRuleResponse(
                 properties.getCheckinGraceMinutes(),
                 properties.getCheckinLeadMinutes(),
                 properties.getMaxAdvanceDays(),
+                properties.getReservationOpenHour(),
                 properties.getDailyActiveReservationLimit(),
                 properties.getWifiOfflineReleaseMinutes(),
+                properties.getSeatLockMinutes(),
                 null,
                 null
         );
@@ -29,8 +33,10 @@ public record ReservationRuleResponse(
                 rule.getCheckinGraceMinutes(),
                 rule.getCheckinLeadMinutes(),
                 rule.getMaxAdvanceDays(),
+                rule.getReservationOpenHour(),
                 rule.getDailyActiveReservationLimit(),
                 rule.getWifiOfflineReleaseMinutes(),
+                rule.getSeatLockMinutes(),
                 rule.getUpdatedBy(),
                 rule.getUpdatedAt()
         );

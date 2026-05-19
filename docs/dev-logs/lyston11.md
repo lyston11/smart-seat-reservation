@@ -1338,6 +1338,54 @@
 - 新增管理员时段操作按钮时优先扩展 `AdminSeatSlotActions`。
 - 管理员新页面路由应挂在 `RoleRoute allowedRoles={['ADMIN']}` 下。
 
+## 2026-05-19
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-wifi-checkin
+- 目标: 在 WiFi 签到基础上补明日预约开放规则和连续预约锁位机制。
+
+### 本次改动
+- 新增预约规则字段 `reservationOpenHour` 和 `seatLockMinutes`，默认每日 18:00 开放次日预约，单次锁位 60 分钟。
+- 预约创建改为只允许预约次日，并且必须在当日开放时间之后提交。
+- 预约仍采用连续开始/结束时间选择，不做三段多选；后端按连续预约是否跨过 12:00、18:00 自动计算锁位次数。
+- 新增预约字段 `seatLockQuota`、`seatLockUsedCount`、`lockedUntilAt`，预约创建时写入锁位额度。
+- 新增状态 `LOCKED`、`LOCK_RELEASED` 和锁位动作记录。
+- 新增学生锁位、重新签到恢复、主动释放锁位接口；锁位到期或预约结束时间先到时，定时任务会强制释放座位。
+- WiFi 离线释放只扫描 `CHECKED_IN`，锁位期间不会因为 WiFi 断联释放。
+- 前端学生选座页显示明日预约、开放时间、连续跨时段锁位规则和预约后的锁位额度。
+- 前端“我的预约”和学生首页接入锁位、重新签到恢复、释放锁位展示与操作。
+- 管理员预约规则页新增开放明日预约时间和单次锁位时长配置。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/reservation/
+- backend/src/main/java/com/lyston/smartseat/schedule/ReservationExpirationJob.java
+- backend/src/main/resources/application.yml
+- backend/src/main/resources/db/migration/V12__add_seat_lock_quota.sql
+- backend/src/test/java/com/lyston/smartseat/reservation/
+- frontend/src/api/seatSlots.ts
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/pages/MyReservationsPage.tsx
+- frontend/src/pages/StudentHomePage.tsx
+- frontend/src/pages/AdminReservationRulesPage.tsx
+- frontend/src/types/reservation.ts
+- frontend/src/utils/reservationDisplay.ts
+- docs/API_EXAMPLES.md
+- docs/architecture/ARCHITECTURE.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 56 个测试通过。
+- 已运行 `npm run test`，前端 24 个测试通过。
+
+### 遗留问题
+- 业务时段边界当前固定为 12:00 和 18:00，后续如果不同区域存在差异，可扩展为可配置时段表。
+- 锁位期间座位时段仍显示为 `USING`，比赛演示够用；后续可增加独立 `LOCKED` 座位时段状态，方便座位图区分展示。
+
+### 对其他成员的影响
+- 新增活跃状态时要同步 `countActiveOverlappingReservations`、`countDailyActiveReservations` 和前端状态筛选。
+- 涉及预约开放时间和锁位时长的代码应继续通过 `/api/reservations/rules` 和 `ReservationRuleService` 读取规则。
+
 ## 2026-05-15
 
 ### 任务

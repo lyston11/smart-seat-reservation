@@ -28,7 +28,6 @@ export default function SeatSlotsPage() {
   const [areaId, setAreaId] = useState(1);
   const [areaTimeInitialized, setAreaTimeInitialized] = useState(false);
   const [timeInitializedFromSlots, setTimeInitializedFromSlots] = useState(false);
-  const [date] = useState(dayjs());
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('22:00');
   const [slots, setSlots] = useState<SeatSlot[]>([]);
@@ -42,7 +41,11 @@ export default function SeatSlotsPage() {
   const [reservationAction, setReservationAction] = useState<string | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
 
-  const dateText = useMemo(() => date.format('YYYY-MM-DD'), [date]);
+  const dateText = useMemo(() => dayjs().add(1, 'day').format('YYYY-MM-DD'), []);
+  const reservationOpened = useMemo(() => {
+    const openHour = reservationRules?.reservationOpenHour ?? 18;
+    return dayjs().hour() >= openHour;
+  }, [reservationRules?.reservationOpenHour]);
   const activeAreas = useMemo(() => areas.filter((area) => area.status === 'ACTIVE'), [areas]);
   const selectedArea = useMemo(() => areas.find((area) => area.id === areaId), [areas, areaId]);
   const startTimeText = useMemo(() => normalizeInputTime(startTime), [startTime]);
@@ -70,7 +73,7 @@ export default function SeatSlotsPage() {
 
   function restoreActiveReservation(reservations: ReservationResult[]) {
     const active = reservations.find((reservation) =>
-      reservation.status === 'RESERVED' || reservation.status === 'CHECKED_IN'
+      reservation.status === 'RESERVED' || reservation.status === 'CHECKED_IN' || reservation.status === 'LOCKED'
     );
     setActiveReservation(active ?? null);
     setCheckinCode(active?.checkinCode ?? '');
@@ -147,6 +150,10 @@ export default function SeatSlotsPage() {
       messageApi.warning('预约时间只能按半小时选择');
       return;
     }
+    if (!reservationOpened) {
+      messageApi.warning(`今日 ${String(reservationRules?.reservationOpenHour ?? 18).padStart(2, '0')}:00 开放明日预约`);
+      return;
+    }
     if (slot.status !== 'AVAILABLE') {
       messageApi.warning(slot.status === 'UNPUBLISHED' ? '该座位当前时间未开放' : '该座位当前时间不可预约');
       return;
@@ -162,7 +169,8 @@ export default function SeatSlotsPage() {
       });
       setActiveReservation(reservation);
       setCheckinCode(reservation.checkinCode);
-      messageApi.success('预约成功');
+      const lockQuota = reservation.seatLockQuota ?? 0;
+      messageApi.success(lockQuota > 0 ? `预约成功，本次连续预约可锁位 ${lockQuota} 次` : '预约成功');
       await loadSlots();
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '预约失败');
@@ -186,7 +194,7 @@ export default function SeatSlotsPage() {
             ? await checkOutReservation(activeReservation.reservationId)
             : await cancelReservation(activeReservation.reservationId);
 
-      if (reservation.status === 'RESERVED' || reservation.status === 'CHECKED_IN') {
+      if (reservation.status === 'RESERVED' || reservation.status === 'CHECKED_IN' || reservation.status === 'LOCKED') {
         setActiveReservation(reservation);
         setCheckinCode(reservation.checkinCode);
       } else {
@@ -280,9 +288,15 @@ export default function SeatSlotsPage() {
           每日最多保留 {reservationRules?.dailyActiveReservationLimit ?? '-'} 个活跃预约
         </span>
         <span>已开始或过期时段不可预约</span>
-        <span>仅支持预约当天</span>
+        <span>
+          每日 {String(reservationRules?.reservationOpenHour ?? 18).padStart(2, '0')}:00 开放明日预约
+        </span>
         <span>时间最小粒度为半小时</span>
         <span>预约后 {reservationRules?.checkinGraceMinutes ?? '-'} 分钟内未签到将自动释放</span>
+        <span>
+          连续跨上午/下午可锁位 1 次，跨上午/下午/晚上可锁位 2 次
+        </span>
+        <span>分开预约不累计锁位权益</span>
       </div>
 
       <div className="student-seat-workspace">
@@ -338,12 +352,17 @@ export default function SeatSlotsPage() {
                 <Button
                   type="primary"
                   block
-                  disabled={selectedSlot.status !== 'AVAILABLE'}
+                  disabled={selectedSlot.status !== 'AVAILABLE' || !reservationOpened}
                   loading={reservingId === selectedSlot.id}
                   onClick={() => reserve(selectedSlot)}
                 >
                   预约该座位
                 </Button>
+                {!reservationOpened ? (
+                  <Typography.Text type="secondary">
+                    今日 {String(reservationRules?.reservationOpenHour ?? 18).padStart(2, '0')}:00 后开放预约 {dateText}。
+                  </Typography.Text>
+                ) : null}
                 {selectedSlot.status === 'UNPUBLISHED' ? (
                   <Typography.Text type="secondary">
                     当前时间段未开放，可调整时间或等待管理员开放后预约。
@@ -368,6 +387,10 @@ export default function SeatSlotsPage() {
                 <Typography.Text type="secondary">{formatReservationTime(activeReservation)}</Typography.Text>
                 <Typography.Text type="secondary">
                   签到截止 {formatDateTime(activeReservation.expiresAt)}
+                </Typography.Text>
+                <Typography.Text type="secondary">
+                  锁位次数 {activeReservation.seatLockUsedCount ?? 0}/{activeReservation.seatLockQuota ?? 0}
+                  {activeReservation.lockedUntilAt ? ` · 锁位至 ${formatDateTime(activeReservation.lockedUntilAt)}` : ''}
                 </Typography.Text>
                 <div className="reservation-code-field reservation-code">
                   <span>签到码</span>

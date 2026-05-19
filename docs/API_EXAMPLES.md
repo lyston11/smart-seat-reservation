@@ -445,7 +445,47 @@ curl -X POST http://localhost:18080/api/reservations/1/wifi-presence \
 
 学生端会对 `CHECKED_IN` 预约定时调用该接口。若超过 `wifiOfflineReleaseMinutes` 分钟没有有效校园网 IP 心跳，系统会视为学生离开座位。
 
-## 7. 查询我的预约
+## 7. 锁位、恢复和释放
+
+锁位只面向已签到使用中的预约。后端不会让前端按“上午/下午/晚上”多选，而是根据单笔连续预约是否跨过 12:00、18:00 自动计算锁位次数：只预约上午没有锁位，连续跨上午和下午有 1 次，连续跨全天有 2 次，分开的多笔预约不累计。
+
+```bash
+curl -X POST http://localhost:18080/api/reservations/1/seat-lock \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: 替换为学生 token" \
+  -d '{}'
+```
+
+成功后预约状态变为 `LOCKED`，返回 `lockedUntilAt`、`seatLockQuota` 和 `seatLockUsedCount`。锁位截止时间取“当前时间 + seatLockMinutes”和“预约结束时间”的较早值。
+
+重新签到恢复使用：
+
+```bash
+curl -X POST http://localhost:18080/api/reservations/1/seat-lock/reactivate \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: 替换为学生 token" \
+  -d '{
+    "checkinCode": "替换为预约返回的签到码"
+  }'
+```
+
+主动释放锁位：
+
+```bash
+curl -X POST http://localhost:18080/api/reservations/1/seat-lock/release \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: 替换为学生 token" \
+  -d '{}'
+```
+
+手动触发过期锁位释放：
+
+```bash
+curl -X POST "http://localhost:18080/api/reservations/release-expired-seat-locks?limit=100" \
+  -H "X-Auth-Token: 替换为管理员 token"
+```
+
+## 8. 查询我的预约
 
 查询当前登录学生的最近预约：
 
@@ -454,7 +494,7 @@ curl "http://localhost:18080/api/reservations?limit=50" \
   -H "X-Auth-Token: 替换为学生 token"
 ```
 
-## 8. 签退
+## 9. 签退
 
 ```bash
 curl -X POST http://localhost:18080/api/reservations/1/check-out \
@@ -465,7 +505,7 @@ curl -X POST http://localhost:18080/api/reservations/1/check-out \
 
 成功后预约状态变为 `CHECKED_OUT`，座位时段重新变为 `AVAILABLE`。
 
-## 9. 取消预约
+## 10. 取消预约
 
 ```bash
 curl -X POST http://localhost:18080/api/reservations/1/cancel \
@@ -476,7 +516,7 @@ curl -X POST http://localhost:18080/api/reservations/1/cancel \
 
 成功后预约状态变为 `CANCELLED`，座位时段重新变为 `AVAILABLE`。
 
-## 10. 释放超时未签到预约
+## 11. 释放超时未签到预约
 
 当前既保留手动触发接口，也已经提供定时任务入口。默认每 60 秒扫描一次超时未签到预约。
 
@@ -496,7 +536,7 @@ curl -X POST "http://localhost:18080/api/reservations/release-wifi-offline?limit
 
 当前既保留手动触发接口，也已经提供定时任务入口。默认每 60 秒扫描一次，超过 `wifiOfflineReleaseMinutes` 分钟未检测到有效校园网 IP 的 `CHECKED_IN` 预约会变为 `WIFI_RELEASED`，未结束的座位时段重新变为 `AVAILABLE`。
 
-## 11. 查询管理员看板
+## 12. 查询管理员看板
 
 查询今天的座位使用汇总：
 
@@ -514,7 +554,7 @@ curl "http://localhost:18080/api/admin/dashboard?date=2026-05-14" \
 
 返回内容包含总时段、空闲、待签到、使用中、异常占用、活跃预约数、已签到人数，以及按利用率排序的区域排行榜。
 
-## 12. 前端联调说明
+## 13. 前端联调说明
 
 当前前端学生端已经接入：
 
@@ -522,12 +562,14 @@ curl "http://localhost:18080/api/admin/dashboard?date=2026-05-14" \
 - 查询座位时段。
 - 动态展示预约规则。
 - 按日期、开始时间、结束时间和具体座位创建预约。
+- 学生选座页固定展示次日预约，按规则提示每日开放时间和连续跨时段锁位权益。
 - 查询我的预约。
 - 显示预约返回的签到码。
 - 使用签到码签到。
 - 扫描桌面固定二维码后进入 `/student/table-checkin?token=<tableQrToken>`，输入签到码完成桌码签到。
 - 签退释放座位。
 - 取消预约释放座位。
+- 对使用中预约执行锁位、重新签到恢复和主动释放锁位。
 
 当前前端管理端已经接入：
 

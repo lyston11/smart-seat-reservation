@@ -8,8 +8,10 @@ public class ReservationRuleProperties {
     private int checkinGraceMinutes = 15;
     private int checkinLeadMinutes = 10;
     private int maxAdvanceDays = 7;
+    private int reservationOpenHour = 18;
     private int dailyActiveReservationLimit = 3;
     private int wifiOfflineReleaseMinutes = 15;
+    private int seatLockMinutes = 60;
 
     public int getCheckinGraceMinutes() {
         return checkinGraceMinutes;
@@ -35,6 +37,14 @@ public class ReservationRuleProperties {
         this.maxAdvanceDays = maxAdvanceDays;
     }
 
+    public int getReservationOpenHour() {
+        return reservationOpenHour;
+    }
+
+    public void setReservationOpenHour(int reservationOpenHour) {
+        this.reservationOpenHour = reservationOpenHour;
+    }
+
     public int getDailyActiveReservationLimit() {
         return dailyActiveReservationLimit;
     }
@@ -49,5 +59,13 @@ public class ReservationRuleProperties {
 
     public void setWifiOfflineReleaseMinutes(int wifiOfflineReleaseMinutes) {
         this.wifiOfflineReleaseMinutes = wifiOfflineReleaseMinutes;
+    }
+
+    public int getSeatLockMinutes() {
+        return seatLockMinutes;
+    }
+
+    public void setSeatLockMinutes(int seatLockMinutes) {
+        this.seatLockMinutes = seatLockMinutes;
     }
 }

@@ -7,8 +7,10 @@ type ReservationRuleFormValues = {
   checkinGraceMinutes: number;
   checkinLeadMinutes: number;
   maxAdvanceDays: number;
+  reservationOpenHour: number;
   dailyActiveReservationLimit: number;
   wifiOfflineReleaseMinutes: number;
+  seatLockMinutes: number;
 };
 
 export default function AdminReservationRulesPage() {
@@ -27,8 +29,10 @@ export default function AdminReservationRulesPage() {
         checkinGraceMinutes: nextRules.checkinGraceMinutes,
         checkinLeadMinutes: nextRules.checkinLeadMinutes,
         maxAdvanceDays: nextRules.maxAdvanceDays,
+        reservationOpenHour: nextRules.reservationOpenHour,
         dailyActiveReservationLimit: nextRules.dailyActiveReservationLimit,
         wifiOfflineReleaseMinutes: nextRules.wifiOfflineReleaseMinutes,
+        seatLockMinutes: nextRules.seatLockMinutes,
       });
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '加载预约规则失败');
@@ -73,6 +77,12 @@ export default function AdminReservationRulesPage() {
           <Statistic title="WiFi 离线释放" value={rules?.wifiOfflineReleaseMinutes ?? 0} suffix="分钟" />
         </Card>
         <Card loading={loading}>
+          <Statistic title="开放明日预约" value={rules?.reservationOpenHour ?? 0} suffix="点" />
+        </Card>
+        <Card loading={loading}>
+          <Statistic title="单次锁位" value={rules?.seatLockMinutes ?? 0} suffix="分钟" />
+        </Card>
+        <Card loading={loading}>
           <Statistic title="每日活跃预约" value={rules?.dailyActiveReservationLimit ?? 0} suffix="个" />
         </Card>
         <Card loading={loading}>
@@ -113,6 +123,13 @@ export default function AdminReservationRulesPage() {
               <InputNumber min={0} max={30} precision={0} />
             </Form.Item>
             <Form.Item
+              label="每日开放明日预约时间（点）"
+              name="reservationOpenHour"
+              rules={[{ required: true, message: '请输入开放预约时间' }]}
+            >
+              <InputNumber min={0} max={23} precision={0} />
+            </Form.Item>
+            <Form.Item
               label="每日活跃预约上限"
               name="dailyActiveReservationLimit"
               rules={[{ required: true, message: '请输入每日活跃预约上限' }]}
@@ -125,6 +142,13 @@ export default function AdminReservationRulesPage() {
               rules={[{ required: true, message: '请输入 WiFi 离线自动释放时间' }]}
             >
               <InputNumber min={1} max={120} precision={0} />
+            </Form.Item>
+            <Form.Item
+              label="单次锁位时长（分钟）"
+              name="seatLockMinutes"
+              rules={[{ required: true, message: '请输入单次锁位时长' }]}
+            >
+              <InputNumber min={1} max={180} precision={0} />
             </Form.Item>
           </div>
           <Space>

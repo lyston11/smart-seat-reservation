@@ -44,8 +44,10 @@ public class ReservationRuleService {
         rule.setCheckinGraceMinutes(request.checkinGraceMinutes());
         rule.setCheckinLeadMinutes(request.checkinLeadMinutes());
         rule.setMaxAdvanceDays(request.maxAdvanceDays());
+        rule.setReservationOpenHour(request.reservationOpenHour());
         rule.setDailyActiveReservationLimit(request.dailyActiveReservationLimit());
         rule.setWifiOfflineReleaseMinutes(request.wifiOfflineReleaseMinutes());
+        rule.setSeatLockMinutes(request.seatLockMinutes());
         rule.setUpdatedBy(actorUserId);
         rule.setUpdatedAt(LocalDateTime.now());
         reservationRuleMapper.updateById(rule);

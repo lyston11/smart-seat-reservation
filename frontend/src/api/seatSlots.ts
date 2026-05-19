@@ -70,7 +70,13 @@ export function getReservationRules() {
 
 export function updateReservationRules(payload: Pick<
   ReservationRule,
-  'checkinGraceMinutes' | 'checkinLeadMinutes' | 'maxAdvanceDays' | 'dailyActiveReservationLimit' | 'wifiOfflineReleaseMinutes'
+  | 'checkinGraceMinutes'
+  | 'checkinLeadMinutes'
+  | 'maxAdvanceDays'
+  | 'reservationOpenHour'
+  | 'dailyActiveReservationLimit'
+  | 'wifiOfflineReleaseMinutes'
+  | 'seatLockMinutes'
 >) {
   return request<ReservationRule>('/api/reservations/rules', {
     method: 'PUT',
@@ -107,6 +113,27 @@ export function markReservationWifiPresence(reservationId: number, payload: Wifi
   return request<WifiPresenceResult>(`/api/reservations/${reservationId}/wifi-presence`, {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export function lockReservationSeat(reservationId: number) {
+  return request<ReservationResult>(`/api/reservations/${reservationId}/seat-lock`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export function reactivateSeatLock(reservationId: number, payload: CheckinPayload) {
+  return request<ReservationResult>(`/api/reservations/${reservationId}/seat-lock/reactivate`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function releaseSeatLock(reservationId: number) {
+  return request<ReservationResult>(`/api/reservations/${reservationId}/seat-lock/release`, {
+    method: 'POST',
+    body: JSON.stringify({}),
   });
 }
 
