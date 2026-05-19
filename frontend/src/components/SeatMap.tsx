@@ -1,13 +1,16 @@
 import { Button, Empty, Spin, Tag, Tooltip } from 'antd';
 import type { CSSProperties } from 'react';
 import { seatSlotStatusColor, seatSlotStatusText } from '../constants/seatSlotStatus';
-import type { SeatSlot } from '../types/seat';
+import type { SeatSlot, SeatSlotStatus } from '../types/seat';
 
 type SeatMapProps = {
   slots: SeatSlot[];
   loading?: boolean;
   loadingSlotId?: number | null;
   emptyDescription?: string;
+  sectionTitle?: string;
+  selectedSeatId?: number | null;
+  selectableStatuses?: SeatSlotStatus[];
   onReserve: (slot: SeatSlot) => void;
 };
 
@@ -51,6 +54,8 @@ const sideClass: Record<SeatSide, string> = {
 };
 
 const tableSeatSides: SeatSide[] = ['NORTH', 'WEST', 'EAST', 'SOUTH', 'SINGLE'];
+const TABLE_SIDE_OFFSET = 86;
+const TABLE_VERTICAL_OFFSET = 58;
 
 function getTimeRange(slot: SeatSlot) {
   return `${slot.startTime.slice(0, 5)}-${slot.endTime.slice(0, 5)}`;
@@ -169,7 +174,7 @@ function groupSlots(slots: SeatSlot[]): TimeGroup[] {
   });
 
   return Array.from(groups.entries()).map(([timeRange, tableGroups]) => {
-    const tables = Array.from(tableGroups.values()).sort(byTablePosition);
+    const tables = normalizeCoordinateTables(Array.from(tableGroups.values()).sort(byTablePosition));
     return {
       timeRange,
       tables,
@@ -182,13 +187,58 @@ function hasCoordinateLayout(tables: TableGroup[]) {
   return tables.some((table) => table.positionX !== null && table.positionY !== null);
 }
 
+function isLegacyCoordinateFallback(table: TableGroup) {
+  return table.tableNo === 'LEGACY' && table.rowNo === null && table.columnNo === null;
+}
+
+function normalizeCoordinateTables(tables: TableGroup[]) {
+  if (!hasCoordinateLayout(tables)) {
+    return tables;
+  }
+
+  const occupied = new Set<string>();
+  let fallbackIndex = 0;
+
+  return tables.map((table) => {
+    const width = table.widthPx ?? 220;
+    const height = table.heightPx ?? 96;
+    let positionX = table.positionX;
+    let positionY = table.positionY;
+
+    if (positionX === null || positionY === null || isLegacyCoordinateFallback(table)) {
+      positionX = 80 + (fallbackIndex % 3) * 320;
+      positionY = 260 + Math.floor(fallbackIndex / 3) * 220;
+      fallbackIndex += 1;
+    }
+
+    let key = `${positionX}:${positionY}`;
+    while (occupied.has(key)) {
+      positionY += height + 170;
+      key = `${positionX}:${positionY}`;
+    }
+    occupied.add(key);
+
+    return {
+      ...table,
+      positionX,
+      positionY,
+      widthPx: width,
+      heightPx: height,
+    };
+  });
+}
+
 function getCoordinateRoomStyle(tables: TableGroup[]): CSSProperties {
   const positionedTables = tables.filter((table) => table.positionX !== null && table.positionY !== null);
   if (positionedTables.length === 0) {
     return {};
   }
-  const maxRight = Math.max(...positionedTables.map((table) => (table.positionX ?? 0) + (table.widthPx ?? 220)));
-  const maxBottom = Math.max(...positionedTables.map((table) => (table.positionY ?? 0) + (table.heightPx ?? 96) + 92));
+  const maxRight = Math.max(
+    ...positionedTables.map((table) => (table.positionX ?? 0) + (table.widthPx ?? 220) + TABLE_SIDE_OFFSET + 96),
+  );
+  const maxBottom = Math.max(
+    ...positionedTables.map((table) => (table.positionY ?? 0) + (table.heightPx ?? 96) + TABLE_VERTICAL_OFFSET + 132),
+  );
   return {
     minWidth: Math.max(maxRight + 96, 640),
     minHeight: Math.max(maxBottom + 64, 360),
@@ -212,12 +262,12 @@ function getLayoutStyle(tables: TableGroup[]): CSSProperties {
 function getTableStyle(table: TableGroup): CSSProperties {
   if (table.positionX !== null && table.positionY !== null) {
     return {
-      left: table.positionX,
-      top: table.positionY,
-      width: table.widthPx ?? 220,
-      minHeight: (table.heightPx ?? 96) + 92,
+      '--table-width': `${table.widthPx ?? 220}px`,
+      '--table-height': `${table.heightPx ?? 96}px`,
+      left: Math.max(table.positionX - TABLE_SIDE_OFFSET, 0),
+      top: Math.max(table.positionY - TABLE_VERTICAL_OFFSET, 0),
       transform: table.rotationDeg ? `rotate(${table.rotationDeg}deg)` : undefined,
-    };
+    } as CSSProperties;
   }
   if (!table.rowNo || !table.columnNo) {
     return {};
@@ -243,9 +293,13 @@ export default function SeatMap({
   loading = false,
   loadingSlotId,
   emptyDescription = '当前区域日期暂无开放座位',
+  sectionTitle,
+  selectedSeatId,
+  selectableStatuses = ['AVAILABLE'],
   onReserve,
 }: SeatMapProps) {
   const groups = groupSlots(slots);
+  const selectableStatusSet = new Set(selectableStatuses);
 
   if (loading) {
     return (
@@ -268,7 +322,7 @@ export default function SeatMap({
       {groups.map((group) => (
         <section className="seat-map-section" key={group.timeRange}>
           <div className="seat-map-section-header">
-            <strong>{group.timeRange}</strong>
+            <strong>{sectionTitle ?? group.timeRange}</strong>
             <span>{group.totalSeats} 个座位</span>
           </div>
           <div className={`seat-room-layout ${hasCoordinateLayout(group.tables) ? 'seat-room-layout-coordinate' : ''}`}>
@@ -298,7 +352,8 @@ export default function SeatMap({
                     return (
                       <div className={`seat-table-side seat-table-side-${sideClass[side]}`} key={side}>
                         {sideSeats.map((slot) => {
-                          const disabled = slot.status !== 'AVAILABLE';
+                          const disabled = !selectableStatusSet.has(slot.status);
+                          const selected = selectedSeatId === slot.seatId;
                           const label = getSeatLabel(slot);
                           const tableLabel = getTableLabel(table);
                           const title = `${tableLabel} · ${label} · ${seatSlotStatusText[slot.status]}`;
@@ -306,7 +361,10 @@ export default function SeatMap({
                           return (
                             <Tooltip title={title} key={slot.id}>
                               <Button
-                                className={`seat-map-cell seat-map-cell-${slot.status.toLowerCase()}`}
+                                aria-pressed={selected}
+                                className={`seat-map-cell seat-map-cell-${slot.status.toLowerCase()} ${
+                                  selected ? 'seat-map-cell-selected' : ''
+                                }`}
                                 disabled={disabled}
                                 loading={loadingSlotId === slot.id}
                                 onClick={() => onReserve(slot)}

@@ -183,8 +183,10 @@ describe('SeatMap', () => {
 
     const table = screen.getByLabelText('T01');
     expect(table.className).toContain('seat-table-positioned');
-    expect((table as HTMLElement).style.left).toBe('120px');
-    expect((table as HTMLElement).style.top).toBe('80px');
+    expect((table as HTMLElement).style.left).toBe('34px');
+    expect((table as HTMLElement).style.top).toBe('22px');
+    expect((table as HTMLElement).style.getPropertyValue('--table-width')).toBe('260px');
+    expect((table as HTMLElement).style.getPropertyValue('--table-height')).toBe('96px');
     expect(within(table).getByText('1号')).toBeTruthy();
     expect(within(table).getByText('2号')).toBeTruthy();
     expect(within(table).getByText('3号')).toBeTruthy();

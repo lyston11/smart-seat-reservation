@@ -360,13 +360,14 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
+    fireEvent.click(await screen.findByRole('button', { name: /1号/ }));
     fireEvent.change(await screen.findByLabelText('开始时间'), {
       target: { value: '09:30' },
     });
     fireEvent.change(screen.getByLabelText('结束时间'), {
       target: { value: '17:30' },
     });
-    fireEvent.click(await screen.findByRole('button', { name: /1号/ }));
+    fireEvent.click(await screen.findByRole('button', { name: '预约该座位' }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -470,8 +471,10 @@ describe('App', () => {
     );
 
     const seat = await screen.findByRole('button', { name: /1号/ });
-    expect(seat).toHaveProperty('disabled', true);
-    expect(await screen.findByText('未开放')).toBeTruthy();
+    expect(seat).toHaveProperty('disabled', false);
+    fireEvent.click(seat);
+    expect((await screen.findAllByText('未开放')).length).toBeGreaterThan(0);
+    expect(await screen.findByRole('button', { name: '预约该座位' })).toHaveProperty('disabled', true);
     expect(fetchMock).toHaveBeenCalledWith('/api/seats?areaId=1', expect.any(Object));
   });
 

@@ -5,6 +5,45 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 修复学生端选座流程和座位平面图展示问题，让学生按“先选位置，再选时间”完成预约，并展示多张真实桌位。
+
+### 本次改动
+- 学生选座页从顶部选择时间改为右侧座位详情面板选择时间，主流程调整为先选区域/日期，再在座位地图中选择位置，最后选择开始/结束时间并预约。
+- 座位地图新增当前选中座位高亮，未开放座位允许点击查看位置和状态，但预约按钮保持禁用并提示等待管理员开放。
+- 修复坐标桌位布局，桌面外层容器会预留上下左右座位空间，避免一张桌四个座位和桌面错位或挤压。
+- 座位图对坐标冲突和 `LEGACY` 开发遗留桌位做兜底归位，避免历史演示数据覆盖正式桌位。
+- 新增 `V9__add_demo_room_tables.sql` 演示数据迁移，为 `Library Area A` 补齐 T01-T04 四张桌、16 个 active 真实座位，并下线 `A-DEV-%` / `B-DEV-%` 开发座位。
+- 学生端不再默认自动选中第一个座位，页面初始态会提示“请先在座位地图中选择一个位置”。
+- 更新前端测试，覆盖新预约流程和坐标桌位偏移后的布局断言。
+
+### 涉及文件
+- backend/src/main/resources/db/migration/V9__add_demo_room_tables.sql
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/components/SeatMap.tsx
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- frontend/src/components/SeatMap.test.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 3 个测试文件、15 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 43 个测试通过。
+- 已用真实本地后端接口验证 `Library Area A` 返回 16 个 active 座位，T01/T02/T03/T04 每张桌 4 个座位。
+- 已在浏览器打开 `http://127.0.0.1:5174/student/seats` 验证学生端显示 4 张桌、16 个座位，初始状态未自动选座，右侧提示先选择位置。
+
+### 遗留问题
+- 当前日期如果管理员没有开放时段，座位会显示“未开放”，比赛演示前建议由管理员发布当天或未来日期的常用开放时段。
+- 后续可以继续把桌位编辑器升级为拖拽式，让管理员直接拖桌子调整平面图。
+
+### 对其他成员的影响
+- 学生端选座交互已变更为“点座位只选中，不立即预约”；真正创建预约需要点击右侧“预约该座位”。
+- 演示数据库会新增多张桌和更多真实座位，旧的 `A-DEV-%` / `B-DEV-%` 开发座位会被置为 `INACTIVE`。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
 - 目标: 修复学生端和管理员端数据“不互通、像 mock”的问题，打通真实区域、桌子、座位、开放时段、预约和看板状态链路。
 
 ### 本次改动
