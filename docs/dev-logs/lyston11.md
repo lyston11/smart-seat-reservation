@@ -5,6 +5,43 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 修正管理员桌子位置编辑体验，避免要求管理员手填 `X/Y 坐标`，改为平面图拖拽式布局管理。
+
+### 本次改动
+- 桌子管理列表移除“平面坐标”列，不再在管理界面暴露像素坐标。
+- 区域桌位平面图支持直接拖动桌子调整位置，拖动后显示待保存数量，并提供“保存布局”“撤销调整”操作。
+- 拖拽位置按 10px 网格吸附并限制在平面图范围内，避免桌子被拖出可视区域。
+- 桌位平面图支持键盘方向键微调位置，兼顾无鼠标操作。
+- 编辑/新增桌子弹窗移除 `X 坐标`、`Y 坐标` 输入框，保留桌号、名称、行列、展示顺序、桌面尺寸、旋转角度、状态等业务字段。
+- 编辑弹窗实时预览也支持拖动桌子调整位置，内部仍复用后端 `positionX/positionY` 字段保存，不改数据库结构。
+- 补充组件测试覆盖拖拽移动、键盘移动；补充页面测试覆盖拖动桌子后保存布局调用现有更新接口，并确认页面不再展示“平面坐标”。
+
+### 涉及文件
+- frontend/src/components/TableLayoutPreview.tsx
+- frontend/src/components/TableLayoutPreview.test.tsx
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/App.test.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 3 个测试文件、20 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过且无告警。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 45 个测试通过。
+- 已运行 `git diff --check`，通过。
+- 已在浏览器打开 `http://127.0.0.1:5174/admin/tables` 验证：桌子列表不再展示“平面坐标”，页面无 `X 坐标` / `Y 坐标` 输入，方向键微调 T01 后出现“有 1 张桌子待保存”。
+
+### 遗留问题
+- 当前拖拽保存仍是逐张桌子调用现有 `PUT /api/tables/{id}`；后续如桌子数量大，可以补后端批量保存布局接口。
+
+### 对其他成员的影响
+- 后端接口和数据库字段未变，已有 `positionX/positionY` 数据继续有效。
+- 管理员以后调整桌位主要通过平面图拖拽完成，坐标不再作为表单输入项展示。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
 - 目标: 优化管理员开放时段批量发布交互，解决座位逐个选择效率低、时间段模板不清晰的问题。
 
 ### 本次改动

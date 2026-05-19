@@ -728,6 +728,152 @@ describe('App', () => {
     expect(await screen.findByRole('link', { name: '桌子管理' })).toBeTruthy();
   });
 
+  it('saves dragged admin table layout changes without exposing coordinate inputs', async () => {
+    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
+    window.localStorage.setItem(
+      'smart-seat-auth-user',
+      JSON.stringify({ id: 2, name: 'Demo Admin', studentNo: 'admin', role: 'ADMIN' }),
+    );
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.startsWith('/api/areas')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                name: 'A 区',
+                floor: '1F',
+                description: null,
+                status: 'ACTIVE',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/tables?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                areaId: 1,
+                tableNo: 'T01',
+                name: 'A 区 T01',
+                status: 'ACTIVE',
+                rowNo: 1,
+                columnNo: 1,
+                displayOrder: 1,
+                positionX: 120,
+                positionY: 80,
+                widthPx: 260,
+                heightPx: 96,
+                rotationDeg: 0,
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url === '/api/tables/1' && init?.method === 'PUT') {
+        expect(JSON.parse(String(init.body))).toEqual({
+          areaId: 1,
+          tableNo: 'T01',
+          name: 'A 区 T01',
+          rowNo: 1,
+          columnNo: 1,
+          displayOrder: 1,
+          positionX: 150,
+          positionY: 110,
+          widthPx: 260,
+          heightPx: 96,
+          rotationDeg: 0,
+          status: 'ACTIVE',
+        });
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: {
+              id: 1,
+              areaId: 1,
+              tableNo: 'T01',
+              name: 'A 区 T01',
+              status: 'ACTIVE',
+              rowNo: 1,
+              columnNo: 1,
+              displayOrder: 1,
+              positionX: 150,
+              positionY: 110,
+              widthPx: 260,
+              heightPx: 96,
+              rotationDeg: 0,
+            },
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/admin/tables']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 3, name: '桌子管理' })).toBeTruthy();
+    expect(screen.queryByText('平面坐标')).toBeNull();
+    const tableButton = await screen.findByRole('button', { name: '编辑 T01' }) as HTMLElement;
+    tableButton.setPointerCapture = vi.fn();
+    tableButton.releasePointerCapture = vi.fn();
+
+    fireEvent.pointerDown(tableButton, {
+      button: 0,
+      clientX: 100,
+      clientY: 100,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(tableButton, {
+      clientX: 130,
+      clientY: 130,
+      pointerId: 1,
+    });
+    fireEvent.pointerUp(tableButton, {
+      clientX: 130,
+      clientY: 130,
+      pointerId: 1,
+    });
+
+    expect(await screen.findByText('有 1 张桌子待保存')).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: /保存\s*布局/ }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/tables/1',
+        expect.objectContaining({ method: 'PUT' }),
+      );
+    });
+  });
+
   it('publishes admin seat slots with table batch selection and time templates', async () => {
     window.localStorage.setItem('smart-seat-auth-token', 'test-token');
     window.localStorage.setItem(

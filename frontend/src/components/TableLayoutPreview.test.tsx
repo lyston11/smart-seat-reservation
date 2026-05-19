@@ -63,4 +63,53 @@ describe('TableLayoutPreview', () => {
     expect(screen.queryByRole('button', { name: '编辑 LEGACY' })).toBeNull();
     expect(screen.getByRole('button', { name: '编辑 T01' })).toBeTruthy();
   });
+
+  it('moves tables by pointer drag in editable mode', () => {
+    const onMoveTable = vi.fn();
+    render(
+      <TableLayoutPreview
+        editable
+        onMoveTable={onMoveTable}
+        tables={[makeTable({ id: 1, tableNo: 'T01', positionX: 120, positionY: 80 })]}
+      />,
+    );
+
+    const tableButton = screen.getByRole('button', { name: '编辑 T01' }) as HTMLElement;
+    tableButton.setPointerCapture = vi.fn();
+    tableButton.releasePointerCapture = vi.fn();
+
+    fireEvent.pointerDown(tableButton, {
+      button: 0,
+      clientX: 100,
+      clientY: 100,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(tableButton, {
+      clientX: 135,
+      clientY: 128,
+      pointerId: 1,
+    });
+
+    expect(onMoveTable).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1, tableNo: 'T01' }),
+      { positionX: 160, positionY: 110 },
+    );
+  });
+
+  it('moves tables with keyboard arrows in editable mode', () => {
+    const onMoveTable = vi.fn();
+    render(
+      <TableLayoutPreview
+        editable
+        onMoveTable={onMoveTable}
+        tables={[makeTable({ id: 1, tableNo: 'T01', positionX: 120, positionY: 80 })]}
+      />,
+    );
+
+    fireEvent.keyDown(screen.getByRole('button', { name: '编辑 T01' }), { key: 'ArrowRight' });
+    expect(onMoveTable).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 1, tableNo: 'T01' }),
+      { positionX: 130, positionY: 80 },
+    );
+  });
 });
