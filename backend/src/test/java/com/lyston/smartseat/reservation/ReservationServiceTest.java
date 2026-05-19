@@ -8,6 +8,7 @@ import com.lyston.smartseat.cache.SeatSlotCacheService;
 import com.lyston.smartseat.checkin.CheckinRecord;
 import com.lyston.smartseat.checkin.CheckinRecordMapper;
 import com.lyston.smartseat.common.BusinessException;
+import com.lyston.smartseat.network.IpRangeMatcher;
 import com.lyston.smartseat.seat.SeatSlot;
 import com.lyston.smartseat.seat.SeatSlotMapper;
 import java.lang.reflect.InvocationHandler;
@@ -18,6 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
@@ -55,6 +57,7 @@ class ReservationServiceTest {
                 reservationRateLimiter,
                 seatSlotCacheService,
                 reservationRuleService,
+                new IpRangeMatcher(),
                 FIXED_CLOCK
         );
     }
@@ -165,8 +168,14 @@ class ReservationServiceTest {
     void checkInShouldFailWhenCodeOrOwnershipDoesNotMatch() {
         reservationMapper.reservation = reservation();
         reservationMapper.markCheckedInRows = 0;
+        seatSlotMapper.slot = checkinWindowSeatSlot();
 
-        assertThatThrownBy(() -> reservationService.checkIn(100L, new CheckinRequest("bad-code"), 10L))
+        assertThatThrownBy(() -> reservationService.checkIn(
+                100L,
+                new CheckinRequest("bad-code"),
+                10L,
+                "10.10.1.20"
+        ))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("Reservation cannot be checked in");
 
@@ -180,11 +189,12 @@ class ReservationServiceTest {
         reservationMapper.tableCheckinReservation = reservation;
         reservationMapper.markCheckedInRows = 1;
         seatSlotMapper.markUsingRows = 1;
-        seatSlotMapper.slot = futureSeatSlot();
+        seatSlotMapper.slot = checkinWindowSeatSlot();
 
         ReservationResponse response = reservationService.tableCheckIn(
                 new TableCheckinRequest("table-token", "code"),
-                10L
+                10L,
+                "10.10.1.20"
         );
 
         assertThat(response.reservationId()).isEqualTo(100L);
@@ -293,7 +303,8 @@ class ReservationServiceTest {
     void tableCheckInShouldFailWhenNoReservationMatchesTableTokenOrCode() {
         assertThatThrownBy(() -> reservationService.tableCheckIn(
                 new TableCheckinRequest("wrong-table", "bad-code"),
-                10L
+                10L,
+                "10.10.1.20"
         ))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("No matching reservation for this table");
@@ -310,7 +321,8 @@ class ReservationServiceTest {
 
         assertThatThrownBy(() -> reservationService.tableCheckIn(
                 new TableCheckinRequest("table-token", "code"),
-                10L
+                10L,
+                "10.10.1.20"
         ))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("Reservation has expired");
@@ -334,12 +346,88 @@ class ReservationServiceTest {
         assertThat(seatSlotCacheService.evictedAreaId).isEqualTo(1L);
     }
 
+    @Test
+    void checkInShouldRejectWhenClientIpIsOutsideAreaWifiRange() {
+        reservationMapper.reservation = reservedReservation();
+        seatSlotMapper.slot = checkinWindowSeatSlot();
+
+        assertThatThrownBy(() -> reservationService.checkIn(
+                100L,
+                new CheckinRequest("code"),
+                10L,
+                "192.168.1.5"
+        ))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Check-in requires connecting to the area's allowed campus WiFi");
+
+        assertThat(reservationMapper.markCheckedInReservationId).isNull();
+    }
+
+    @Test
+    void checkInShouldRejectBeforeAllowedTimeWindow() {
+        reservationMapper.reservation = reservedReservation();
+        seatSlotMapper.slot = futureSeatSlot();
+
+        assertThatThrownBy(() -> reservationService.checkIn(
+                100L,
+                new CheckinRequest("code"),
+                10L,
+                "10.10.1.20"
+        ))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Check-in is only allowed within the configured time window");
+
+        assertThat(reservationMapper.markCheckedInReservationId).isNull();
+    }
+
+    @Test
+    void wifiPresenceShouldUpdateLastSeenWhenIpMatchesAreaRange() {
+        Reservation reservation = reservation();
+        reservationMapper.reservation = reservation;
+        reservationMapper.markWifiSeenRows = 1;
+        seatSlotMapper.slot = checkinWindowSeatSlot();
+
+        WifiPresenceResponse response = reservationService.markWifiPresence(
+                100L,
+                new WifiPresenceRequest(),
+                10L,
+                "10.10.1.20"
+        );
+
+        assertThat(response.reservationId()).isEqualTo(100L);
+        assertThat(response.lastWifiSeenAt()).isEqualTo(LocalDateTime.now(FIXED_CLOCK));
+        assertThat(reservationMapper.markWifiSeenIp).isEqualTo("10.10.1.20");
+        assertThat(checkinRecordMapper.insertedRecord.getAction()).isEqualTo("WIFI_HEARTBEAT");
+    }
+
+    @Test
+    void releaseWifiOfflineReservationsShouldReleaseUsingSlotsAndRecordAction() {
+        Reservation reservation = reservation();
+        reservation.setLastWifiSeenAt(LocalDateTime.now(FIXED_CLOCK).minusMinutes(16));
+        reservationMapper.wifiOfflineReservations = List.of(reservation);
+        reservationMapper.markWifiReleasedRows = 1;
+        seatSlotMapper.releaseUsingIfNotEndedRows = 1;
+        seatSlotMapper.slot = checkinWindowSeatSlot();
+
+        int releasedCount = reservationService.releaseWifiOfflineReservations(100);
+
+        assertThat(releasedCount).isEqualTo(1);
+        assertThat(reservationMapper.wifiOfflineDeadline).isEqualTo(LocalDateTime.now(FIXED_CLOCK).minusMinutes(15));
+        assertThat(seatSlotMapper.releaseUsingIfNotEndedSeatSlotId).isEqualTo(1L);
+        assertThat(checkinRecordMapper.insertedRecord.getAction()).isEqualTo("WIFI_RELEASE");
+        assertThat(seatSlotCacheService.evictedAreaId).isEqualTo(1L);
+    }
+
     private LocalDate futureDate() {
         return TODAY;
     }
 
     private SeatSlot futureSeatSlot() {
         return seatSlot(futureDate(), LocalTime.of(8, 0), LocalTime.of(10, 0));
+    }
+
+    private SeatSlot checkinWindowSeatSlot() {
+        return seatSlot(futureDate(), LocalTime.of(7, 0), LocalTime.of(9, 0));
     }
 
     private SeatSlot pastSeatSlot() {
@@ -357,6 +445,7 @@ class ReservationServiceTest {
         slot.setAreaId(1L);
         slot.setAreaName("A 区");
         slot.setFloor("1F");
+        slot.setCheckinIpCidrs("10.10.0.0/16,127.0.0.1/32,::1/128");
         slot.setSlotDate(slotDate);
         slot.setStartTime(startTime);
         slot.setEndTime(endTime);
@@ -391,6 +480,8 @@ class ReservationServiceTest {
         private Long markUsingReservationId;
         private Long markUsingUserId;
         private int releaseUsingRows;
+        private int releaseUsingIfNotEndedRows;
+        private Long releaseUsingIfNotEndedSeatSlotId;
         private int releaseReservedRows;
         private int insertRows;
         private Long insertedSlotId;
@@ -410,6 +501,10 @@ class ReservationServiceTest {
                     yield markUsingRows;
                 }
                 case "releaseUsingSlot" -> releaseUsingRows;
+                case "releaseUsingSlotIfNotEnded" -> {
+                    releaseUsingIfNotEndedSeatSlotId = (Long) args[0];
+                    yield releaseUsingIfNotEndedRows;
+                }
                 case "releaseReservedSlot" -> releaseReservedRows;
                 case "findAvailableWindowForSeat" -> availableWindow;
                 case "countActiveOverlappingSlotsBySeat" -> activeOverlapBySeatCount;
@@ -432,6 +527,11 @@ class ReservationServiceTest {
         private int markCheckedInRows;
         private int markCheckedOutRows;
         private int markCancelledRows;
+        private int markWifiSeenRows;
+        private String markWifiSeenIp;
+        private int markWifiReleasedRows;
+        private List<Reservation> wifiOfflineReservations = List.of();
+        private LocalDateTime wifiOfflineDeadline;
         private int activeOverlapCount;
         private int dailyActiveCount;
         private Long overlapUserId;
@@ -463,9 +563,30 @@ class ReservationServiceTest {
                     markCheckedInCheckinCode = (String) args[2];
                     if (markCheckedInRows == 1 && reservation != null) {
                         reservation.setStatus(ReservationStatus.CHECKED_IN);
-                        reservation.setCheckedInAt((LocalDateTime) args[3]);
+                        reservation.setCheckedInAt((LocalDateTime) args[4]);
+                        reservation.setLastWifiSeenAt((LocalDateTime) args[4]);
+                        reservation.setLastWifiIp((String) args[3]);
                     }
                     yield markCheckedInRows;
+                }
+                case "markWifiSeen" -> {
+                    markWifiSeenIp = (String) args[2];
+                    if (markWifiSeenRows == 1 && reservation != null) {
+                        reservation.setLastWifiSeenAt((LocalDateTime) args[3]);
+                        reservation.setLastWifiIp(markWifiSeenIp);
+                    }
+                    yield markWifiSeenRows;
+                }
+                case "findWifiOfflineReservations" -> {
+                    wifiOfflineDeadline = (LocalDateTime) args[0];
+                    yield wifiOfflineReservations;
+                }
+                case "markWifiReleased" -> {
+                    if (markWifiReleasedRows == 1 && reservation != null) {
+                        reservation.setStatus(ReservationStatus.WIFI_RELEASED);
+                        reservation.setCheckedOutAt((LocalDateTime) args[2]);
+                    }
+                    yield markWifiReleasedRows;
                 }
                 case "markCheckedOut" -> markCheckedOutRows;
                 case "markCancelled" -> markCancelledRows;

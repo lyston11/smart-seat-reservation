@@ -20,6 +20,8 @@ public class Reservation {
     private LocalDateTime reservedAt;
     private LocalDateTime checkedInAt;
     private LocalDateTime checkedOutAt;
+    private LocalDateTime lastWifiSeenAt;
+    private String lastWifiIp;
     private LocalDateTime expiresAt;
     @TableField(exist = false)
     private String seatNo;
@@ -114,6 +116,22 @@ public class Reservation {
 
     public void setCheckedOutAt(LocalDateTime checkedOutAt) {
         this.checkedOutAt = checkedOutAt;
+    }
+
+    public LocalDateTime getLastWifiSeenAt() {
+        return lastWifiSeenAt;
+    }
+
+    public void setLastWifiSeenAt(LocalDateTime lastWifiSeenAt) {
+        this.lastWifiSeenAt = lastWifiSeenAt;
+    }
+
+    public String getLastWifiIp() {
+        return lastWifiIp;
+    }
+
+    public void setLastWifiIp(String lastWifiIp) {
+        this.lastWifiIp = lastWifiIp;
     }
 
     public LocalDateTime getExpiresAt() {

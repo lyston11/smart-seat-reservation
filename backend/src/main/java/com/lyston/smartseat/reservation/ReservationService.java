@@ -6,6 +6,7 @@ import com.lyston.smartseat.checkin.CheckinAction;
 import com.lyston.smartseat.checkin.CheckinRecord;
 import com.lyston.smartseat.checkin.CheckinRecordMapper;
 import com.lyston.smartseat.common.BusinessException;
+import com.lyston.smartseat.network.IpRangeMatcher;
 import com.lyston.smartseat.seat.SeatSlot;
 import com.lyston.smartseat.seat.SeatSlotMapper;
 import com.lyston.smartseat.seat.SeatSlotStatus;
@@ -27,6 +28,7 @@ public class ReservationService {
     private final ReservationRateLimiter reservationRateLimiter;
     private final SeatSlotCacheService seatSlotCacheService;
     private final ReservationRuleService reservationRuleService;
+    private final IpRangeMatcher ipRangeMatcher;
     private final Clock clock;
 
     public ReservationService(
@@ -36,6 +38,7 @@ public class ReservationService {
             ReservationRateLimiter reservationRateLimiter,
             SeatSlotCacheService seatSlotCacheService,
             ReservationRuleService reservationRuleService,
+            IpRangeMatcher ipRangeMatcher,
             Clock clock
     ) {
         this.seatSlotMapper = seatSlotMapper;
@@ -44,6 +47,7 @@ public class ReservationService {
         this.reservationRateLimiter = reservationRateLimiter;
         this.seatSlotCacheService = seatSlotCacheService;
         this.reservationRuleService = reservationRuleService;
+        this.ipRangeMatcher = ipRangeMatcher;
         this.clock = clock;
     }
 
@@ -82,14 +86,20 @@ public class ReservationService {
     }
 
     @Transactional
-    public ReservationResponse checkIn(Long reservationId, CheckinRequest request, Long userId) {
+    public ReservationResponse checkIn(Long reservationId, CheckinRequest request, Long userId, String clientIp) {
         LocalDateTime now = LocalDateTime.now(clock);
         Reservation reservation = requireReservation(reservationId);
-        return completeCheckIn(reservation, request.checkinCode(), userId, now);
+        return completeCheckIn(
+                reservation,
+                request.checkinCode(),
+                userId,
+                normalizeClientIp(clientIp),
+                now
+        );
     }
 
     @Transactional
-    public ReservationResponse tableCheckIn(TableCheckinRequest request, Long userId) {
+    public ReservationResponse tableCheckIn(TableCheckinRequest request, Long userId, String clientIp) {
         LocalDateTime now = LocalDateTime.now(clock);
         Reservation reservation = reservationMapper.findReservedForTableCheckin(
                 userId,
@@ -102,19 +112,32 @@ public class ReservationService {
         if (reservation.getExpiresAt() != null && reservation.getExpiresAt().isBefore(now)) {
             throw new BusinessException("RESERVATION_EXPIRED", "Reservation has expired");
         }
-        return completeCheckIn(reservation, request.checkinCode(), userId, now);
+        return completeCheckIn(
+                reservation,
+                request.checkinCode(),
+                userId,
+                normalizeClientIp(clientIp),
+                now
+        );
     }
 
     private ReservationResponse completeCheckIn(
             Reservation reservation,
             String checkinCode,
             Long userId,
+            String clientIp,
             LocalDateTime now
     ) {
+        SeatSlot slot = requireSeatSlotWithLayout(reservation.getSeatSlotId());
+        ReservationRuleResponse rules = reservationRuleService.getRules();
+        ensureWithinCheckinWindow(slot, now, rules);
+        ensureAllowedCheckinIp(slot, clientIp);
+
         int reservationRows = reservationMapper.markCheckedIn(
                 reservation.getId(),
                 userId,
                 checkinCode,
+                clientIp,
                 now
         );
         if (reservationRows != 1) {
@@ -131,10 +154,32 @@ public class ReservationService {
             throw new BusinessException("SEAT_SLOT_CHECKIN_FAILED", "Seat slot cannot be checked in");
         }
 
-        evictReservationSlotCache(reservation);
+        evictSlotCache(slot);
         recordAction(reservation.getId(), userId, CheckinAction.CHECK_IN, now);
         Reservation updated = requireReservation(reservation.getId());
         return toResponse(updated);
+    }
+
+    @Transactional
+    public WifiPresenceResponse markWifiPresence(Long reservationId, WifiPresenceRequest request, Long userId, String clientIp) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        String effectiveIp = normalizeClientIp(clientIp);
+        Reservation reservation = requireReservation(reservationId);
+        if (!ReservationStatus.CHECKED_IN.equals(reservation.getStatus())) {
+            throw new BusinessException("RESERVATION_NOT_USING", "Reservation is not currently checked in");
+        }
+
+        SeatSlot slot = requireSeatSlotWithLayout(reservation.getSeatSlotId());
+        ensureAllowedCheckinIp(slot, effectiveIp);
+
+        int rows = reservationMapper.markWifiSeen(reservationId, userId, effectiveIp, now);
+        if (rows != 1) {
+            throw new BusinessException("WIFI_PRESENCE_FAILED", "WiFi presence cannot be updated");
+        }
+
+        recordAction(reservationId, userId, CheckinAction.WIFI_HEARTBEAT, now);
+        Reservation updated = requireReservation(reservationId);
+        return WifiPresenceResponse.from(updated, reservationRuleService.getRules().wifiOfflineReleaseMinutes());
     }
 
     @Transactional
@@ -219,6 +264,39 @@ public class ReservationService {
         return expiredCount;
     }
 
+    @Transactional
+    public int releaseWifiOfflineReservations(int limit) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        ReservationRuleResponse rules = reservationRuleService.getRules();
+        LocalDateTime deadline = now.minusMinutes(rules.wifiOfflineReleaseMinutes());
+        List<Reservation> offlineReservations = reservationMapper.findWifiOfflineReservations(deadline, limit);
+        int releasedCount = 0;
+
+        for (Reservation reservation : offlineReservations) {
+            int reservationRows = reservationMapper.markWifiReleased(reservation.getId(), reservation.getUserId(), now);
+            if (reservationRows != 1) {
+                continue;
+            }
+
+            int slotRows = seatSlotMapper.releaseUsingSlotIfNotEnded(
+                    reservation.getSeatSlotId(),
+                    reservation.getId(),
+                    reservation.getUserId(),
+                    now.toLocalTime(),
+                    now
+            );
+            if (slotRows == 1) {
+                evictReservationSlotCache(reservation);
+                recordAction(reservation.getId(), reservation.getUserId(), CheckinAction.WIFI_RELEASE, now);
+                releasedCount++;
+            } else {
+                throw new BusinessException("SEAT_SLOT_WIFI_RELEASE_FAILED", "WiFi offline seat slot cannot be released");
+            }
+        }
+
+        return releasedCount;
+    }
+
     public List<ReservationResponse> listUserReservations(Long userId, int limit) {
         int safeLimit = Math.max(1, Math.min(limit, 100));
         return reservationMapper.findByUserId(userId, safeLimit)
@@ -241,6 +319,14 @@ public class ReservationService {
 
     private SeatSlot requireSeatSlot(Long seatSlotId) {
         SeatSlot slot = seatSlotMapper.selectById(seatSlotId);
+        if (slot == null) {
+            throw new BusinessException("SEAT_SLOT_NOT_FOUND", "Seat slot not found");
+        }
+        return slot;
+    }
+
+    private SeatSlot requireSeatSlotWithLayout(Long seatSlotId) {
+        SeatSlot slot = seatSlotMapper.findByIdWithLayout(seatSlotId);
         if (slot == null) {
             throw new BusinessException("SEAT_SLOT_NOT_FOUND", "Seat slot not found");
         }
@@ -376,6 +462,31 @@ public class ReservationService {
         if (!slotStartAt.isAfter(now)) {
             throw new BusinessException("SEAT_SLOT_ALREADY_STARTED", "Past seat slots cannot be reserved");
         }
+    }
+
+    private void ensureWithinCheckinWindow(SeatSlot slot, LocalDateTime now, ReservationRuleResponse rules) {
+        LocalDateTime startAt = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
+        LocalDateTime earliestCheckinAt = startAt.minusMinutes(rules.checkinLeadMinutes());
+        LocalDateTime latestCheckinAt = startAt.plusMinutes(rules.checkinGraceMinutes());
+        if (now.isBefore(earliestCheckinAt) || now.isAfter(latestCheckinAt)) {
+            throw new BusinessException(
+                    "RESERVATION_CHECKIN_TIME_NOT_ALLOWED",
+                    "Check-in is only allowed within the configured time window"
+            );
+        }
+    }
+
+    private void ensureAllowedCheckinIp(SeatSlot slot, String clientIp) {
+        if (!ipRangeMatcher.matches(clientIp, slot.getCheckinIpCidrs())) {
+            throw new BusinessException(
+                    "CHECKIN_WIFI_IP_NOT_ALLOWED",
+                    "Check-in requires connecting to the area's allowed campus WiFi"
+            );
+        }
+    }
+
+    private String normalizeClientIp(String clientIp) {
+        return clientIp == null ? "" : clientIp.trim();
     }
 
     private void ensureNoActiveOverlap(Long userId, SeatSlot slot) {

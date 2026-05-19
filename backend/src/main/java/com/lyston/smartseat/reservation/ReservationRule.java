@@ -10,8 +10,10 @@ public class ReservationRule {
     @TableId
     private Long id;
     private Integer checkinGraceMinutes;
+    private Integer checkinLeadMinutes;
     private Integer maxAdvanceDays;
     private Integer dailyActiveReservationLimit;
+    private Integer wifiOfflineReleaseMinutes;
     private Long updatedBy;
     private LocalDateTime updatedAt;
 
@@ -31,6 +33,14 @@ public class ReservationRule {
         this.checkinGraceMinutes = checkinGraceMinutes;
     }
 
+    public Integer getCheckinLeadMinutes() {
+        return checkinLeadMinutes;
+    }
+
+    public void setCheckinLeadMinutes(Integer checkinLeadMinutes) {
+        this.checkinLeadMinutes = checkinLeadMinutes;
+    }
+
     public Integer getMaxAdvanceDays() {
         return maxAdvanceDays;
     }
@@ -45,6 +55,14 @@ public class ReservationRule {
 
     public void setDailyActiveReservationLimit(Integer dailyActiveReservationLimit) {
         this.dailyActiveReservationLimit = dailyActiveReservationLimit;
+    }
+
+    public Integer getWifiOfflineReleaseMinutes() {
+        return wifiOfflineReleaseMinutes;
+    }
+
+    public void setWifiOfflineReleaseMinutes(Integer wifiOfflineReleaseMinutes) {
+        this.wifiOfflineReleaseMinutes = wifiOfflineReleaseMinutes;
     }
 
     public Long getUpdatedBy() {

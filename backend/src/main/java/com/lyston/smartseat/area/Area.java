@@ -16,6 +16,7 @@ public class Area {
     private String status;
     private LocalTime openTime;
     private LocalTime closeTime;
+    private String checkinIpCidrs;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -73,6 +74,14 @@ public class Area {
 
     public void setCloseTime(LocalTime closeTime) {
         this.closeTime = closeTime;
+    }
+
+    public String getCheckinIpCidrs() {
+        return checkinIpCidrs;
+    }
+
+    public void setCheckinIpCidrs(String checkinIpCidrs) {
+        this.checkinIpCidrs = checkinIpCidrs;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -9,10 +9,11 @@ public record CreateAreaRequest(
         @Size(max = 32) String floor,
         @Size(max = 255) String description,
         LocalTime openTime,
-        LocalTime closeTime
+        LocalTime closeTime,
+        @Size(max = 512) String checkinIpCidrs
 ) {
 
     public CreateAreaRequest(String name, String floor, String description) {
-        this(name, floor, description, null, null);
+        this(name, floor, description, null, null, null);
     }
 }

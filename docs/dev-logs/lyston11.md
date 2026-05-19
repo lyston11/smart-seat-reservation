@@ -4,6 +4,59 @@
 
 ### 任务
 - Issue: 暂无
+- 分支: feature/lyston11-wifi-checkin
+- 目标: 从最新 `main` 新建分支，开发“签到必须连接指定校园网 IP 网段、预约开始前后 10 分钟内签到、使用中超过 15 分钟未检测到 WiFi IP 自动释放座位”。
+
+### 本次改动
+- 新增 `V11__add_wifi_checkin_rules.sql`，为区域增加 `checkin_ip_cidrs`，为预约规则增加 `checkin_lead_minutes` 和 `wifi_offline_release_minutes`，为预约增加 `last_wifi_seen_at` 与 `last_wifi_ip`。
+- 新增 `network` 模块，包含 `ClientIpResolver` 和 `IpRangeMatcher`，用于解析请求 IP 并匹配区域 CIDR 网段。
+- 普通签到和桌码签到都增加区域 WiFi IP 校验；后端会校验服务端解析到的请求 IP 是否属于区域配置网段。
+- 签到时间窗改为规则化：默认可在预约开始前 10 分钟到开始后 10 分钟内签到。
+- 新增学生端 WiFi 在线心跳接口 `POST /api/reservations/{reservationId}/wifi-presence`，使用中预约会刷新 `lastWifiSeenAt`。
+- 新增 WiFi 离线自动释放逻辑和定时任务，默认每 60 秒扫描一次，超过 15 分钟没有有效 WiFi 心跳的使用中预约会变为 `WIFI_RELEASED`，座位重新开放。
+- 管理员区域页面支持维护“签到校园网 IP 网段”，管理员预约规则页支持维护可提前签到、开始后可签到、WiFi 离线释放时间。
+- 学生“我的预约”页面对使用中预约自动发送 WiFi 在线心跳，并显示最近检测时间。
+- 前端预约状态新增 `WIFI_RELEASED` 文案和筛选项。
+- 补充后端测试覆盖 WiFi IP 拒绝、签到时间窗拒绝、WiFi 心跳刷新、WiFi 离线释放；补充规则服务测试字段。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/network/
+- backend/src/main/java/com/lyston/smartseat/area/
+- backend/src/main/java/com/lyston/smartseat/reservation/
+- backend/src/main/java/com/lyston/smartseat/schedule/ReservationExpirationJob.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotMapper.java
+- backend/src/main/resources/db/migration/V11__add_wifi_checkin_rules.sql
+- backend/src/test/java/com/lyston/smartseat/reservation/
+- frontend/src/api/
+- frontend/src/pages/AdminAreasPage.tsx
+- frontend/src/pages/AdminReservationRulesPage.tsx
+- frontend/src/pages/MyReservationsPage.tsx
+- frontend/src/types/
+- frontend/src/utils/reservationDisplay.ts
+- docs/API_EXAMPLES.md
+- docs/architecture/ARCHITECTURE.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 49 个测试通过。
+- 已运行 `npm run test`，前端 3 个测试文件、24 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 浏览器无法直接读取真实 WiFi SSID，本实现以服务端可见的请求 IP/CIDR 作为校园网校验依据；部署在反向代理后需要正确传递可信的 `X-Forwarded-For` 或 `X-Real-IP`。
+- 比赛演示时本地调试默认允许 `127.0.0.1/32,::1/128`，正式部署应把区域 `checkin_ip_cidrs` 改成学校各区域真实校园网网段。
+- 学生端心跳依赖页面打开，后续如做 App/小程序可提升为后台保活或 WebSocket。
+
+### 对其他成员的影响
+- 新增区域时必须维护 `checkinIpCidrs`，多个网段用英文逗号分隔。
+- 预约状态新增 `WIFI_RELEASED`，统计、筛选、审计或导出功能需要识别该终态。
+- 影响签到规则的代码应继续通过 `ReservationRuleService` 读取 `checkinLeadMinutes`、`checkinGraceMinutes` 和 `wifiOfflineReleaseMinutes`。
+
+## 2026-05-19
+
+### 任务
+- Issue: 暂无
 - 分支: feature/lyston11-visual-table-layout-editor
 - 目标: 继续缩小桌位图桌子尺寸，并在管理员新增/编辑桌子时提供二人桌、三人桌、四人桌默认参数。
 

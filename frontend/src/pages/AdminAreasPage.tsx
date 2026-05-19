@@ -11,6 +11,7 @@ type AreaFormValues = {
   status: AreaStatus;
   openTime?: string;
   closeTime?: string;
+  checkinIpCidrs?: string;
 };
 
 const statusLabels: Record<AreaStatus, string> = {
@@ -52,6 +53,7 @@ export default function AdminAreasPage() {
       status: 'ACTIVE',
       openTime: '08:00',
       closeTime: '22:00',
+      checkinIpCidrs: '127.0.0.1/32,::1/128',
     });
     setModalOpen(true);
   }
@@ -65,6 +67,7 @@ export default function AdminAreasPage() {
       status: area.status,
       openTime: area.openTime?.slice(0, 5) ?? '08:00',
       closeTime: area.closeTime?.slice(0, 5) ?? '22:00',
+      checkinIpCidrs: area.checkinIpCidrs,
     });
     setModalOpen(true);
   }
@@ -122,6 +125,13 @@ export default function AdminAreasPage() {
       title: '开放时段',
       width: 160,
       render: (_, record) => `${record.openTime?.slice(0, 5) ?? '08:00'}-${record.closeTime?.slice(0, 5) ?? '22:00'}`,
+    },
+    {
+      title: '签到网段',
+      dataIndex: 'checkinIpCidrs',
+      width: 240,
+      ellipsis: true,
+      render: (value) => value || '-',
     },
     { title: '说明', dataIndex: 'description', ellipsis: true, render: (value) => value ?? '-' },
     {
@@ -220,6 +230,17 @@ export default function AdminAreasPage() {
               <Input type="time" step={900} />
             </Form.Item>
           </div>
+          <Form.Item
+            label="签到校园网 IP 网段"
+            name="checkinIpCidrs"
+            tooltip="多个 CIDR 用英文逗号分隔，例如 10.10.0.0/16,172.16.20.0/24"
+            rules={[
+              { required: true, message: '请输入允许签到的校园网 IP 网段' },
+              { max: 512, message: '签到网段不能超过 512 个字符' },
+            ]}
+          >
+            <Input placeholder="例如 10.10.0.0/16,172.16.20.0/24" />
+          </Form.Item>
           {editingArea ? (
             <Form.Item
               label="状态"

@@ -6,6 +6,9 @@ export type ReservationResult = {
   status: string;
   checkinCode: string;
   expiresAt: string;
+  checkedInAt?: string | null;
+  checkedOutAt?: string | null;
+  lastWifiSeenAt?: string | null;
   seatNo?: string | null;
   seatLabel?: string | null;
   tableId?: number | null;
@@ -43,10 +46,21 @@ export type TableCheckinPayload = {
   checkinCode: string;
 };
 
+export type WifiPresencePayload = object;
+
+export type WifiPresenceResult = {
+  reservationId: number;
+  status: string;
+  lastWifiSeenAt: string | null;
+  offlineReleaseMinutes: number;
+};
+
 export type ReservationRule = {
   checkinGraceMinutes: number;
+  checkinLeadMinutes: number;
   maxAdvanceDays: number;
   dailyActiveReservationLimit: number;
+  wifiOfflineReleaseMinutes: number;
   updatedBy: number | null;
   updatedAt: string | null;
 };

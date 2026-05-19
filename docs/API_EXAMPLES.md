@@ -349,7 +349,7 @@ curl http://localhost:18080/api/reservations/rules \
   -H "X-Auth-Token: 替换为学生或管理员 token"
 ```
 
-返回内容包含 `checkinGraceMinutes`、`maxAdvanceDays` 和 `dailyActiveReservationLimit`。这些规则也会在学生选座页动态展示。
+返回内容包含 `checkinLeadMinutes`、`checkinGraceMinutes`、`maxAdvanceDays`、`dailyActiveReservationLimit` 和 `wifiOfflineReleaseMinutes`。这些规则也会在学生选座页和管理员规则页动态展示。
 
 管理员更新预约规则：
 
@@ -358,9 +358,11 @@ curl -X PUT http://localhost:18080/api/reservations/rules \
   -H "Content-Type: application/json" \
   -H "X-Auth-Token: 替换为管理员 token" \
   -d '{
-    "checkinGraceMinutes": 15,
+    "checkinLeadMinutes": 10,
+    "checkinGraceMinutes": 10,
     "maxAdvanceDays": 7,
-    "dailyActiveReservationLimit": 3
+    "dailyActiveReservationLimit": 3,
+    "wifiOfflineReleaseMinutes": 15
   }'
 ```
 
@@ -399,6 +401,12 @@ WHERE id = ? AND status = 'AVAILABLE';
 
 ## 6. 签到
 
+签到需要同时满足三项条件：
+
+- 签到码正确，且预约仍为 `RESERVED`。
+- 当前时间在预约开始前 `checkinLeadMinutes` 分钟到开始后 `checkinGraceMinutes` 分钟之间，默认前后各 10 分钟。
+- 请求来源 IP 命中该区域 `checkin_ip_cidrs` 配置的校园网网段。浏览器无法直接读取 WiFi 名称，系统以服务端解析到的请求 IP 或可信代理传入的 `X-Forwarded-For` / `X-Real-IP` 作为可部署校验依据。
+
 使用预约返回的 `checkinCode`：
 
 ```bash
@@ -410,7 +418,7 @@ curl -X POST http://localhost:18080/api/reservations/1/check-in \
   }'
 ```
 
-成功后预约状态变为 `CHECKED_IN`，座位时段状态变为 `USING`。
+成功后预约状态变为 `CHECKED_IN`，座位时段状态变为 `USING`，并记录 `lastWifiSeenAt` 和 `lastWifiIp`。
 
 桌面固定二维码签到：
 
@@ -425,6 +433,17 @@ curl -X POST http://localhost:18080/api/reservations/table-check-in \
 ```
 
 桌码签到会先根据 `tableQrToken` 定位活动桌子，再匹配当前学生在该桌子下的 `RESERVED` 预约，并校验动态签到码和过期时间。二维码只证明学生到达了物理桌子，签到码仍用于证明预约归属。
+
+使用中 WiFi 在线心跳：
+
+```bash
+curl -X POST http://localhost:18080/api/reservations/1/wifi-presence \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: 替换为学生 token" \
+  -d '{}'
+```
+
+学生端会对 `CHECKED_IN` 预约定时调用该接口。若超过 `wifiOfflineReleaseMinutes` 分钟没有有效校园网 IP 心跳，系统会视为学生离开座位。
 
 ## 7. 查询我的预约
 
@@ -467,6 +486,15 @@ curl -X POST "http://localhost:18080/api/reservations/expire-overdue?limit=100" 
 ```
 
 返回值是本次释放的预约数量。释放成功后预约状态变为 `EXPIRED`，座位时段重新变为 `AVAILABLE`。
+
+释放 WiFi 离线使用中预约：
+
+```bash
+curl -X POST "http://localhost:18080/api/reservations/release-wifi-offline?limit=100" \
+  -H "X-Auth-Token: 替换为管理员 token"
+```
+
+当前既保留手动触发接口，也已经提供定时任务入口。默认每 60 秒扫描一次，超过 `wifiOfflineReleaseMinutes` 分钟未检测到有效校园网 IP 的 `CHECKED_IN` 预约会变为 `WIFI_RELEASED`，未结束的座位时段重新变为 `AVAILABLE`。
 
 ## 11. 查询管理员看板
 

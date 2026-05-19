@@ -5,8 +5,10 @@ import type { ReservationRule } from '../types/reservation';
 
 type ReservationRuleFormValues = {
   checkinGraceMinutes: number;
+  checkinLeadMinutes: number;
   maxAdvanceDays: number;
   dailyActiveReservationLimit: number;
+  wifiOfflineReleaseMinutes: number;
 };
 
 export default function AdminReservationRulesPage() {
@@ -23,8 +25,10 @@ export default function AdminReservationRulesPage() {
       setRules(nextRules);
       form.setFieldsValue({
         checkinGraceMinutes: nextRules.checkinGraceMinutes,
+        checkinLeadMinutes: nextRules.checkinLeadMinutes,
         maxAdvanceDays: nextRules.maxAdvanceDays,
         dailyActiveReservationLimit: nextRules.dailyActiveReservationLimit,
+        wifiOfflineReleaseMinutes: nextRules.wifiOfflineReleaseMinutes,
       });
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '加载预约规则失败');
@@ -60,10 +64,13 @@ export default function AdminReservationRulesPage() {
       {contextHolder}
       <div className="stats-grid">
         <Card loading={loading}>
+          <Statistic title="提前签到" value={rules?.checkinLeadMinutes ?? 0} suffix="分钟" />
+        </Card>
+        <Card loading={loading}>
           <Statistic title="签到宽限" value={rules?.checkinGraceMinutes ?? 0} suffix="分钟" />
         </Card>
         <Card loading={loading}>
-          <Statistic title="提前预约" value={rules?.maxAdvanceDays ?? 0} suffix="天" />
+          <Statistic title="WiFi 离线释放" value={rules?.wifiOfflineReleaseMinutes ?? 0} suffix="分钟" />
         </Card>
         <Card loading={loading}>
           <Statistic title="每日活跃预约" value={rules?.dailyActiveReservationLimit ?? 0} suffix="个" />
@@ -85,7 +92,14 @@ export default function AdminReservationRulesPage() {
         <Form form={form} layout="vertical" className="rule-form">
           <div className="rule-form-grid">
             <Form.Item
-              label="签到宽限时间（分钟）"
+              label="可提前签到时间（分钟）"
+              name="checkinLeadMinutes"
+              rules={[{ required: true, message: '请输入可提前签到时间' }]}
+            >
+              <InputNumber min={0} max={120} precision={0} />
+            </Form.Item>
+            <Form.Item
+              label="开始后可签到时间（分钟）"
               name="checkinGraceMinutes"
               rules={[{ required: true, message: '请输入签到宽限时间' }]}
             >
@@ -104,6 +118,13 @@ export default function AdminReservationRulesPage() {
               rules={[{ required: true, message: '请输入每日活跃预约上限' }]}
             >
               <InputNumber min={1} max={12} precision={0} />
+            </Form.Item>
+            <Form.Item
+              label="WiFi 离线自动释放（分钟）"
+              name="wifiOfflineReleaseMinutes"
+              rules={[{ required: true, message: '请输入 WiFi 离线自动释放时间' }]}
+            >
+              <InputNumber min={1} max={120} precision={0} />
             </Form.Item>
           </div>
           <Space>

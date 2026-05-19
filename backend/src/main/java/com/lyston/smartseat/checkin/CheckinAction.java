@@ -7,6 +7,8 @@ public final class CheckinAction {
     public static final String CANCEL = "CANCEL";
     public static final String EXPIRE = "EXPIRE";
     public static final String ADMIN_RELEASE = "ADMIN_RELEASE";
+    public static final String WIFI_HEARTBEAT = "WIFI_HEARTBEAT";
+    public static final String WIFI_RELEASE = "WIFI_RELEASE";
 
     private CheckinAction() {
     }

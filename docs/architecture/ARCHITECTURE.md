@@ -52,7 +52,7 @@ areas
 - `seat_slots` 表示某个具体座位在某个日期和时间段的库存状态。
 - `reservations` 始终预约到具体 `seatSlotId`，因此学生选择的是具体桌子的具体座位。
 
-固定桌码贴在桌子旁或桌面上，不贴到单个座位。学生扫码后打开 `/student/table-checkin?token=<tableQrToken>`，再输入预约动态签到码。后端同时校验“当前学生有该桌子下的待签到预约”和“签到码正确且未过期”，从而形成物理桌码和预约凭证的闭环。
+固定桌码贴在桌子旁或桌面上，不贴到单个座位。学生扫码后打开 `/student/table-checkin?token=<tableQrToken>`，再输入预约动态签到码。后端同时校验“当前学生有该桌子下的待签到预约”“签到码正确且在签到时间窗内”和“请求 IP 属于该区域允许的校园网 CIDR 网段”，从而形成物理桌码、预约凭证和网络位置的闭环。
 
 ## 4. 状态流转
 
@@ -65,13 +65,14 @@ reservations:
 RESERVED -> CHECKED_IN -> CHECKED_OUT
 RESERVED -> CANCELLED
 RESERVED -> EXPIRED
+CHECKED_IN -> WIFI_RELEASED
 ```
 
 说明：
 
 - `seat_slots` 表表示某个座位时段的当前库存状态，释放后应回到 `AVAILABLE`。
 - `reservations` 表保存预约历史，取消、过期、签退等终态记录在这里。
-- `checkin_records` 表保存签到、签退、取消、过期释放等动作审计。
+- `checkin_records` 表保存签到、签退、取消、过期释放、WiFi 在线心跳和 WiFi 离线释放等动作审计。
 
 桌码签到复用普通签到的状态流转：
 
@@ -80,7 +81,9 @@ reservations: RESERVED -> CHECKED_IN
 seat_slots:   RESERVED -> USING
 ```
 
-如果二维码 token 无效、桌子停用、当前学生没有该桌子的待签到预约、签到码不匹配、预约已过期，签到都应失败，且不能泄露其他学生的预约信息。
+如果二维码 token 无效、桌子停用、当前学生没有该桌子的待签到预约、签到码不匹配、预约已过期、未处于签到时间窗，或请求 IP 不属于区域允许校园网网段，签到都应失败，且不能泄露其他学生的预约信息。
+
+使用中预约需要持续通过 `POST /api/reservations/{reservationId}/wifi-presence` 刷新 `last_wifi_seen_at`。定时任务按 `wifi_offline_release_minutes` 扫描超时未刷新记录，若座位时段尚未结束，将预约置为 `WIFI_RELEASED` 并把座位时段释放为 `AVAILABLE`。
 
 ## 5. 防超卖策略
 

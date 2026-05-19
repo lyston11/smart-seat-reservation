@@ -9,7 +9,8 @@ public record AreaResponse(
         String description,
         String status,
         LocalTime openTime,
-        LocalTime closeTime
+        LocalTime closeTime,
+        String checkinIpCidrs
 ) {
 
     public static AreaResponse from(Area area) {
@@ -20,7 +21,8 @@ public record AreaResponse(
                 area.getDescription(),
                 area.getStatus(),
                 area.getOpenTime(),
-                area.getCloseTime()
+                area.getCloseTime(),
+                area.getCheckinIpCidrs()
         );
     }
 }

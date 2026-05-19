@@ -26,6 +26,19 @@ function makeReservation(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function makeReservationRules(overrides: Record<string, unknown> = {}) {
+  return {
+    checkinGraceMinutes: 10,
+    checkinLeadMinutes: 10,
+    maxAdvanceDays: 7,
+    dailyActiveReservationLimit: 3,
+    wifiOfflineReleaseMinutes: 15,
+    updatedBy: null,
+    updatedAt: null,
+    ...overrides,
+  };
+}
+
 function storeStudentSession() {
   window.localStorage.setItem('smart-seat-auth-token', 'test-token');
   window.localStorage.setItem(
@@ -225,6 +238,7 @@ describe('App', () => {
                 status: 'ACTIVE',
                 openTime: '08:00:00',
                 closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
               },
             ],
           }),
@@ -342,13 +356,7 @@ describe('App', () => {
             success: true,
             code: 'OK',
             message: 'ok',
-            data: {
-              checkinGraceMinutes: 15,
-              maxAdvanceDays: 7,
-              dailyActiveReservationLimit: 3,
-              updatedBy: null,
-              updatedAt: null,
-            },
+            data: makeReservationRules(),
           }),
         };
       }
@@ -407,6 +415,7 @@ describe('App', () => {
                 status: 'ACTIVE',
                 openTime: '08:00:00',
                 closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
               },
             ],
           }),
@@ -455,13 +464,7 @@ describe('App', () => {
             success: true,
             code: 'OK',
             message: 'ok',
-            data: {
-              checkinGraceMinutes: 15,
-              maxAdvanceDays: 7,
-              dailyActiveReservationLimit: 3,
-              updatedBy: null,
-              updatedAt: null,
-            },
+            data: makeReservationRules(),
           }),
         };
       }
@@ -524,13 +527,7 @@ describe('App', () => {
             success: true,
             code: 'OK',
             message: 'ok',
-            data: {
-              checkinGraceMinutes: 15,
-              maxAdvanceDays: 7,
-              dailyActiveReservationLimit: 3,
-              updatedBy: null,
-              updatedAt: null,
-            },
+            data: makeReservationRules(),
           }),
         };
       }
@@ -753,6 +750,7 @@ describe('App', () => {
                 status: 'ACTIVE',
                 openTime: '08:00:00',
                 closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
               },
             ],
           }),
@@ -960,8 +958,9 @@ describe('App', () => {
                   floor: '1F',
                   description: null,
                   status: 'ACTIVE',
-                  openTime: '08:00:00',
-                  closeTime: '22:00:00',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
                 },
               ],
             }),
@@ -1022,8 +1021,9 @@ describe('App', () => {
                   floor: '1F',
                   description: null,
                   status: 'ACTIVE',
-                  openTime: '08:00:00',
-                  closeTime: '22:00:00',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
                 },
               ],
             }),
@@ -1100,6 +1100,7 @@ describe('App', () => {
                 status: 'ACTIVE',
                 openTime: '08:00:00',
                 closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
               },
             ],
           }),

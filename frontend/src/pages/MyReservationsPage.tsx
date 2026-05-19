@@ -19,7 +19,13 @@ import {
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import dayjs from 'dayjs';
-import { cancelReservation, checkInReservation, checkOutReservation, listUserReservations } from '../api/seatSlots';
+import {
+  cancelReservation,
+  checkInReservation,
+  checkOutReservation,
+  listUserReservations,
+  markReservationWifiPresence,
+} from '../api/seatSlots';
 import type { ReservationResult } from '../types/reservation';
 import {
   canCancelReservation,
@@ -47,6 +53,7 @@ export default function MyReservationsPage() {
   const [detailReservation, setDetailReservation] = useState<ReservationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [actionId, setActionId] = useState<number | null>(null);
+  const [wifiHeartbeatAt, setWifiHeartbeatAt] = useState<Record<number, string>>({});
   const [messageApi, contextHolder] = message.useMessage();
 
   const loadReservations = useCallback(async () => {
@@ -74,6 +81,43 @@ export default function MyReservationsPage() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [loadReservations]);
+
+  useEffect(() => {
+    const usingReservations = reservations.filter((reservation) => reservation.status === 'CHECKED_IN');
+    if (usingReservations.length === 0) {
+      return undefined;
+    }
+
+    let stopped = false;
+    async function sendHeartbeat() {
+      await Promise.all(
+        usingReservations.map(async (reservation) => {
+          try {
+            const result = await markReservationWifiPresence(reservation.reservationId);
+            if (!stopped) {
+              setWifiHeartbeatAt((previous) => ({
+                ...previous,
+                [reservation.reservationId]: result.lastWifiSeenAt ?? new Date().toISOString(),
+              }));
+            }
+          } catch (error) {
+            if (!stopped) {
+              messageApi.warning(error instanceof Error ? error.message : 'WiFi 在线检测失败');
+            }
+          }
+        }),
+      );
+    }
+
+    void sendHeartbeat();
+    const timer = window.setInterval(() => {
+      void sendHeartbeat();
+    }, 60000);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [messageApi, reservations]);
 
   async function runAction(reservation: ReservationResult, action: 'check-in' | 'check-out' | 'cancel') {
     setActionId(reservation.reservationId);
@@ -254,6 +298,11 @@ export default function MyReservationsPage() {
                   <Typography.Text>{formatReservationLocation(reservation)}</Typography.Text>
                   <Typography.Text type="secondary">{formatReservationTime(reservation)}</Typography.Text>
                   <div className="reservation-countdown-row">{renderCountdown(reservation)}</div>
+                  {reservation.status === 'CHECKED_IN' ? (
+                    <Typography.Text type="secondary">
+                      WiFi 在线检测 {formatDateTime(wifiHeartbeatAt[reservation.reservationId] ?? reservation.lastWifiSeenAt)}
+                    </Typography.Text>
+                  ) : null}
                   <div className="reservation-code-field">
                     <span>签到码</span>
                     <Input
@@ -318,6 +367,11 @@ export default function MyReservationsPage() {
               <Descriptions.Item label="签到码">{detailReservation.checkinCode}</Descriptions.Item>
               <Descriptions.Item label="签到截止">{formatDateTime(detailReservation.expiresAt)}</Descriptions.Item>
               <Descriptions.Item label="签到倒计时">{renderCountdown(detailReservation)}</Descriptions.Item>
+              <Descriptions.Item label="校园网检测">
+                {detailReservation.status === 'CHECKED_IN'
+                  ? `最近在线 ${formatDateTime(wifiHeartbeatAt[detailReservation.reservationId] ?? detailReservation.lastWifiSeenAt)}`
+                  : '签到和使用中需要保持连接区域校园网'}
+              </Descriptions.Item>
             </Descriptions>
           </Space>
         ) : null}

@@ -1,6 +1,14 @@
 import type { ReservationResult } from '../types/reservation';
 
-export type ReservationStatusFilter = 'ALL' | 'RESERVED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED' | 'EXPIRED';
+export type ReservationStatusFilter =
+  | 'ALL'
+  | 'RESERVED'
+  | 'CHECKED_IN'
+  | 'CHECKED_OUT'
+  | 'CANCELLED'
+  | 'EXPIRED'
+  | 'ADMIN_RELEASED'
+  | 'WIFI_RELEASED';
 
 export const reservationStatusColor: Record<string, string> = {
   RESERVED: 'blue',
@@ -9,6 +17,7 @@ export const reservationStatusColor: Record<string, string> = {
   CANCELLED: 'default',
   EXPIRED: 'red',
   ADMIN_RELEASED: 'purple',
+  WIFI_RELEASED: 'volcano',
 };
 
 export const reservationStatusText: Record<string, string> = {
@@ -18,6 +27,7 @@ export const reservationStatusText: Record<string, string> = {
   CANCELLED: '已取消',
   EXPIRED: '已过期',
   ADMIN_RELEASED: '管理员释放',
+  WIFI_RELEASED: 'WiFi 离线释放',
 };
 
 export const reservationStatusFilterOptions: Array<{ label: string; value: ReservationStatusFilter }> = [
@@ -27,6 +37,8 @@ export const reservationStatusFilterOptions: Array<{ label: string; value: Reser
   { label: '已完成', value: 'CHECKED_OUT' },
   { label: '已取消', value: 'CANCELLED' },
   { label: '已过期', value: 'EXPIRED' },
+  { label: '管理员释放', value: 'ADMIN_RELEASED' },
+  { label: 'WiFi 离线释放', value: 'WIFI_RELEASED' },
 ];
 
 export function isActiveReservation(reservation: ReservationResult) {

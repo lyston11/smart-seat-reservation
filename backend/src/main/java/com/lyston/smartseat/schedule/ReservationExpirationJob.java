@@ -25,4 +25,12 @@ public class ReservationExpirationJob {
             log.info("Expired {} overdue reservations", expiredCount);
         }
     }
+
+    @Scheduled(fixedDelayString = "${smart-seat.wifi-presence.fixed-delay-ms:60000}")
+    public void releaseWifiOfflineReservations() {
+        int releasedCount = reservationService.releaseWifiOfflineReservations(EXPIRE_BATCH_SIZE);
+        if (releasedCount > 0) {
+            log.info("Released {} reservations after WiFi presence timeout", releasedCount);
+        }
+    }
 }

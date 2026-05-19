@@ -6,8 +6,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class ReservationRuleProperties {
 
     private int checkinGraceMinutes = 15;
+    private int checkinLeadMinutes = 10;
     private int maxAdvanceDays = 7;
     private int dailyActiveReservationLimit = 3;
+    private int wifiOfflineReleaseMinutes = 15;
 
     public int getCheckinGraceMinutes() {
         return checkinGraceMinutes;
@@ -15,6 +17,14 @@ public class ReservationRuleProperties {
 
     public void setCheckinGraceMinutes(int checkinGraceMinutes) {
         this.checkinGraceMinutes = checkinGraceMinutes;
+    }
+
+    public int getCheckinLeadMinutes() {
+        return checkinLeadMinutes;
+    }
+
+    public void setCheckinLeadMinutes(int checkinLeadMinutes) {
+        this.checkinLeadMinutes = checkinLeadMinutes;
     }
 
     public int getMaxAdvanceDays() {
@@ -31,5 +41,13 @@ public class ReservationRuleProperties {
 
     public void setDailyActiveReservationLimit(int dailyActiveReservationLimit) {
         this.dailyActiveReservationLimit = dailyActiveReservationLimit;
+    }
+
+    public int getWifiOfflineReleaseMinutes() {
+        return wifiOfflineReleaseMinutes;
+    }
+
+    public void setWifiOfflineReleaseMinutes(int wifiOfflineReleaseMinutes) {
+        this.wifiOfflineReleaseMinutes = wifiOfflineReleaseMinutes;
     }
 }
