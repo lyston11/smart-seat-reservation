@@ -5,6 +5,158 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 继续缩小桌位图桌子尺寸，并在管理员新增/编辑桌子时提供二人桌、三人桌、四人桌默认参数。
+
+### 本次改动
+- 桌位平面图整体继续缩小，四人桌、三人桌、二人桌、单人桌和未配置桌都按更紧凑的视觉比例渲染，便于一个区域展示更多桌子。
+- 学生端真实座位地图同步缩小坐标桌，桌面和周围座位区域都按展示比例压缩，避免桌子占据过多空间。
+- 管理员桌子弹窗新增桌型预设：`2人桌`、`3人桌`、`4人桌`、`自定义`。
+- 新增桌子默认使用 `4人桌` 参数；切换预设会立即应用对应默认宽高并刷新实时预览。
+- 默认预设模式隐藏 `桌宽 px`、`桌高 px`、`旋转角度`，仅在选择 `自定义` 时展示，减少管理员理解像素参数的负担。
+- 桌子列表将“桌面尺寸”调整为“桌型”，优先按 active 座位数显示二/三/四人桌，未配置时按尺寸预设或自定义显示。
+- 管理员平面图展示座位数改为取真实 active 座位数和桌型预设座位数的较大值，避免 T09 这类已保存为 `2人桌` 但尚未配置座位的桌子在地图上显示“未配置座位”。
+- 桌位平面图移除内外两层房间结构，网格背景直接绘制在单层展示舞台上，避免右侧出现像“分层”的空白区域。
+- 拖拽边界改为基于当前可视舞台计算，桌子不会因为房间宽度跟随拖拽扩大而继续被拖出展示区。
+- 补充测试覆盖桌子缩小后的渲染尺寸、学生端坐标桌缩放、管理员桌型预设默认隐藏自定义尺寸字段、无座位时按桌型预设显示地图标签，以及桌子移动边界限制。
+
+### 涉及文件
+- frontend/src/components/TableLayoutPreview.tsx
+- frontend/src/components/TableLayoutPreview.test.tsx
+- frontend/src/components/SeatMap.tsx
+- frontend/src/components/SeatMap.test.tsx
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/App.test.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 3 个测试文件、24 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过且无告警。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 45 个测试通过。
+- 已运行 `git diff --check`，通过。
+- 已在浏览器打开 `http://127.0.0.1:5174/admin/tables` 验证：桌子缩小，主页面展示“桌型”列，新增弹窗默认选中 `4人桌`，有 `2人桌`、`3人桌`、`4人桌`、`自定义` 预设，默认不展示 px 字段，切换 `自定义` 后才展示 `桌宽 px`、`桌高 px`、`旋转角度`；平面图已无内层 `.table-layout-room`，T09 显示 `2人桌`，桌子未超出单层展示舞台。
+
+### 遗留问题
+- 预设目前负责桌面尺寸和预览座位数，不自动创建座位；如果需要“一键创建 2/3/4 个座位”，后续应作为显式批量生成座位功能开发，避免座位编号冲突。
+
+### 对其他成员的影响
+- 后端接口和数据库结构未变，桌型预设只在前端转成现有 `widthPx/heightPx/rotationDeg` 字段提交。
+- 主平面图按真实 active 座位数和桌型预设座位数共同识别桌型，座位未配置的预设桌也能展示为 `2人桌`、`3人桌` 或 `4人桌`。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 继续优化桌位平面图，移除硬编码场地元素，合理压缩桌子显示，并区分二人桌、三人桌、四人桌等桌型。
+
+### 本次改动
+- 桌位平面图移除固定写死的“入口 / 采光窗 / 服务台”，避免展示不存在的场地设施。
+- 平面图新增缩放舞台，根据桌位范围自动压缩到可视区域，避免桌子过大或区域无法一次性观察。
+- 桌子视觉尺寸从数据库保存尺寸中解耦，预览会按桌型采用更适合管理界面的尺寸，保存仍沿用原有 `positionX/positionY/widthPx/heightPx` 数据。
+- 管理员桌位图会读取当前区域座位数量，按 active 座位数显示 `2人桌`、`3人桌`、`4人桌`、`单人桌` 或 `未配置座位`。
+- 不同桌型使用不同轮廓：二人桌偏圆角胶囊形，三人桌三角形，四人桌矩形，并用座位小圆点表达座位分布。
+- 学生端座位地图同步移除固定“入口 / 采光窗 / 服务台”，避免前后体验不一致。
+- 补充测试覆盖桌型文案、二人桌样式、无硬编码场地元素，以及管理员页面加载座位后展示桌型。
+
+### 涉及文件
+- frontend/src/components/TableLayoutPreview.tsx
+- frontend/src/components/TableLayoutPreview.test.tsx
+- frontend/src/components/SeatMap.tsx
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/App.test.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 3 个测试文件、21 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过且无告警。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 45 个测试通过。
+- 已运行 `git diff --check`，通过。
+- 已在浏览器打开 `http://127.0.0.1:5174/admin/tables` 验证：桌位图展示 `4人桌` 和 `未配置座位`，且不再展示“入口 / 采光窗 / 服务台”。
+
+### 遗留问题
+- 当前桌型根据座位数量推断，后续如果需要更精细的圆桌、吧台、沙发位等类型，建议后端新增 `tableType` 字段。
+
+### 对其他成员的影响
+- 管理员桌位图会额外请求 `/api/seats?areaId=...` 来统计桌型；后端接口无变化。
+- 平面图不再展示硬编码设施，若后续确实需要入口、窗户等设施，应该作为可配置场地元素建模，而不是写死在前端。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 修正管理员桌子位置编辑体验，避免要求管理员手填 `X/Y 坐标`，改为平面图拖拽式布局管理。
+
+### 本次改动
+- 桌子管理列表移除“平面坐标”列，不再在管理界面暴露像素坐标。
+- 区域桌位平面图支持直接拖动桌子调整位置，拖动后显示待保存数量，并提供“保存布局”“撤销调整”操作。
+- 拖拽位置按 10px 网格吸附并限制在平面图范围内，避免桌子被拖出可视区域。
+- 桌位平面图支持键盘方向键微调位置，兼顾无鼠标操作。
+- 编辑/新增桌子弹窗移除 `X 坐标`、`Y 坐标` 输入框，保留桌号、名称、行列、展示顺序、桌面尺寸、旋转角度、状态等业务字段。
+- 编辑弹窗实时预览也支持拖动桌子调整位置，内部仍复用后端 `positionX/positionY` 字段保存，不改数据库结构。
+- 补充组件测试覆盖拖拽移动、键盘移动；补充页面测试覆盖拖动桌子后保存布局调用现有更新接口，并确认页面不再展示“平面坐标”。
+
+### 涉及文件
+- frontend/src/components/TableLayoutPreview.tsx
+- frontend/src/components/TableLayoutPreview.test.tsx
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/App.test.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 3 个测试文件、20 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过且无告警。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 45 个测试通过。
+- 已运行 `git diff --check`，通过。
+- 已在浏览器打开 `http://127.0.0.1:5174/admin/tables` 验证：桌子列表不再展示“平面坐标”，页面无 `X 坐标` / `Y 坐标` 输入，方向键微调 T01 后出现“有 1 张桌子待保存”。
+
+### 遗留问题
+- 当前拖拽保存仍是逐张桌子调用现有 `PUT /api/tables/{id}`；后续如桌子数量大，可以补后端批量保存布局接口。
+
+### 对其他成员的影响
+- 后端接口和数据库字段未变，已有 `positionX/positionY` 数据继续有效。
+- 管理员以后调整桌位主要通过平面图拖拽完成，坐标不再作为表单输入项展示。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 优化管理员开放时段批量发布交互，解决座位逐个选择效率低、时间段模板不清晰的问题。
+
+### 本次改动
+- 管理员开放时段页从单行表单升级为批量发布工作区，拆分为基础信息、开放时间、发布座位和发布预览。
+- 开放时间新增“上午 / 下午 / 晚间 / 全天常用”快捷模板，仍保持半小时步进，并在前端校验空时段、重复时段、结束早于开始和超过 12 段。
+- 座位选择新增“全选当前区域座位”“清空”和按桌选择按钮，管理员可以按 T01/T02 等桌号批量选中或反选座位。
+- 座位下拉按桌分组，选项显示 `桌号 · 座位编号 (标签)`，同时过滤历史 `LEGACY` 桌位，避免开发遗留数据出现在发布范围。
+- 发布前展示预计发布数量，按“已选座位数 x 有效时间段数”计算，便于比赛演示时解释批量生成逻辑。
+- 开放时段列表的座位列从裸座位 ID 改为展示真实座位编号和桌号，减少管理员排查成本。
+- 补充前端测试，覆盖按桌批量选座、应用快捷时间模板并提交 `periods + seatIds` 的发布 payload。
+
+### 涉及文件
+- frontend/src/pages/AdminSeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 3 个测试文件、17 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过且无告警。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 45 个测试通过。
+- 已运行 `git diff --check`，通过。
+- 已在浏览器打开 `http://127.0.0.1:5174/admin/seat-slots` 验证：页面展示批量发布工作区，点击“晚间”和 T01 后显示 `T01 4/4`、`已选 4 / 16 个座位`、`预计发布 4 个座位时段`。
+
+### 遗留问题
+- 当前按桌批量选择基于已有桌号分组；后续如果做拖拽式平面图发布，可以继续把桌面布局预览嵌入开放时段页。
+
+### 对其他成员的影响
+- 本次未改后端接口，继续复用 `/api/seat-slots/publish` 的 `periods` 和 `seatIds` 批量发布能力。
+- 管理员端发布座位时不再展示 `LEGACY` 开发兜底桌，真实数据维护仍以桌子管理和座位管理页为准。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
 - 目标: 修复管理员桌子管理页显示问题，避免操作列被裁剪和历史 `LEGACY` 桌位干扰平面图。
 
 ### 本次改动

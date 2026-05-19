@@ -8,6 +8,7 @@ import {
   Modal,
   Popconfirm,
   QRCode,
+  Segmented,
   Select,
   Space,
   Table,
@@ -15,10 +16,12 @@ import {
   Typography,
 } from 'antd';
 import type { TableColumnsType } from 'antd';
+import { RotateCcw, Save } from 'lucide-react';
 import { listAreas } from '../api/areas';
+import { listSeats } from '../api/seats';
 import { createTable, getTableCheckinQr, listTables, updateTable, updateTableStatus } from '../api/tables';
 import TableLayoutPreview from '../components/TableLayoutPreview';
-import type { Area, StudyTable, StudyTableQr, StudyTableStatus } from '../types/seat';
+import type { Area, Seat, StudyTable, StudyTableQr, StudyTableStatus } from '../types/seat';
 
 type TableFormValues = {
   areaId: number;
@@ -35,6 +38,15 @@ type TableFormValues = {
   status: StudyTableStatus;
 };
 
+type TablePresetKey = 'TWO' | 'THREE' | 'FOUR' | 'CUSTOM';
+
+type TablePreset = {
+  label: string;
+  widthPx?: number;
+  heightPx?: number;
+  seatCount?: number;
+};
+
 const statusLabels: Record<StudyTableStatus, string> = {
   ACTIVE: '启用',
   INACTIVE: '停用',
@@ -44,6 +56,18 @@ const statusColors: Record<StudyTableStatus, string> = {
   ACTIVE: 'green',
   INACTIVE: 'default',
 };
+
+const tablePresets: Record<TablePresetKey, TablePreset> = {
+  TWO: { label: '2人桌', widthPx: 180, heightPx: 84, seatCount: 2 },
+  THREE: { label: '3人桌', widthPx: 190, heightPx: 128, seatCount: 3 },
+  FOUR: { label: '4人桌', widthPx: 220, heightPx: 96, seatCount: 4 },
+  CUSTOM: { label: '自定义' },
+};
+
+const tablePresetOptions = (Object.keys(tablePresets) as TablePresetKey[]).map((key) => ({
+  label: tablePresets[key].label,
+  value: key,
+}));
 
 function buildCheckinUrl(checkinPath: string) {
   if (checkinPath.startsWith('http')) {
@@ -56,11 +80,45 @@ function isManagedTable(table: StudyTable) {
   return table.tableNo.toUpperCase() !== 'LEGACY';
 }
 
+function inferTablePreset(table: StudyTable): TablePresetKey {
+  const matchedPreset = (['TWO', 'THREE', 'FOUR'] as TablePresetKey[]).find((key) => {
+    const preset = tablePresets[key];
+    return table.widthPx === preset.widthPx && table.heightPx === preset.heightPx && table.rotationDeg === 0;
+  });
+  return matchedPreset ?? 'CUSTOM';
+}
+
+function getTablePresetLabel(table: StudyTable, seatCount: number) {
+  if (seatCount === 2 || seatCount === 3 || seatCount === 4) {
+    return `${seatCount}人桌`;
+  }
+  const preset = tablePresets[inferTablePreset(table)];
+  return preset.label;
+}
+
+function getDisplaySeatCount(table: StudyTable, seatCount: number) {
+  return Math.max(seatCount, tablePresets[inferTablePreset(table)].seatCount ?? 0);
+}
+
+function applyPresetValues(values: TableFormValues, presetKey: TablePresetKey): TableFormValues {
+  const preset = tablePresets[presetKey];
+  if (!preset.widthPx || !preset.heightPx) {
+    return values;
+  }
+  return {
+    ...values,
+    widthPx: preset.widthPx,
+    heightPx: preset.heightPx,
+    rotationDeg: 0,
+  };
+}
+
 export default function AdminTablesPage() {
   const [form] = Form.useForm<TableFormValues>();
   const [areaId, setAreaId] = useState(1);
   const [areas, setAreas] = useState<Area[]>([]);
   const [tables, setTables] = useState<StudyTable[]>([]);
+  const [seats, setSeats] = useState<Seat[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -69,11 +127,46 @@ export default function AdminTablesPage() {
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [tableQr, setTableQr] = useState<StudyTableQr | null>(null);
   const [layoutPreviewValues, setLayoutPreviewValues] = useState<Partial<TableFormValues> | null>(null);
+  const [layoutDrafts, setLayoutDrafts] = useState<Record<number, { positionX: number; positionY: number }>>({});
+  const [layoutSaving, setLayoutSaving] = useState(false);
+  const [tablePresetKey, setTablePresetKey] = useState<TablePresetKey>('FOUR');
   const [messageApi, contextHolder] = message.useMessage();
 
   const selectedArea = useMemo(() => areas.find((area) => area.id === areaId), [areaId, areas]);
   const managedTables = useMemo(() => tables.filter(isManagedTable), [tables]);
+  const seatCountsByTable = useMemo(
+    () =>
+      seats.reduce<Record<number, number>>((counts, seat) => {
+        if (seat.status === 'ACTIVE' && seat.tableId) {
+          counts[seat.tableId] = (counts[seat.tableId] ?? 0) + 1;
+        }
+        return counts;
+      }, {}),
+    [seats],
+  );
+  const displaySeatCountsByTable = useMemo(
+    () =>
+      managedTables.reduce<Record<number, number>>((counts, table) => {
+        counts[table.id] = getDisplaySeatCount(table, seatCountsByTable[table.id] ?? 0);
+        return counts;
+      }, {}),
+    [managedTables, seatCountsByTable],
+  );
+  const layoutTables = useMemo(
+    () =>
+      managedTables.map((table) => ({
+        ...table,
+        positionX: layoutDrafts[table.id]?.positionX ?? table.positionX,
+        positionY: layoutDrafts[table.id]?.positionY ?? table.positionY,
+      })),
+    [layoutDrafts, managedTables],
+  );
+  const layoutChanged = Object.keys(layoutDrafts).length > 0;
   const checkinUrl = tableQr ? buildCheckinUrl(tableQr.checkinPath) : '';
+  const previewTableId = editingTable?.id ?? -1;
+  const previewSeatCount =
+    tablePresets[tablePresetKey].seatCount ?? (editingTable ? seatCountsByTable[editingTable.id] ?? 0 : 0);
+  const previewSeatCounts = { [previewTableId]: previewSeatCount };
 
   const loadAreas = useCallback(async () => {
     try {
@@ -90,7 +183,10 @@ export default function AdminTablesPage() {
   const loadTables = useCallback(async (targetAreaId = areaId) => {
     setLoading(true);
     try {
-      setTables(await listTables(targetAreaId));
+      const [nextTables, nextSeats] = await Promise.all([listTables(targetAreaId), listSeats(targetAreaId)]);
+      setTables(nextTables);
+      setSeats(nextSeats);
+      setLayoutDrafts({});
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '加载桌子失败');
     } finally {
@@ -100,6 +196,7 @@ export default function AdminTablesPage() {
 
   function openCreateModal() {
     setEditingTable(null);
+    setTablePresetKey('FOUR');
     form.setFieldsValue({
       areaId,
       tableNo: '',
@@ -109,8 +206,8 @@ export default function AdminTablesPage() {
       displayOrder: undefined,
       positionX: 80,
       positionY: 80,
-      widthPx: 260,
-      heightPx: 96,
+      widthPx: tablePresets.FOUR.widthPx,
+      heightPx: tablePresets.FOUR.heightPx,
       rotationDeg: 0,
       status: 'ACTIVE',
     });
@@ -120,6 +217,7 @@ export default function AdminTablesPage() {
 
   function openEditModal(table: StudyTable) {
     setEditingTable(table);
+    setTablePresetKey(inferTablePreset(table));
     form.setFieldsValue({
       areaId: table.areaId,
       tableNo: table.tableNo,
@@ -138,8 +236,26 @@ export default function AdminTablesPage() {
     setModalOpen(true);
   }
 
+  function selectTablePreset(nextPresetKey: TablePresetKey) {
+    setTablePresetKey(nextPresetKey);
+    const preset = tablePresets[nextPresetKey];
+    if (preset.widthPx && preset.heightPx) {
+      const nextValues = {
+        ...form.getFieldsValue(),
+        widthPx: preset.widthPx,
+        heightPx: preset.heightPx,
+        rotationDeg: 0,
+      };
+      form.setFieldsValue(nextValues);
+      setLayoutPreviewValues(nextValues);
+    } else {
+      setLayoutPreviewValues(form.getFieldsValue());
+    }
+  }
+
   async function saveTable() {
-    const values = await form.validateFields();
+    await form.validateFields();
+    const values = applyPresetValues(form.getFieldsValue(true) as TableFormValues, tablePresetKey);
     setSaving(true);
     try {
       if (editingTable) {
@@ -169,6 +285,45 @@ export default function AdminTablesPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function saveLayoutChanges() {
+    const changedTables = managedTables.filter((table) => layoutDrafts[table.id]);
+    if (changedTables.length === 0) {
+      messageApi.info('当前布局没有变化');
+      return;
+    }
+    setLayoutSaving(true);
+    try {
+      await Promise.all(
+        changedTables.map((table) =>
+          updateTable(table.id, {
+            areaId: table.areaId,
+            tableNo: table.tableNo,
+            name: table.name ?? undefined,
+            rowNo: table.rowNo ?? undefined,
+            columnNo: table.columnNo ?? undefined,
+            displayOrder: table.displayOrder ?? undefined,
+            positionX: layoutDrafts[table.id].positionX,
+            positionY: layoutDrafts[table.id].positionY,
+            widthPx: table.widthPx,
+            heightPx: table.heightPx,
+            rotationDeg: table.rotationDeg,
+            status: table.status,
+          }),
+        ),
+      );
+      messageApi.success(`已保存 ${changedTables.length} 张桌子的布局`);
+      await loadTables();
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '保存布局失败');
+    } finally {
+      setLayoutSaving(false);
+    }
+  }
+
+  function resetLayoutDrafts() {
+    setLayoutDrafts({});
   }
 
   async function changeStatus(table: StudyTable, status: StudyTableStatus) {
@@ -229,14 +384,9 @@ export default function AdminTablesPage() {
         record.rowNo && record.columnNo ? `第 ${record.rowNo} 排 / 第 ${record.columnNo} 列` : '-',
     },
     {
-      title: '平面坐标',
-      width: 150,
-      render: (_, record) => `x ${record.positionX ?? 80}, y ${record.positionY ?? 80}`,
-    },
-    {
-      title: '桌面尺寸',
+      title: '桌型',
       width: 130,
-      render: (_, record) => `${record.widthPx ?? 260} × ${record.heightPx ?? 96}`,
+      render: (_, record) => getTablePresetLabel(record, displaySeatCountsByTable[record.id] ?? 0),
     },
     { title: '展示顺序', dataIndex: 'displayOrder', width: 110, render: (value) => value ?? '-' },
     {
@@ -316,15 +466,41 @@ export default function AdminTablesPage() {
         dataSource={managedTables}
         columns={columns}
         pagination={false}
-        scroll={{ x: 1290 }}
+        scroll={{ x: 1140 }}
       />
 
       <div className="layout-preview-panel">
         <div className="seat-map-section-header">
           <strong>区域桌位平面图</strong>
-          <span>点击桌子可直接编辑位置和尺寸</span>
+          <span>拖动桌子调整位置，点击桌子进入编辑</span>
         </div>
-        <TableLayoutPreview tables={managedTables} onSelectTable={openEditModal} selectedTableId={editingTable?.id} />
+        <div className="table-layout-actions">
+          <Button
+            icon={<Save size={15} />}
+            type="primary"
+            disabled={!layoutChanged}
+            loading={layoutSaving}
+            onClick={saveLayoutChanges}
+          >
+            保存布局
+          </Button>
+          <Button icon={<RotateCcw size={15} />} disabled={!layoutChanged || layoutSaving} onClick={resetLayoutDrafts}>
+            撤销调整
+          </Button>
+          <Typography.Text type="secondary">
+            {layoutChanged ? `有 ${Object.keys(layoutDrafts).length} 张桌子待保存` : '当前布局已保存'}
+          </Typography.Text>
+        </div>
+        <TableLayoutPreview
+          editable
+          tables={layoutTables}
+          seatCounts={displaySeatCountsByTable}
+          onSelectTable={openEditModal}
+          selectedTableId={editingTable?.id}
+          onMoveTable={(table, position) => {
+            setLayoutDrafts((drafts) => ({ ...drafts, [table.id]: position }));
+          }}
+        />
       </div>
 
       <Modal
@@ -368,6 +544,15 @@ export default function AdminTablesPage() {
           <Form.Item label="名称" name="name" rules={[{ max: 64, message: '名称不能超过 64 个字符' }]}>
             <Input placeholder={selectedArea ? `${selectedArea.name} T01` : '例如 图书馆 A 区 T01'} />
           </Form.Item>
+          <Form.Item label="桌型">
+            <Segmented
+              block
+              className="table-preset-segmented"
+              options={tablePresetOptions}
+              value={tablePresetKey}
+              onChange={(value) => selectTablePreset(value as TablePresetKey)}
+            />
+          </Form.Item>
           <div className="resource-layout-fields">
             <Form.Item label="行号" name="rowNo">
               <InputNumber min={1} precision={0} placeholder="1" />
@@ -379,25 +564,19 @@ export default function AdminTablesPage() {
               <InputNumber min={1} precision={0} placeholder="自动" />
             </Form.Item>
           </div>
-          <div className="resource-layout-fields">
-            <Form.Item label="X 坐标" name="positionX">
-              <InputNumber min={0} precision={0} placeholder="80" />
-            </Form.Item>
-            <Form.Item label="Y 坐标" name="positionY">
-              <InputNumber min={0} precision={0} placeholder="80" />
-            </Form.Item>
-            <Form.Item label="旋转角度" name="rotationDeg">
-              <InputNumber precision={0} placeholder="0" />
-            </Form.Item>
-          </div>
-          <div className="resource-layout-fields">
-            <Form.Item label="桌宽 px" name="widthPx">
-              <InputNumber min={80} precision={0} placeholder="260" />
-            </Form.Item>
-            <Form.Item label="桌高 px" name="heightPx">
-              <InputNumber min={48} precision={0} placeholder="96" />
-            </Form.Item>
-          </div>
+          {tablePresetKey === 'CUSTOM' ? (
+            <div className="resource-layout-fields">
+              <Form.Item label="桌宽 px" name="widthPx">
+                <InputNumber min={80} precision={0} placeholder="220" />
+              </Form.Item>
+              <Form.Item label="桌高 px" name="heightPx">
+                <InputNumber min={48} precision={0} placeholder="96" />
+              </Form.Item>
+              <Form.Item label="旋转角度" name="rotationDeg">
+                <InputNumber precision={0} placeholder="0" />
+              </Form.Item>
+            </div>
+          ) : null}
           {editingTable ? (
             <Form.Item label="状态" name="status" rules={[{ required: true, message: '请选择状态' }]}>
               <Select
@@ -412,12 +591,14 @@ export default function AdminTablesPage() {
         <div className="table-form-preview">
           <div className="seat-map-section-header">
             <strong>实时预览</strong>
-            <span>根据当前坐标、尺寸和旋转角度渲染</span>
+            <span>拖动桌子调整位置，尺寸和角度按当前表单渲染</span>
           </div>
           <TableLayoutPreview
+            editable
+            seatCounts={previewSeatCounts}
             tables={[
               {
-                id: editingTable?.id ?? -1,
+                id: previewTableId,
                 areaId: layoutPreviewValues?.areaId ?? areaId,
                 tableNo: layoutPreviewValues?.tableNo || editingTable?.tableNo || 'T01',
                 name: layoutPreviewValues?.name || editingTable?.name || null,
@@ -432,6 +613,10 @@ export default function AdminTablesPage() {
                 rotationDeg: layoutPreviewValues?.rotationDeg ?? editingTable?.rotationDeg ?? 0,
               },
             ]}
+            onMoveTable={(_, position) => {
+              form.setFieldsValue(position);
+              setLayoutPreviewValues({ ...form.getFieldsValue(), ...position });
+            }}
           />
         </div>
       </Modal>

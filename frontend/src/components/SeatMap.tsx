@@ -54,8 +54,9 @@ const sideClass: Record<SeatSide, string> = {
 };
 
 const tableSeatSides: SeatSide[] = ['NORTH', 'WEST', 'EAST', 'SOUTH', 'SINGLE'];
-const TABLE_SIDE_OFFSET = 86;
-const TABLE_VERTICAL_OFFSET = 58;
+const TABLE_DISPLAY_SCALE = 0.6;
+const TABLE_SIDE_OFFSET = 66;
+const TABLE_VERTICAL_OFFSET = 44;
 
 function getTimeRange(slot: SeatSlot) {
   return `${slot.startTime.slice(0, 5)}-${slot.endTime.slice(0, 5)}`;
@@ -200,8 +201,8 @@ function normalizeCoordinateTables(tables: TableGroup[]) {
   let fallbackIndex = 0;
 
   return tables.map((table) => {
-    const width = table.widthPx ?? 220;
-    const height = table.heightPx ?? 96;
+    const width = Math.round((table.widthPx ?? 220) * TABLE_DISPLAY_SCALE);
+    const height = Math.round((table.heightPx ?? 96) * TABLE_DISPLAY_SCALE);
     let positionX = table.positionX;
     let positionY = table.positionY;
 
@@ -234,10 +235,14 @@ function getCoordinateRoomStyle(tables: TableGroup[]): CSSProperties {
     return {};
   }
   const maxRight = Math.max(
-    ...positionedTables.map((table) => (table.positionX ?? 0) + (table.widthPx ?? 220) + TABLE_SIDE_OFFSET + 96),
+    ...positionedTables.map(
+      (table) => (table.positionX ?? 0) + (table.widthPx ?? 220) + TABLE_SIDE_OFFSET + 72,
+    ),
   );
   const maxBottom = Math.max(
-    ...positionedTables.map((table) => (table.positionY ?? 0) + (table.heightPx ?? 96) + TABLE_VERTICAL_OFFSET + 132),
+    ...positionedTables.map(
+      (table) => (table.positionY ?? 0) + (table.heightPx ?? 96) + TABLE_VERTICAL_OFFSET + 100,
+    ),
   );
   return {
     minWidth: Math.max(maxRight + 96, 640),
@@ -281,6 +286,12 @@ function getTableStyle(table: TableGroup): CSSProperties {
 function getTableSurfaceStyle(table: TableGroup): CSSProperties {
   if (table.widthPx === null && table.heightPx === null) {
     return {};
+  }
+  if (table.positionX === null && table.positionY === null) {
+    return {
+      width: Math.round((table.widthPx ?? 220) * TABLE_DISPLAY_SCALE),
+      height: Math.round((table.heightPx ?? 96) * TABLE_DISPLAY_SCALE),
+    };
   }
   return {
     width: table.widthPx ?? 220,
@@ -326,8 +337,6 @@ export default function SeatMap({
             <span>{group.totalSeats} 个座位</span>
           </div>
           <div className={`seat-room-layout ${hasCoordinateLayout(group.tables) ? 'seat-room-layout-coordinate' : ''}`}>
-            <div className="seat-room-feature seat-room-door">入口</div>
-            <div className="seat-room-feature seat-room-window">采光窗</div>
             <div
               className={`seat-map-grid ${hasCoordinateLayout(group.tables) ? 'seat-map-grid-coordinate' : ''}`}
               style={getLayoutStyle(group.tables)}
@@ -381,7 +390,6 @@ export default function SeatMap({
                 </div>
               ))}
             </div>
-            <div className="seat-room-feature seat-room-desk">服务台</div>
           </div>
         </section>
       ))}
