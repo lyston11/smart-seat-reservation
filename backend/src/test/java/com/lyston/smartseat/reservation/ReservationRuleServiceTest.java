@@ -52,6 +52,36 @@ class ReservationRuleServiceTest {
     }
 
     @Test
+    void getRulesShouldMergePropertiesWhenDatabaseRuleHasNullNewFields() {
+        ReservationRuleProperties properties = new ReservationRuleProperties();
+        properties.setCheckinGraceMinutes(10);
+        properties.setCheckinLeadMinutes(12);
+        properties.setMaxAdvanceDays(7);
+        properties.setReservationOpenHour(18);
+        properties.setDailyActiveReservationLimit(3);
+        properties.setWifiOfflineReleaseMinutes(15);
+        properties.setSeatLockMinutes(60);
+        ReservationRule rule = reservationRule();
+        rule.setCheckinLeadMinutes(null);
+        rule.setReservationOpenHour(null);
+        rule.setWifiOfflineReleaseMinutes(null);
+        rule.setSeatLockMinutes(null);
+        reservationRuleMapper.rule = rule;
+        reservationRuleService = new ReservationRuleService(reservationRuleMapper.proxy(), properties, auditService);
+
+        ReservationRuleResponse response = reservationRuleService.getRules();
+
+        assertThat(response.checkinGraceMinutes()).isEqualTo(15);
+        assertThat(response.checkinLeadMinutes()).isEqualTo(12);
+        assertThat(response.maxAdvanceDays()).isEqualTo(7);
+        assertThat(response.reservationOpenHour()).isEqualTo(18);
+        assertThat(response.dailyActiveReservationLimit()).isEqualTo(3);
+        assertThat(response.wifiOfflineReleaseMinutes()).isEqualTo(15);
+        assertThat(response.seatLockMinutes()).isEqualTo(60);
+        assertThat(response.updatedAt()).isEqualTo(LocalDateTime.of(2026, 5, 15, 10, 0));
+    }
+
+    @Test
     void updateRulesShouldPersistAndWriteAuditLog() {
         ReservationRule rule = reservationRule();
         reservationRuleMapper.rule = rule;

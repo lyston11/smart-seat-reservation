@@ -13,7 +13,7 @@ import {
   listSeatSlots,
 } from '../api/seatSlots';
 import SeatMap from '../components/SeatMap';
-import type { ReservationResult, ReservationRule } from '../types/reservation';
+import type { ReservationResult } from '../types/reservation';
 import type { Area, Seat, SeatSlot } from '../types/seat';
 import {
   formatDateTime,
@@ -22,6 +22,11 @@ import {
   reservationStatusColor,
   reservationStatusText,
 } from '../utils/reservationDisplay';
+import {
+  DEFAULT_RESERVATION_RULES,
+  normalizeReservationRules,
+  type NormalizedReservationRule,
+} from '../utils/reservationRules';
 
 export default function SeatSlotsPage() {
   const [areas, setAreas] = useState<Area[]>([]);
@@ -34,7 +39,7 @@ export default function SeatSlotsPage() {
   const [seats, setSeats] = useState<Seat[]>([]);
   const [selectedSeatId, setSelectedSeatId] = useState<number | null>(null);
   const [activeReservation, setActiveReservation] = useState<ReservationResult | null>(null);
-  const [reservationRules, setReservationRules] = useState<ReservationRule | null>(null);
+  const [reservationRules, setReservationRules] = useState<NormalizedReservationRule | null>(null);
   const [checkinCode, setCheckinCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [reservingId, setReservingId] = useState<number | null>(null);
@@ -43,7 +48,7 @@ export default function SeatSlotsPage() {
 
   const dateText = useMemo(() => dayjs().add(1, 'day').format('YYYY-MM-DD'), []);
   const reservationOpened = useMemo(() => {
-    const openHour = reservationRules?.reservationOpenHour ?? 18;
+    const openHour = reservationRules?.reservationOpenHour ?? DEFAULT_RESERVATION_RULES.reservationOpenHour;
     return dayjs().hour() >= openHour;
   }, [reservationRules?.reservationOpenHour]);
   const activeAreas = useMemo(() => areas.filter((area) => area.status === 'ACTIVE'), [areas]);
@@ -127,7 +132,7 @@ export default function SeatSlotsPage() {
 
   const loadRules = useCallback(async () => {
     try {
-      setReservationRules(await getReservationRules());
+      setReservationRules(normalizeReservationRules(await getReservationRules()));
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '加载预约规则失败');
     }
@@ -151,7 +156,9 @@ export default function SeatSlotsPage() {
       return;
     }
     if (!reservationOpened) {
-      messageApi.warning(`今日 ${String(reservationRules?.reservationOpenHour ?? 18).padStart(2, '0')}:00 开放明日预约`);
+      messageApi.warning(
+        `今日 ${String(reservationRules?.reservationOpenHour ?? DEFAULT_RESERVATION_RULES.reservationOpenHour).padStart(2, '0')}:00 开放明日预约`,
+      );
       return;
     }
     if (slot.status !== 'AVAILABLE') {
@@ -289,7 +296,7 @@ export default function SeatSlotsPage() {
         </span>
         <span>已开始或过期时段不可预约</span>
         <span>
-          每日 {String(reservationRules?.reservationOpenHour ?? 18).padStart(2, '0')}:00 开放明日预约
+          每日 {String(reservationRules?.reservationOpenHour ?? DEFAULT_RESERVATION_RULES.reservationOpenHour).padStart(2, '0')}:00 开放明日预约
         </span>
         <span>时间最小粒度为半小时</span>
         <span>预约后 {reservationRules?.checkinGraceMinutes ?? '-'} 分钟内未签到将自动释放</span>
@@ -360,7 +367,7 @@ export default function SeatSlotsPage() {
                 </Button>
                 {!reservationOpened ? (
                   <Typography.Text type="secondary">
-                    今日 {String(reservationRules?.reservationOpenHour ?? 18).padStart(2, '0')}:00 后开放预约 {dateText}。
+                    今日 {String(reservationRules?.reservationOpenHour ?? DEFAULT_RESERVATION_RULES.reservationOpenHour).padStart(2, '0')}:00 后开放预约 {dateText}。
                   </Typography.Text>
                 ) : null}
                 {selectedSlot.status === 'UNPUBLISHED' ? (

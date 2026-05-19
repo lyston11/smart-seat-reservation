@@ -49,6 +49,14 @@ function storeStudentSession() {
   );
 }
 
+function storeAdminSession() {
+  window.localStorage.setItem('smart-seat-auth-token', 'test-token');
+  window.localStorage.setItem(
+    'smart-seat-auth-user',
+    JSON.stringify({ id: 2, name: 'Demo Admin', studentNo: 'admin', role: 'ADMIN' }),
+  );
+}
+
 function toLocalDateTimeText(value: Date) {
   const year = value.getFullYear();
   const month = String(value.getMonth() + 1).padStart(2, '0');
@@ -711,11 +719,7 @@ describe('App', () => {
   });
 
   it('renders admin table management route for administrators', async () => {
-    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
-    window.localStorage.setItem(
-      'smart-seat-auth-user',
-      JSON.stringify({ id: 2, name: 'Demo Admin', studentNo: 'admin', role: 'ADMIN' }),
-    );
+    storeAdminSession();
 
     vi.stubGlobal(
       'fetch',
@@ -735,12 +739,42 @@ describe('App', () => {
     expect(await screen.findByRole('link', { name: '桌子管理' })).toBeTruthy();
   });
 
-  it('saves dragged admin table layout changes without exposing coordinate inputs', async () => {
-    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
-    window.localStorage.setItem(
-      'smart-seat-auth-user',
-      JSON.stringify({ id: 2, name: 'Demo Admin', studentNo: 'admin', role: 'ADMIN' }),
+  it('normalizes nullable reservation rule fields on the admin rule page', async () => {
+    storeAdminSession();
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          code: 'OK',
+          message: 'ok',
+          data: makeReservationRules({
+            checkinLeadMinutes: null,
+            reservationOpenHour: null,
+            wifiOfflineReleaseMinutes: null,
+            seatLockMinutes: null,
+          }),
+        }),
+      }),
     );
+
+    render(
+      <MemoryRouter initialEntries={['/admin/reservation-rules']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 3, name: '预约规则' })).toBeTruthy();
+    expect(await screen.findByText('WiFi 离线释放')).toBeTruthy();
+    expect(await screen.findByDisplayValue('18')).toBeTruthy();
+    expect(await screen.findByDisplayValue('60')).toBeTruthy();
+    expect(await screen.findByDisplayValue('15')).toBeTruthy();
+  });
+
+  it('saves dragged admin table layout changes without exposing coordinate inputs', async () => {
+    storeAdminSession();
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -944,11 +978,7 @@ describe('App', () => {
   });
 
   it('offers admin table presets and hides custom size fields by default', async () => {
-    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
-    window.localStorage.setItem(
-      'smart-seat-auth-user',
-      JSON.stringify({ id: 2, name: 'Demo Admin', studentNo: 'admin', role: 'ADMIN' }),
-    );
+    storeAdminSession();
 
     vi.stubGlobal(
       'fetch',
@@ -1007,11 +1037,7 @@ describe('App', () => {
   });
 
   it('uses table preset seat count in the admin layout when seats are not configured yet', async () => {
-    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
-    window.localStorage.setItem(
-      'smart-seat-auth-user',
-      JSON.stringify({ id: 2, name: 'Demo Admin', studentNo: 'admin', role: 'ADMIN' }),
-    );
+    storeAdminSession();
 
     vi.stubGlobal(
       'fetch',
@@ -1085,11 +1111,7 @@ describe('App', () => {
   });
 
   it('publishes admin seat slots with table batch selection and time templates', async () => {
-    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
-    window.localStorage.setItem(
-      'smart-seat-auth-user',
-      JSON.stringify({ id: 2, name: 'Demo Admin', studentNo: 'admin', role: 'ADMIN' }),
-    );
+    storeAdminSession();
     const todayText = toLocalDateText(new Date());
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {

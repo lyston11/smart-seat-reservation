@@ -9,6 +9,7 @@ import type {
   WifiPresencePayload,
   WifiPresenceResult,
 } from '../types/reservation';
+import type { ReservationRuleValues } from '../utils/reservationRules';
 import type { PublishSeatSlotPeriod, PublishSeatSlotsResult, SeatSlot } from '../types/seat';
 
 export type PublishSeatSlotsPayload = {
@@ -68,16 +69,7 @@ export function getReservationRules() {
   return request<ReservationRule>('/api/reservations/rules');
 }
 
-export function updateReservationRules(payload: Pick<
-  ReservationRule,
-  | 'checkinGraceMinutes'
-  | 'checkinLeadMinutes'
-  | 'maxAdvanceDays'
-  | 'reservationOpenHour'
-  | 'dailyActiveReservationLimit'
-  | 'wifiOfflineReleaseMinutes'
-  | 'seatLockMinutes'
->) {
+export function updateReservationRules(payload: ReservationRuleValues) {
   return request<ReservationRule>('/api/reservations/rules', {
     method: 'PUT',
     body: JSON.stringify(payload),

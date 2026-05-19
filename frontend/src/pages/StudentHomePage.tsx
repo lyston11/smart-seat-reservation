@@ -9,7 +9,7 @@ import {
   listUserReservations,
   reactivateSeatLock,
 } from '../api/seatSlots';
-import type { ReservationResult, ReservationRule } from '../types/reservation';
+import type { ReservationResult } from '../types/reservation';
 import {
   canCheckInReservation,
   canCheckOutReservation,
@@ -25,10 +25,11 @@ import {
   reservationStatusColor,
   reservationStatusText,
 } from '../utils/reservationDisplay';
+import { normalizeReservationRules, type NormalizedReservationRule } from '../utils/reservationRules';
 
 export default function StudentHomePage() {
   const [reservations, setReservations] = useState<ReservationResult[]>([]);
-  const [rules, setRules] = useState<ReservationRule | null>(null);
+  const [rules, setRules] = useState<NormalizedReservationRule | null>(null);
   const [loading, setLoading] = useState(false);
   const [actionId, setActionId] = useState<number | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
@@ -39,7 +40,7 @@ export default function StudentHomePage() {
     try {
       const [nextReservations, nextRules] = await Promise.all([listUserReservations(20), getReservationRules()]);
       setReservations(nextReservations);
-      setRules(nextRules);
+      setRules(normalizeReservationRules(nextRules));
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '加载学生首页失败');
     } finally {

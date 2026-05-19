@@ -31,7 +31,7 @@ public class ReservationRuleService {
         if (rule == null) {
             return ReservationRuleResponse.from(reservationRuleProperties);
         }
-        return ReservationRuleResponse.from(rule);
+        return ReservationRuleResponse.from(rule, reservationRuleProperties);
     }
 
     @Transactional
@@ -53,6 +53,6 @@ public class ReservationRuleService {
         reservationRuleMapper.updateById(rule);
 
         auditService.record(actorUserId, AuditAction.RESERVATION_RULE_UPDATE, "RESERVATION_RULE", RULE_ID, "update rules");
-        return ReservationRuleResponse.from(rule);
+        return ReservationRuleResponse.from(rule, reservationRuleProperties);
     }
 }

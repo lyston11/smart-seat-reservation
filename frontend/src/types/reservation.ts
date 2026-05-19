@@ -59,13 +59,13 @@ export type WifiPresenceResult = {
 };
 
 export type ReservationRule = {
-  checkinGraceMinutes: number;
-  checkinLeadMinutes: number;
-  maxAdvanceDays: number;
-  reservationOpenHour: number;
-  dailyActiveReservationLimit: number;
-  wifiOfflineReleaseMinutes: number;
-  seatLockMinutes: number;
+  checkinGraceMinutes: number | null;
+  checkinLeadMinutes: number | null;
+  maxAdvanceDays: number | null;
+  reservationOpenHour: number | null;
+  dailyActiveReservationLimit: number | null;
+  wifiOfflineReleaseMinutes: number | null;
+  seatLockMinutes: number | null;
   updatedBy: number | null;
   updatedAt: string | null;
 };

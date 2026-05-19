@@ -28,17 +28,21 @@ public record ReservationRuleResponse(
         );
     }
 
-    public static ReservationRuleResponse from(ReservationRule rule) {
+    public static ReservationRuleResponse from(ReservationRule rule, ReservationRuleProperties properties) {
         return new ReservationRuleResponse(
-                rule.getCheckinGraceMinutes(),
-                rule.getCheckinLeadMinutes(),
-                rule.getMaxAdvanceDays(),
-                rule.getReservationOpenHour(),
-                rule.getDailyActiveReservationLimit(),
-                rule.getWifiOfflineReleaseMinutes(),
-                rule.getSeatLockMinutes(),
+                valueOrDefault(rule.getCheckinGraceMinutes(), properties.getCheckinGraceMinutes()),
+                valueOrDefault(rule.getCheckinLeadMinutes(), properties.getCheckinLeadMinutes()),
+                valueOrDefault(rule.getMaxAdvanceDays(), properties.getMaxAdvanceDays()),
+                valueOrDefault(rule.getReservationOpenHour(), properties.getReservationOpenHour()),
+                valueOrDefault(rule.getDailyActiveReservationLimit(), properties.getDailyActiveReservationLimit()),
+                valueOrDefault(rule.getWifiOfflineReleaseMinutes(), properties.getWifiOfflineReleaseMinutes()),
+                valueOrDefault(rule.getSeatLockMinutes(), properties.getSeatLockMinutes()),
                 rule.getUpdatedBy(),
                 rule.getUpdatedAt()
         );
+    }
+
+    private static int valueOrDefault(Integer value, int defaultValue) {
+        return value != null ? value : defaultValue;
     }
 }

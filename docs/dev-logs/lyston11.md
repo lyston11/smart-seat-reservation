@@ -5,6 +5,50 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/lyston11-wifi-checkin
+- 目标: 修复管理员预约规则页新增规则字段显示为 0、表单为空、统计卡布局不对齐的问题。
+
+### 本次改动
+- 后端 `ReservationRuleResponse` 支持将数据库规则与配置默认值合并，兼容旧库或旧数据中新增字段为空的情况。
+- `ReservationRuleService` 查询和更新后都返回合并后的规则，保证业务服务和接口响应使用同一套兜底规则。
+- 前端新增 `reservationRules` 工具，统一预约规则默认值和归一化逻辑。
+- 管理员预约规则页、学生选座页、学生首页全部接入规则归一化，避免接口缺字段时显示 0 或空输入框。
+- 管理员预约规则页统计卡改为专用等宽网格，表单保持 3 列对齐，移动端自动收为 1 列。
+- 补充规则服务单测和前端页面测试，覆盖旧数据新增字段为空时的默认值展示。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/reservation/ReservationRuleResponse.java
+- backend/src/main/java/com/lyston/smartseat/reservation/ReservationRuleService.java
+- backend/src/test/java/com/lyston/smartseat/reservation/ReservationRuleServiceTest.java
+- frontend/src/utils/reservationRules.ts
+- frontend/src/pages/AdminReservationRulesPage.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/pages/StudentHomePage.tsx
+- frontend/src/api/seatSlots.ts
+- frontend/src/types/reservation.ts
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 58 个测试通过。
+- 已运行 `npm run test`，前端 3 个测试文件、25 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，通过。
+- 已用浏览器实测 `/admin/reservation-rules`，确认窄屏下内容区宽度恢复正常，规则字段显示为 10、15、18、60 等默认/真实值，不再显示 0 或空输入框。
+
+### 遗留问题
+- 当前运行中的本地后端若未重启，接口仍可能是旧代码响应；需要重启后端服务后才能看到后端合并默认值生效。
+
+### 对其他成员的影响
+- 前端展示预约规则时应统一使用 `normalizeReservationRules`，不要在页面里各自写 `?? 0` 兜底。
+- 后续新增规则字段需要同步更新后端响应合并、前端默认值、类型和规则页表单。
+
+## 2026-05-19
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-wifi-checkin
 - 目标: 从最新 `main` 新建分支，开发“签到必须连接指定校园网 IP 网段、预约开始前后 10 分钟内签到、使用中超过 15 分钟未检测到 WiFi IP 自动释放座位”。
 
 ### 本次改动

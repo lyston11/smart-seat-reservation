@@ -1,21 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Card, Form, InputNumber, message, Space, Statistic, Typography } from 'antd';
 import { getReservationRules, updateReservationRules } from '../api/seatSlots';
-import type { ReservationRule } from '../types/reservation';
+import {
+  normalizeReservationRules,
+  type NormalizedReservationRule,
+  type ReservationRuleValues,
+} from '../utils/reservationRules';
 
-type ReservationRuleFormValues = {
-  checkinGraceMinutes: number;
-  checkinLeadMinutes: number;
-  maxAdvanceDays: number;
-  reservationOpenHour: number;
-  dailyActiveReservationLimit: number;
-  wifiOfflineReleaseMinutes: number;
-  seatLockMinutes: number;
-};
+type ReservationRuleFormValues = ReservationRuleValues;
 
 export default function AdminReservationRulesPage() {
   const [form] = Form.useForm<ReservationRuleFormValues>();
-  const [rules, setRules] = useState<ReservationRule | null>(null);
+  const [rules, setRules] = useState<NormalizedReservationRule | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
@@ -23,7 +19,7 @@ export default function AdminReservationRulesPage() {
   const loadRules = useCallback(async () => {
     setLoading(true);
     try {
-      const nextRules = await getReservationRules();
+      const nextRules = normalizeReservationRules(await getReservationRules());
       setRules(nextRules);
       form.setFieldsValue({
         checkinGraceMinutes: nextRules.checkinGraceMinutes,
@@ -45,9 +41,9 @@ export default function AdminReservationRulesPage() {
     const values = await form.validateFields();
     setSaving(true);
     try {
-      const nextRules = await updateReservationRules(values);
+      const nextRules = normalizeReservationRules(await updateReservationRules(values));
       setRules(nextRules);
-      form.setFieldsValue(values);
+      form.setFieldsValue(nextRules);
       messageApi.success('预约规则已更新');
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '保存预约规则失败');
@@ -66,26 +62,26 @@ export default function AdminReservationRulesPage() {
   return (
     <div className="page">
       {contextHolder}
-      <div className="stats-grid">
-        <Card loading={loading}>
+      <div className="reservation-rule-stats-grid">
+        <Card loading={loading} className="reservation-rule-stat-card">
           <Statistic title="提前签到" value={rules?.checkinLeadMinutes ?? 0} suffix="分钟" />
         </Card>
-        <Card loading={loading}>
+        <Card loading={loading} className="reservation-rule-stat-card">
           <Statistic title="签到宽限" value={rules?.checkinGraceMinutes ?? 0} suffix="分钟" />
         </Card>
-        <Card loading={loading}>
+        <Card loading={loading} className="reservation-rule-stat-card">
           <Statistic title="WiFi 离线释放" value={rules?.wifiOfflineReleaseMinutes ?? 0} suffix="分钟" />
         </Card>
-        <Card loading={loading}>
+        <Card loading={loading} className="reservation-rule-stat-card">
           <Statistic title="开放明日预约" value={rules?.reservationOpenHour ?? 0} suffix="点" />
         </Card>
-        <Card loading={loading}>
+        <Card loading={loading} className="reservation-rule-stat-card">
           <Statistic title="单次锁位" value={rules?.seatLockMinutes ?? 0} suffix="分钟" />
         </Card>
-        <Card loading={loading}>
+        <Card loading={loading} className="reservation-rule-stat-card">
           <Statistic title="每日活跃预约" value={rules?.dailyActiveReservationLimit ?? 0} suffix="个" />
         </Card>
-        <Card loading={loading}>
+        <Card loading={loading} className="reservation-rule-stat-card">
           <Statistic title="最后更新人" value={rules?.updatedBy ?? '-'} />
         </Card>
       </div>
