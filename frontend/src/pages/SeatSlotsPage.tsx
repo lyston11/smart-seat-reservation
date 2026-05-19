@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, DatePicker, Form, Input, message, Select, Space, Statistic, Tag, Typography } from 'antd';
+import { Button, Card, Form, Input, message, Select, Space, Statistic, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { listAreas } from '../api/areas';
 import { listSeats } from '../api/seats';
@@ -28,7 +28,7 @@ export default function SeatSlotsPage() {
   const [areaId, setAreaId] = useState(1);
   const [areaTimeInitialized, setAreaTimeInitialized] = useState(false);
   const [timeInitializedFromSlots, setTimeInitializedFromSlots] = useState(false);
-  const [date, setDate] = useState(dayjs());
+  const [date] = useState(dayjs());
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('22:00');
   const [slots, setSlots] = useState<SeatSlot[]>([]);
@@ -47,6 +47,10 @@ export default function SeatSlotsPage() {
   const selectedArea = useMemo(() => areas.find((area) => area.id === areaId), [areas, areaId]);
   const startTimeText = useMemo(() => normalizeInputTime(startTime), [startTime]);
   const endTimeText = useMemo(() => normalizeInputTime(endTime), [endTime]);
+  const timeOptions = useMemo(
+    () => buildHalfHourTimeOptions(selectedArea?.openTime, selectedArea?.closeTime, startTime, endTime),
+    [endTime, selectedArea?.closeTime, selectedArea?.openTime, startTime],
+  );
   const visibleSlots = useMemo(
     () => buildVisibleSlotsForSelectedTime(slots, seats, areaId, dateText, startTimeText, endTimeText),
     [areaId, dateText, endTimeText, seats, slots, startTimeText],
@@ -106,8 +110,8 @@ export default function SeatSlotsPage() {
       if (!timeInitializedFromSlots) {
         const firstSlot = nextSlots.find((slot) => slot.status === 'AVAILABLE') ?? nextSlots[0];
         if (firstSlot) {
-          setStartTime(firstSlot.startTime.slice(0, 5));
-          setEndTime(firstSlot.endTime.slice(0, 5));
+          setStartTime(toHalfHourCeil(firstSlot.startTime.slice(0, 5)));
+          setEndTime(toHalfHourFloor(firstSlot.endTime.slice(0, 5)));
           setTimeInitializedFromSlots(true);
         }
       }
@@ -137,6 +141,10 @@ export default function SeatSlotsPage() {
   async function reserve(slot: SeatSlot) {
     if (startTimeText >= endTimeText) {
       messageApi.warning('开始时间必须早于结束时间');
+      return;
+    }
+    if (!isHalfHourTime(startTime) || !isHalfHourTime(endTime)) {
+      messageApi.warning('预约时间只能按半小时选择');
       return;
     }
     if (slot.status !== 'AVAILABLE') {
@@ -206,8 +214,8 @@ export default function SeatSlotsPage() {
 
   function applySelectedArea(area: Area) {
     setAreaId(area.id);
-    setStartTime(area.openTime.slice(0, 5));
-    setEndTime(area.closeTime.slice(0, 5));
+    setStartTime(toHalfHourCeil(area.openTime.slice(0, 5)));
+    setEndTime(toHalfHourFloor(area.closeTime.slice(0, 5)));
     setSelectedSeatId(null);
     setTimeInitializedFromSlots(false);
   }
@@ -236,7 +244,7 @@ export default function SeatSlotsPage() {
             />
           </Form.Item>
           <Form.Item label="日期">
-            <DatePicker value={date} onChange={(value) => setDate(value ?? dayjs())} />
+            <Typography.Text strong>{dateText}</Typography.Text>
           </Form.Item>
           <Form.Item>
             <Button type="primary" onClick={loadSlots} loading={loading}>
@@ -272,7 +280,8 @@ export default function SeatSlotsPage() {
           每日最多保留 {reservationRules?.dailyActiveReservationLimit ?? '-'} 个活跃预约
         </span>
         <span>已开始或过期时段不可预约</span>
-        <span>最多可提前 {reservationRules?.maxAdvanceDays ?? '-'} 天预约</span>
+        <span>仅支持预约当天</span>
+        <span>时间最小粒度为半小时</span>
         <span>预约后 {reservationRules?.checkinGraceMinutes ?? '-'} 分钟内未签到将自动释放</span>
       </div>
 
@@ -309,22 +318,20 @@ export default function SeatSlotsPage() {
                 <div className="student-seat-time-grid">
                   <label>
                     <span>开始时间</span>
-                    <Input
-                      type="time"
+                    <Select
                       aria-label="开始时间"
                       value={startTime}
-                      step={900}
-                      onChange={(event) => setStartTime(event.target.value)}
+                      options={timeOptions.startOptions}
+                      onChange={setStartTime}
                     />
                   </label>
                   <label>
                     <span>结束时间</span>
-                    <Input
-                      type="time"
+                    <Select
                       aria-label="结束时间"
                       value={endTime}
-                      step={900}
-                      onChange={(event) => setEndTime(event.target.value)}
+                      options={timeOptions.endOptions}
+                      onChange={setEndTime}
                     />
                   </label>
                 </div>
@@ -407,6 +414,62 @@ export default function SeatSlotsPage() {
 
 function normalizeInputTime(value: string) {
   return value.length === 5 ? `${value}:00` : value;
+}
+
+function toMinutes(value: string) {
+  const [hours, minutes] = value.slice(0, 5).split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+function toTimeText(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+function toHalfHourFloor(value: string) {
+  const minutes = toMinutes(value);
+  return toTimeText(Math.floor(minutes / 30) * 30);
+}
+
+function toHalfHourCeil(value: string) {
+  const minutes = toMinutes(value);
+  return toTimeText(Math.ceil(minutes / 30) * 30);
+}
+
+function isHalfHourTime(value: string) {
+  const minutes = toMinutes(value);
+  return minutes % 30 === 0;
+}
+
+function buildHalfHourTimeOptions(
+  openTime = '08:00:00',
+  closeTime = '22:00:00',
+  startTime = '08:00',
+  endTime = '22:00',
+) {
+  const startBoundary = toMinutes(toHalfHourCeil(openTime.slice(0, 5)));
+  const endBoundary = toMinutes(toHalfHourFloor(closeTime.slice(0, 5)));
+  const selectedStart = toMinutes(startTime);
+  const selectedEnd = toMinutes(endTime);
+  const startOptions = [];
+  const endOptions = [];
+
+  for (let minutes = startBoundary; minutes < endBoundary; minutes += 30) {
+    if (minutes < selectedEnd) {
+      const value = toTimeText(minutes);
+      startOptions.push({ label: value, value });
+    }
+  }
+
+  for (let minutes = startBoundary + 30; minutes <= endBoundary; minutes += 30) {
+    if (minutes > selectedStart) {
+      const value = toTimeText(minutes);
+      endOptions.push({ label: value, value });
+    }
+  }
+
+  return { startOptions, endOptions };
 }
 
 function overlaps(slot: SeatSlot, startTime: string, endTime: string) {

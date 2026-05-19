@@ -5,6 +5,43 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 收紧学生端预约时间规则，避免分钟级自由输入，并限制学生只能预约当天。
+
+### 本次改动
+- 学生选座页日期从可选日期控件改为只读今日日期，学生端不能再选择明天或未来日期。
+- 已选座位面板的开始/结束时间从原生 time 输入改为半小时档位下拉，时间只能选择 `08:00`、`08:30`、`09:00` 这类整点/半点。
+- 前端规则提示更新为“仅支持预约当天”和“时间最小粒度为半小时”。
+- 后端预约服务新增强校验：自定义预约必须是当天，开始/结束时间必须落在整点或半点，绕过前端直接调接口也会被拒绝。
+- 后端引入统一 `Clock` Bean，预约服务测试使用固定时间，保证当天预约规则可稳定测试。
+- 补充后端测试覆盖非当天预约、非半小时粒度预约的拒绝场景；更新前端测试使用半小时下拉完成预约。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/config/TimeConfig.java
+- backend/src/main/java/com/lyston/smartseat/reservation/ReservationService.java
+- backend/src/test/java/com/lyston/smartseat/reservation/ReservationServiceTest.java
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/App.test.tsx
+- frontend/src/test/setup.ts
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 3 个测试文件、15 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 45 个测试通过。
+- 已运行 `git diff --check`，通过。
+- 已在浏览器打开 `http://127.0.0.1:5174/student/seats` 验证：日期只显示今日，开始/结束时间为半小时下拉选择。
+
+### 遗留问题
+- 管理员端开放时段目前仍可按更细时间发布；学生端预约已收紧为半小时，后续可同步给管理员端时间范围也加半小时步进。
+
+### 对其他成员的影响
+- 学生端预约 API 现在会拒绝非当天或非整点/半点的自定义预约请求。
+- `ReservationService` 构造函数新增 `Clock` 依赖，测试或手动实例化该服务时需要传入时间源。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
 - 目标: 修复学生端选座流程和座位平面图展示问题，让学生按“先选位置，再选时间”完成预约，并展示多张真实桌位。
 
 ### 本次改动

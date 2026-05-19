@@ -44,6 +44,12 @@ function toLocalDateTimeText(value: Date) {
   return `${year}-${month}-${date}T${hours}:${minutes}:${seconds}`;
 }
 
+async function selectComboboxValue(label: string, value: string) {
+  fireEvent.mouseDown(await screen.findByLabelText(label));
+  const options = await screen.findAllByText(value);
+  fireEvent.click(options[options.length - 1]);
+}
+
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
@@ -247,7 +253,7 @@ describe('App', () => {
                 columnNo: 1,
                 displayOrder: 1,
                 areaId: 1,
-                slotDate: '2026-05-18',
+                slotDate: '2026-05-19',
                 startTime: '08:00:00',
                 endTime: '22:00:00',
                 status: 'AVAILABLE',
@@ -298,9 +304,9 @@ describe('App', () => {
         expect(JSON.parse(String(init.body))).toEqual(
           {
             seatId: 9,
-            slotDate: expect.any(String),
+            slotDate: '2026-05-19',
             startTime: '09:30:00',
-            endTime: '17:30:00',
+            endTime: '10:30:00',
           },
         );
         return {
@@ -361,12 +367,8 @@ describe('App', () => {
     );
 
     fireEvent.click(await screen.findByRole('button', { name: /1号/ }));
-    fireEvent.change(await screen.findByLabelText('开始时间'), {
-      target: { value: '09:30' },
-    });
-    fireEvent.change(screen.getByLabelText('结束时间'), {
-      target: { value: '17:30' },
-    });
+    await selectComboboxValue('开始时间', '09:30');
+    await selectComboboxValue('结束时间', '10:30');
     fireEvent.click(await screen.findByRole('button', { name: '预约该座位' }));
 
     await waitFor(() => {
