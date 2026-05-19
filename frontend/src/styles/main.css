@@ -112,6 +112,10 @@ body {
   min-width: 280px;
 }
 
+.slot-time-select {
+  width: 104px;
+}
+
 .slot-publish-grid {
   display: grid;
   grid-template-columns: minmax(240px, 0.8fr) minmax(360px, 1.2fr);

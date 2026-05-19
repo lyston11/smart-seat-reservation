@@ -5,6 +5,46 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/lyston11-wifi-checkin
+- 目标: 修正管理员开放时段和学生预约时间窗口，避免 2026-05-19 晚上仍可发布/预约 2026-05-19 已过时段；学生端支持今天未来时段，18:00 后再开放明天。
+
+### 本次改动
+- 后端预约规则改为只允许“今天未来时段”和“明天且已到预约开放小时”的预约，过去日期、已开始时段、后天及更远日期均拒绝。
+- 管理员开放时段服务接入统一 `Clock`，发布时校验过去日期、已开始时段和 30 分钟粒度，防止仅靠前端限制。
+- 新增 `SeatSlotServiceTest`，覆盖管理员发布过去日期、今天已开始时段、非半小时粒度、今天未来时段正常发布。
+- 学生选座页新增“今天/明天”日期切换：今天默认可查可约未来时段；明天在预约开放小时前禁用。
+- 学生端时间选择按区域营业时间和当前时间生成半小时选项，已过时间不会作为可预约时间提交。
+- 管理员开放时段页禁用过去日期，时间段改为半小时下拉选择，模板会自动跳过已开始时段，并在提交前再次拦截。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/reservation/ReservationService.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotService.java
+- backend/src/test/java/com/lyston/smartseat/reservation/ReservationServiceTest.java
+- backend/src/test/java/com/lyston/smartseat/seat/SeatSlotServiceTest.java
+- frontend/src/App.test.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/pages/AdminSeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 63 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端 25 个测试通过。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 管理员开放时段仍按全局时间判断，后续如果要按区域营业时间进一步收窄发布范围，可结合 `areas.open_time/close_time` 加服务端校验。
+- 学生端现在支持今天/明天两个日期，后续若业务再次扩展提前预约天数，需要同步调整后端窗口和前端日期控件。
+
+### 对其他成员的影响
+- 不要再在前端写死“只查明天”或“只有明天可约”，当前规则是今天未来时段可约，18:00 后额外开放明天。
+- 调整开放时段发布逻辑时必须保留后端 `SeatSlotService` 的时间窗口校验，前端禁用只是体验增强。
+
+## 2026-05-19
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-wifi-checkin
 - 目标: 修复管理员预约规则页新增规则字段显示为 0、表单为空、统计卡布局不对齐的问题。
 
 ### 本次改动

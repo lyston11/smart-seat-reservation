@@ -103,24 +103,37 @@ class ReservationServiceTest {
     }
 
     @Test
-    void createReservationShouldRejectNonTomorrowStartedSlot() {
+    void createReservationShouldRejectStartedTodaySlot() {
         seatSlotMapper.slot = seatSlot(TODAY, LocalTime.of(6, 0), LocalTime.of(7, 0));
 
         assertThatThrownBy(() -> reservationService.createReservation(new CreateReservationRequest(1L), 10L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessage("Only tomorrow's reservations are allowed");
+                .hasMessage("Past seat slots cannot be reserved");
 
         assertThat(seatSlotMapper.reserveRows).isZero();
         assertThat(reservationMapper.insertedReservation).isNull();
     }
 
     @Test
-    void createReservationShouldRejectDateOtherThanTomorrow() {
-        seatSlotMapper.slot = seatSlot(TODAY, LocalTime.of(8, 0), LocalTime.of(10, 0));
+    void createReservationShouldAllowFutureTodaySlot() {
+        seatSlotMapper.reserveRows = 1;
+        seatSlotMapper.attachRows = 1;
+        seatSlotMapper.slot = seatSlot(TODAY, LocalTime.of(20, 0), LocalTime.of(22, 0));
+
+        ReservationResponse response = reservationService.createReservation(new CreateReservationRequest(1L), 10L);
+
+        assertThat(response.slotDate()).isEqualTo(TODAY);
+        assertThat(response.startTime()).isEqualTo(LocalTime.of(20, 0));
+        assertThat(reservationMapper.insertedReservation).isNotNull();
+    }
+
+    @Test
+    void createReservationShouldRejectDateBeyondTomorrow() {
+        seatSlotMapper.slot = seatSlot(TOMORROW.plusDays(1), LocalTime.of(8, 0), LocalTime.of(10, 0));
 
         assertThatThrownBy(() -> reservationService.createReservation(new CreateReservationRequest(1L), 10L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessage("Only tomorrow's reservations are allowed");
+                .hasMessage("Only today's future slots and tomorrow's slots after the configured open hour can be reserved");
 
         assertThat(seatSlotMapper.reserveRows).isZero();
         assertThat(reservationMapper.insertedReservation).isNull();
@@ -301,13 +314,15 @@ class ReservationServiceTest {
     }
 
     @Test
-    void createReservationShouldRejectCustomReservationForDateOtherThanTomorrow() {
+    void createReservationShouldRejectCustomReservationForPastTodayTime() {
+        seatSlotMapper.availableWindow = seatSlot(TODAY, LocalTime.of(8, 0), LocalTime.of(22, 0));
+
         assertThatThrownBy(() -> reservationService.createReservation(
                 new CreateReservationRequest(null, 2L, TODAY, LocalTime.of(9, 30), LocalTime.of(17, 30)),
                 10L
         ))
                 .isInstanceOf(BusinessException.class)
-                .hasMessage("Only tomorrow's reservations are allowed");
+                .hasMessage("Past seat slots cannot be reserved");
     }
 
     @Test
