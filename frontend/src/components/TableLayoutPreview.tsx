@@ -28,12 +28,13 @@ type DragState = {
 };
 
 const GRID_SIZE = 10;
-const ROOM_MARGIN = 56;
+const ROOM_MARGIN = 48;
 const DEFAULT_ROOM_WIDTH = 760;
 const DEFAULT_ROOM_HEIGHT = 420;
 const TARGET_ROOM_WIDTH = 1180;
 const TARGET_ROOM_HEIGHT = 560;
 const MIN_LAYOUT_SCALE = 0.48;
+const VISUAL_SIZE_RATIO = 0.56;
 
 type RoomMetrics = {
   width: number;
@@ -64,18 +65,21 @@ function getVisualTableSize(table: StudyTable, seatCount: number) {
   const rawWidth = table.widthPx ?? 220;
   const rawHeight = table.heightPx ?? 96;
   if (seatCount >= 4) {
-    return { width: Math.min(rawWidth, 220), height: Math.min(rawHeight, 110) };
+    return { width: Math.min(rawWidth * VISUAL_SIZE_RATIO, 124), height: Math.min(rawHeight * VISUAL_SIZE_RATIO, 54) };
   }
   if (seatCount === 3) {
-    return { width: Math.min(rawWidth, 190), height: Math.min(Math.max(rawHeight, 118), 150) };
+    return {
+      width: Math.min(rawWidth * VISUAL_SIZE_RATIO, 108),
+      height: Math.min(Math.max(rawHeight * VISUAL_SIZE_RATIO, 66), 76),
+    };
   }
   if (seatCount === 2) {
-    return { width: Math.min(rawWidth, 180), height: Math.min(rawHeight, 86) };
+    return { width: Math.min(rawWidth * VISUAL_SIZE_RATIO, 100), height: Math.min(rawHeight * VISUAL_SIZE_RATIO, 48) };
   }
   if (seatCount === 1) {
-    return { width: Math.min(rawWidth, 120), height: Math.min(rawHeight, 86) };
+    return { width: Math.min(rawWidth * VISUAL_SIZE_RATIO, 72), height: Math.min(rawHeight * VISUAL_SIZE_RATIO, 48) };
   }
-  return { width: Math.min(rawWidth, 170), height: Math.min(rawHeight, 86) };
+  return { width: Math.min(rawWidth * VISUAL_SIZE_RATIO, 96), height: Math.min(rawHeight * VISUAL_SIZE_RATIO, 48) };
 }
 
 function getRoomMetrics(tables: StudyTable[], seatCounts: Record<number, number>): RoomMetrics {

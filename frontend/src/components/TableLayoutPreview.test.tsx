@@ -44,7 +44,7 @@ describe('TableLayoutPreview', () => {
     const tableButton = screen.getByRole('button', { name: '编辑 T02' });
     expect((tableButton as HTMLElement).style.left).toBe('360px');
     expect((tableButton as HTMLElement).style.top).toBe('80px');
-    expect((tableButton as HTMLElement).style.width).toBe('180px');
+    expect((tableButton as HTMLElement).style.width).toBe('100px');
     expect(tableButton.className).toContain('table-layout-item-selected');
     expect(tableButton.className).toContain('table-layout-item-two');
     expect(screen.getByText('2人桌')).toBeTruthy();

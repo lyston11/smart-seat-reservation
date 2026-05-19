@@ -191,6 +191,10 @@ body {
   padding-top: 8px;
 }
 
+.table-preset-segmented {
+  width: 100%;
+}
+
 .resource-layout-fields,
 .seat-table-layout-fields {
   display: grid;
@@ -275,7 +279,7 @@ body {
 
 .table-layout-item {
   position: absolute;
-  padding: 8px;
+  padding: 6px;
   display: grid;
   grid-template-rows: 1fr auto;
   place-items: center;
@@ -298,7 +302,7 @@ body {
 
 .table-layout-item-three {
   clip-path: polygon(50% 0, 100% 88%, 0 88%);
-  padding-top: 22px;
+  padding-top: 16px;
 }
 
 .table-layout-item-four {
@@ -339,8 +343,8 @@ body {
 
 .table-seat-marker {
   position: absolute;
-  width: 14px;
-  height: 14px;
+  width: 9px;
+  height: 9px;
   border: 1px solid #9ca3af;
   border-radius: 50%;
   background: #ffffff;
@@ -371,13 +375,13 @@ body {
 .table-seat-marker-three-2,
 .table-seat-marker-four-3 {
   left: 26px;
-  bottom: 10px;
+  bottom: 8px;
 }
 
 .table-seat-marker-three-3,
 .table-seat-marker-four-4 {
   right: 26px;
-  bottom: 10px;
+  bottom: 8px;
 }
 
 .table-seat-marker-four-5,
@@ -388,9 +392,9 @@ body {
 .table-layout-item span {
   overflow: hidden;
   max-width: 100%;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 20px;
+  line-height: 16px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -399,8 +403,8 @@ body {
   overflow: hidden;
   max-width: 100%;
   color: #4b5563;
-  font-size: 12px;
-  line-height: 18px;
+  font-size: 10px;
+  line-height: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -779,13 +783,13 @@ body {
 
 .seat-table-positioned {
   position: absolute;
-  width: calc(var(--table-width, 220px) + 172px);
-  min-height: 188px;
+  width: calc(var(--table-width, 132px) + 132px);
+  min-height: 146px;
   grid-template:
-    ". north ." 48px
-    "west table east" var(--table-height, 96px)
-    ". south ." 48px
-    ". single ." auto / 86px var(--table-width, 220px) 86px;
+    ". north ." 40px
+    "west table east" var(--table-height, 58px)
+    ". south ." 40px
+    ". single ." auto / 66px var(--table-width, 132px) 66px;
   transform-origin: center center;
 }
 
@@ -817,8 +821,8 @@ body {
 }
 
 .seat-table-positioned .seat-table-surface {
-  width: var(--table-width, 220px);
-  height: var(--table-height, 96px);
+  width: var(--table-width, 132px);
+  height: var(--table-height, 58px);
 }
 
 .seat-table-positioned .seat-table-side-north,

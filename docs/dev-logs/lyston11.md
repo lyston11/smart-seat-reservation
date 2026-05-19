@@ -5,6 +5,45 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 继续缩小桌位图桌子尺寸，并在管理员新增/编辑桌子时提供二人桌、三人桌、四人桌默认参数。
+
+### 本次改动
+- 桌位平面图整体继续缩小，四人桌、三人桌、二人桌、单人桌和未配置桌都按更紧凑的视觉比例渲染，便于一个区域展示更多桌子。
+- 学生端真实座位地图同步缩小坐标桌，桌面和周围座位区域都按展示比例压缩，避免桌子占据过多空间。
+- 管理员桌子弹窗新增桌型预设：`2人桌`、`3人桌`、`4人桌`、`自定义`。
+- 新增桌子默认使用 `4人桌` 参数；切换预设会立即应用对应默认宽高并刷新实时预览。
+- 默认预设模式隐藏 `桌宽 px`、`桌高 px`、`旋转角度`，仅在选择 `自定义` 时展示，减少管理员理解像素参数的负担。
+- 桌子列表将“桌面尺寸”调整为“桌型”，优先按 active 座位数显示二/三/四人桌，未配置时按尺寸预设或自定义显示。
+- 补充测试覆盖桌子缩小后的渲染尺寸、学生端坐标桌缩放，以及管理员桌型预设默认隐藏自定义尺寸字段。
+
+### 涉及文件
+- frontend/src/components/TableLayoutPreview.tsx
+- frontend/src/components/TableLayoutPreview.test.tsx
+- frontend/src/components/SeatMap.tsx
+- frontend/src/components/SeatMap.test.tsx
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/App.test.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 3 个测试文件、22 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过且无告警。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 45 个测试通过。
+- 已运行 `git diff --check`，通过。
+- 已在浏览器打开 `http://127.0.0.1:5174/admin/tables` 验证：桌子缩小，主页面展示“桌型”列，新增弹窗默认选中 `4人桌`，有 `2人桌`、`3人桌`、`4人桌`、`自定义` 预设，默认不展示 px 字段，切换 `自定义` 后才展示 `桌宽 px`、`桌高 px`、`旋转角度`。
+
+### 遗留问题
+- 预设目前负责桌面尺寸和预览座位数，不自动创建座位；如果需要“一键创建 2/3/4 个座位”，后续应作为显式批量生成座位功能开发，避免座位编号冲突。
+
+### 对其他成员的影响
+- 后端接口和数据库结构未变，桌型预设只在前端转成现有 `widthPx/heightPx/rotationDeg` 字段提交。
+- 主平面图仍按真实 active 座位数识别桌型，座位未配置的桌子会按尺寸预设给出列表文案，但平面图会提示“未配置座位”。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
 - 目标: 继续优化桌位平面图，移除硬编码场地元素，合理压缩桌子显示，并区分二人桌、三人桌、四人桌等桌型。
 
 ### 本次改动

@@ -8,6 +8,7 @@ import {
   Modal,
   Popconfirm,
   QRCode,
+  Segmented,
   Select,
   Space,
   Table,
@@ -37,6 +38,15 @@ type TableFormValues = {
   status: StudyTableStatus;
 };
 
+type TablePresetKey = 'TWO' | 'THREE' | 'FOUR' | 'CUSTOM';
+
+type TablePreset = {
+  label: string;
+  widthPx?: number;
+  heightPx?: number;
+  seatCount?: number;
+};
+
 const statusLabels: Record<StudyTableStatus, string> = {
   ACTIVE: '启用',
   INACTIVE: '停用',
@@ -47,6 +57,18 @@ const statusColors: Record<StudyTableStatus, string> = {
   INACTIVE: 'default',
 };
 
+const tablePresets: Record<TablePresetKey, TablePreset> = {
+  TWO: { label: '2人桌', widthPx: 180, heightPx: 84, seatCount: 2 },
+  THREE: { label: '3人桌', widthPx: 190, heightPx: 128, seatCount: 3 },
+  FOUR: { label: '4人桌', widthPx: 220, heightPx: 96, seatCount: 4 },
+  CUSTOM: { label: '自定义' },
+};
+
+const tablePresetOptions = (Object.keys(tablePresets) as TablePresetKey[]).map((key) => ({
+  label: tablePresets[key].label,
+  value: key,
+}));
+
 function buildCheckinUrl(checkinPath: string) {
   if (checkinPath.startsWith('http')) {
     return checkinPath;
@@ -56,6 +78,35 @@ function buildCheckinUrl(checkinPath: string) {
 
 function isManagedTable(table: StudyTable) {
   return table.tableNo.toUpperCase() !== 'LEGACY';
+}
+
+function inferTablePreset(table: StudyTable): TablePresetKey {
+  const matchedPreset = (['TWO', 'THREE', 'FOUR'] as TablePresetKey[]).find((key) => {
+    const preset = tablePresets[key];
+    return table.widthPx === preset.widthPx && table.heightPx === preset.heightPx && table.rotationDeg === 0;
+  });
+  return matchedPreset ?? 'CUSTOM';
+}
+
+function getTablePresetLabel(table: StudyTable, seatCount: number) {
+  if (seatCount === 2 || seatCount === 3 || seatCount === 4) {
+    return `${seatCount}人桌`;
+  }
+  const preset = tablePresets[inferTablePreset(table)];
+  return preset.label;
+}
+
+function applyPresetValues(values: TableFormValues, presetKey: TablePresetKey): TableFormValues {
+  const preset = tablePresets[presetKey];
+  if (!preset.widthPx || !preset.heightPx) {
+    return values;
+  }
+  return {
+    ...values,
+    widthPx: preset.widthPx,
+    heightPx: preset.heightPx,
+    rotationDeg: 0,
+  };
 }
 
 export default function AdminTablesPage() {
@@ -74,6 +125,7 @@ export default function AdminTablesPage() {
   const [layoutPreviewValues, setLayoutPreviewValues] = useState<Partial<TableFormValues> | null>(null);
   const [layoutDrafts, setLayoutDrafts] = useState<Record<number, { positionX: number; positionY: number }>>({});
   const [layoutSaving, setLayoutSaving] = useState(false);
+  const [tablePresetKey, setTablePresetKey] = useState<TablePresetKey>('FOUR');
   const [messageApi, contextHolder] = message.useMessage();
 
   const selectedArea = useMemo(() => areas.find((area) => area.id === areaId), [areaId, areas]);
@@ -99,6 +151,10 @@ export default function AdminTablesPage() {
   );
   const layoutChanged = Object.keys(layoutDrafts).length > 0;
   const checkinUrl = tableQr ? buildCheckinUrl(tableQr.checkinPath) : '';
+  const previewTableId = editingTable?.id ?? -1;
+  const previewSeatCount =
+    tablePresets[tablePresetKey].seatCount ?? (editingTable ? seatCountsByTable[editingTable.id] ?? 0 : 0);
+  const previewSeatCounts = { [previewTableId]: previewSeatCount };
 
   const loadAreas = useCallback(async () => {
     try {
@@ -128,6 +184,7 @@ export default function AdminTablesPage() {
 
   function openCreateModal() {
     setEditingTable(null);
+    setTablePresetKey('FOUR');
     form.setFieldsValue({
       areaId,
       tableNo: '',
@@ -137,8 +194,8 @@ export default function AdminTablesPage() {
       displayOrder: undefined,
       positionX: 80,
       positionY: 80,
-      widthPx: 260,
-      heightPx: 96,
+      widthPx: tablePresets.FOUR.widthPx,
+      heightPx: tablePresets.FOUR.heightPx,
       rotationDeg: 0,
       status: 'ACTIVE',
     });
@@ -148,6 +205,7 @@ export default function AdminTablesPage() {
 
   function openEditModal(table: StudyTable) {
     setEditingTable(table);
+    setTablePresetKey(inferTablePreset(table));
     form.setFieldsValue({
       areaId: table.areaId,
       tableNo: table.tableNo,
@@ -166,9 +224,26 @@ export default function AdminTablesPage() {
     setModalOpen(true);
   }
 
+  function selectTablePreset(nextPresetKey: TablePresetKey) {
+    setTablePresetKey(nextPresetKey);
+    const preset = tablePresets[nextPresetKey];
+    if (preset.widthPx && preset.heightPx) {
+      const nextValues = {
+        ...form.getFieldsValue(),
+        widthPx: preset.widthPx,
+        heightPx: preset.heightPx,
+        rotationDeg: 0,
+      };
+      form.setFieldsValue(nextValues);
+      setLayoutPreviewValues(nextValues);
+    } else {
+      setLayoutPreviewValues(form.getFieldsValue());
+    }
+  }
+
   async function saveTable() {
     await form.validateFields();
-    const values = form.getFieldsValue(true) as TableFormValues;
+    const values = applyPresetValues(form.getFieldsValue(true) as TableFormValues, tablePresetKey);
     setSaving(true);
     try {
       if (editingTable) {
@@ -297,9 +372,9 @@ export default function AdminTablesPage() {
         record.rowNo && record.columnNo ? `第 ${record.rowNo} 排 / 第 ${record.columnNo} 列` : '-',
     },
     {
-      title: '桌面尺寸',
+      title: '桌型',
       width: 130,
-      render: (_, record) => `${record.widthPx ?? 260} × ${record.heightPx ?? 96}`,
+      render: (_, record) => getTablePresetLabel(record, seatCountsByTable[record.id] ?? 0),
     },
     { title: '展示顺序', dataIndex: 'displayOrder', width: 110, render: (value) => value ?? '-' },
     {
@@ -457,6 +532,15 @@ export default function AdminTablesPage() {
           <Form.Item label="名称" name="name" rules={[{ max: 64, message: '名称不能超过 64 个字符' }]}>
             <Input placeholder={selectedArea ? `${selectedArea.name} T01` : '例如 图书馆 A 区 T01'} />
           </Form.Item>
+          <Form.Item label="桌型">
+            <Segmented
+              block
+              className="table-preset-segmented"
+              options={tablePresetOptions}
+              value={tablePresetKey}
+              onChange={(value) => selectTablePreset(value as TablePresetKey)}
+            />
+          </Form.Item>
           <div className="resource-layout-fields">
             <Form.Item label="行号" name="rowNo">
               <InputNumber min={1} precision={0} placeholder="1" />
@@ -468,17 +552,19 @@ export default function AdminTablesPage() {
               <InputNumber min={1} precision={0} placeholder="自动" />
             </Form.Item>
           </div>
-          <div className="resource-layout-fields">
-            <Form.Item label="桌宽 px" name="widthPx">
-              <InputNumber min={80} precision={0} placeholder="260" />
-            </Form.Item>
-            <Form.Item label="桌高 px" name="heightPx">
-              <InputNumber min={48} precision={0} placeholder="96" />
-            </Form.Item>
-            <Form.Item label="旋转角度" name="rotationDeg">
-              <InputNumber precision={0} placeholder="0" />
-            </Form.Item>
-          </div>
+          {tablePresetKey === 'CUSTOM' ? (
+            <div className="resource-layout-fields">
+              <Form.Item label="桌宽 px" name="widthPx">
+                <InputNumber min={80} precision={0} placeholder="220" />
+              </Form.Item>
+              <Form.Item label="桌高 px" name="heightPx">
+                <InputNumber min={48} precision={0} placeholder="96" />
+              </Form.Item>
+              <Form.Item label="旋转角度" name="rotationDeg">
+                <InputNumber precision={0} placeholder="0" />
+              </Form.Item>
+            </div>
+          ) : null}
           {editingTable ? (
             <Form.Item label="状态" name="status" rules={[{ required: true, message: '请选择状态' }]}>
               <Select
@@ -497,10 +583,10 @@ export default function AdminTablesPage() {
           </div>
           <TableLayoutPreview
             editable
-            seatCounts={editingTable ? seatCountsByTable : {}}
+            seatCounts={previewSeatCounts}
             tables={[
               {
-                id: editingTable?.id ?? -1,
+                id: previewTableId,
                 areaId: layoutPreviewValues?.areaId ?? areaId,
                 tableNo: layoutPreviewValues?.tableNo || editingTable?.tableNo || 'T01',
                 name: layoutPreviewValues?.name || editingTable?.name || null,

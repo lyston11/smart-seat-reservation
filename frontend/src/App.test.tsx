@@ -902,7 +902,7 @@ describe('App', () => {
     expect(screen.queryByText('入口')).toBeNull();
     expect(screen.queryByText('采光窗')).toBeNull();
     expect(screen.queryByText('服务台')).toBeNull();
-    expect(await screen.findByText('2人桌')).toBeTruthy();
+    expect((await screen.findAllByText('2人桌')).length).toBeGreaterThan(0);
     const tableButton = await screen.findByRole('button', { name: '编辑 T01' }) as HTMLElement;
     tableButton.setPointerCapture = vi.fn();
     tableButton.releasePointerCapture = vi.fn();
@@ -933,6 +933,68 @@ describe('App', () => {
         expect.objectContaining({ method: 'PUT' }),
       );
     });
+  });
+
+  it('offers admin table presets and hides custom size fields by default', async () => {
+    window.localStorage.setItem('smart-seat-auth-token', 'test-token');
+    window.localStorage.setItem(
+      'smart-seat-auth-user',
+      JSON.stringify({ id: 2, name: 'Demo Admin', studentNo: 'admin', role: 'ADMIN' }),
+    );
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith('/api/areas')) {
+          return {
+            ok: true,
+            json: async () => ({
+              success: true,
+              code: 'OK',
+              message: 'ok',
+              data: [
+                {
+                  id: 1,
+                  name: 'A 区',
+                  floor: '1F',
+                  description: null,
+                  status: 'ACTIVE',
+                  openTime: '08:00:00',
+                  closeTime: '22:00:00',
+                },
+              ],
+            }),
+          };
+        }
+        return {
+          ok: true,
+          json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+        };
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/admin/tables']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '新增桌子' }));
+
+    expect(await screen.findByText('实时预览')).toBeTruthy();
+    expect((await screen.findAllByText('4人桌')).length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByLabelText('桌宽 px')).toBeNull();
+    expect(screen.queryByLabelText('桌高 px')).toBeNull();
+
+    fireEvent.click(screen.getByText('3人桌'));
+    await waitFor(() => {
+      expect(screen.getAllByText('3人桌').length).toBeGreaterThanOrEqual(2);
+    });
+
+    fireEvent.click(screen.getByText('自定义'));
+    expect(await screen.findByLabelText('桌宽 px')).toBeTruthy();
+    expect(await screen.findByLabelText('桌高 px')).toBeTruthy();
   });
 
   it('publishes admin seat slots with table batch selection and time templates', async () => {
