@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, DatePicker, Form, Input, message, Select, Space, Statistic, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { listAreas } from '../api/areas';
+import { listSeats } from '../api/seats';
 import {
   cancelReservation,
   checkInReservation,
@@ -13,7 +14,7 @@ import {
 } from '../api/seatSlots';
 import SeatMap from '../components/SeatMap';
 import type { ReservationResult, ReservationRule } from '../types/reservation';
-import type { Area, SeatSlot } from '../types/seat';
+import type { Area, Seat, SeatSlot } from '../types/seat';
 import {
   formatDateTime,
   formatReservationLocation,
@@ -26,10 +27,12 @@ export default function SeatSlotsPage() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [areaId, setAreaId] = useState(1);
   const [areaTimeInitialized, setAreaTimeInitialized] = useState(false);
+  const [timeInitializedFromSlots, setTimeInitializedFromSlots] = useState(false);
   const [date, setDate] = useState(dayjs());
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('22:00');
   const [slots, setSlots] = useState<SeatSlot[]>([]);
+  const [seats, setSeats] = useState<Seat[]>([]);
   const [activeReservation, setActiveReservation] = useState<ReservationResult | null>(null);
   const [reservationRules, setReservationRules] = useState<ReservationRule | null>(null);
   const [checkinCode, setCheckinCode] = useState('');
@@ -44,15 +47,15 @@ export default function SeatSlotsPage() {
   const startTimeText = useMemo(() => normalizeInputTime(startTime), [startTime]);
   const endTimeText = useMemo(() => normalizeInputTime(endTime), [endTime]);
   const visibleSlots = useMemo(
-    () => buildVisibleSlotsForSelectedTime(slots, startTimeText, endTimeText),
-    [endTimeText, slots, startTimeText],
+    () => buildVisibleSlotsForSelectedTime(slots, seats, areaId, dateText, startTimeText, endTimeText),
+    [areaId, dateText, endTimeText, seats, slots, startTimeText],
   );
   const availableSeatCount = useMemo(
     () => visibleSlots.filter((slot) => slot.status === 'AVAILABLE').length,
     [visibleSlots],
   );
   const occupiedSeatCount = useMemo(
-    () => visibleSlots.filter((slot) => slot.status !== 'AVAILABLE').length,
+    () => visibleSlots.filter((slot) => slot.status !== 'AVAILABLE' && slot.status !== 'UNPUBLISHED').length,
     [visibleSlots],
   );
 
@@ -86,13 +89,23 @@ export default function SeatSlotsPage() {
   const loadSlots = useCallback(async () => {
     setLoading(true);
     try {
-      setSlots(await listSeatSlots(areaId, dateText));
+      const [nextSlots, nextSeats] = await Promise.all([listSeatSlots(areaId, dateText), listSeats(areaId)]);
+      setSlots(nextSlots);
+      setSeats(nextSeats);
+      if (!timeInitializedFromSlots) {
+        const firstSlot = nextSlots.find((slot) => slot.status === 'AVAILABLE') ?? nextSlots[0];
+        if (firstSlot) {
+          setStartTime(firstSlot.startTime.slice(0, 5));
+          setEndTime(firstSlot.endTime.slice(0, 5));
+          setTimeInitializedFromSlots(true);
+        }
+      }
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '加载座位失败');
     } finally {
       setLoading(false);
     }
-  }, [areaId, dateText, messageApi]);
+  }, [areaId, dateText, messageApi, timeInitializedFromSlots]);
 
   const loadRules = useCallback(async () => {
     try {
@@ -180,6 +193,7 @@ export default function SeatSlotsPage() {
     setAreaId(area.id);
     setStartTime(area.openTime.slice(0, 5));
     setEndTime(area.closeTime.slice(0, 5));
+    setTimeInitializedFromSlots(false);
   }
 
   return (
@@ -321,7 +335,13 @@ export default function SeatSlotsPage() {
         <span>预约后 {reservationRules?.checkinGraceMinutes ?? '-'} 分钟内未签到将自动释放</span>
       </div>
 
-      <SeatMap slots={visibleSlots} loading={loading} loadingSlotId={reservingId} onReserve={reserve} />
+      <SeatMap
+        slots={visibleSlots}
+        loading={loading}
+        loadingSlotId={reservingId}
+        emptyDescription="当前区域暂无真实座位，请管理员先维护区域、桌子和座位"
+        onReserve={reserve}
+      />
     </div>
   );
 }
@@ -346,14 +366,23 @@ function getAvailableWindow(slots: SeatSlot[], startTime: string, endTime: strin
   return slots.find((slot) => slot.status === 'AVAILABLE' && contains(slot, startTime, endTime));
 }
 
-function buildVisibleSlotsForSelectedTime(slots: SeatSlot[], startTime: string, endTime: string) {
+function buildVisibleSlotsForSelectedTime(
+  slots: SeatSlot[],
+  seats: Seat[],
+  areaId: number,
+  slotDate: string,
+  startTime: string,
+  endTime: string,
+) {
   const bySeat = new Map<number, SeatSlot[]>();
   slots.forEach((slot) => {
     bySeat.set(slot.seatId, [...(bySeat.get(slot.seatId) ?? []), slot]);
   });
 
-  return Array.from(bySeat.values())
-    .map((seatSlots) => {
+  return seats
+    .filter((seat) => seat.status === 'ACTIVE')
+    .map((seat) => {
+      const seatSlots = bySeat.get(seat.id) ?? [];
       const busySlot = getBusySlot(seatSlots, startTime, endTime);
       if (busySlot) {
         return { ...busySlot, startTime, endTime };
@@ -362,7 +391,56 @@ function buildVisibleSlotsForSelectedTime(slots: SeatSlot[], startTime: string, 
       if (availableWindow) {
         return { ...availableWindow, startTime, endTime };
       }
-      return null;
+      return buildUnpublishedSlot(seat, areaId, slotDate, startTime, endTime);
     })
-    .filter((slot): slot is SeatSlot => slot !== null);
+    .sort(bySeatMapPosition);
+}
+
+function buildUnpublishedSlot(
+  seat: Seat,
+  areaId: number,
+  slotDate: string,
+  startTime: string,
+  endTime: string,
+): SeatSlot {
+  return {
+    id: -seat.id,
+    seatId: seat.id,
+    seatNo: seat.seatNo,
+    tableId: seat.tableId,
+    tableNo: seat.tableNo,
+    tableRowNo: seat.tableRowNo,
+    tableColumnNo: seat.tableColumnNo,
+    tableDisplayOrder: seat.tableDisplayOrder,
+    tablePositionX: seat.tablePositionX,
+    tablePositionY: seat.tablePositionY,
+    tableWidthPx: seat.tableWidthPx,
+    tableHeightPx: seat.tableHeightPx,
+    tableRotationDeg: seat.tableRotationDeg,
+    seatLabel: seat.seatLabel,
+    seatSide: seat.seatSide,
+    seatOrder: seat.seatOrder,
+    rowNo: seat.rowNo,
+    columnNo: seat.columnNo,
+    displayOrder: seat.displayOrder,
+    areaId,
+    slotDate,
+    startTime,
+    endTime,
+    status: 'UNPUBLISHED',
+    reservedBy: null,
+    reservationId: null,
+  };
+}
+
+function bySeatMapPosition(left: SeatSlot, right: SeatSlot) {
+  const tableCompare = (left.tableNo ?? '').localeCompare(right.tableNo ?? '');
+  if (tableCompare !== 0) {
+    return tableCompare;
+  }
+  const seatOrderCompare = (left.seatOrder ?? Number.MAX_SAFE_INTEGER) - (right.seatOrder ?? Number.MAX_SAFE_INTEGER);
+  if (seatOrderCompare !== 0) {
+    return seatOrderCompare;
+  }
+  return (left.seatNo ?? String(left.seatId)).localeCompare(right.seatNo ?? String(right.seatId));
 }

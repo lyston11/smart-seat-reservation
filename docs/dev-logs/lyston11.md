@@ -1,5 +1,50 @@
 # lyston11 开发日志
 
+## 2026-05-19
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-visual-table-layout-editor
+- 目标: 修复学生端和管理员端数据“不互通、像 mock”的问题，打通真实区域、桌子、座位、开放时段、预约和看板状态链路。
+
+### 本次改动
+- 学生端座位页改为同时读取 `/api/seat-slots` 和 `/api/seats`，以数据库真实座位作为座位地图基础。
+- 当管理员已维护真实座位但当前日期/时段未开放时，学生端不再显示空白，而是显示真实座位并标记为“未开放”且不可预约。
+- 后端开放 `GET /api/seats` 给学生和管理员共同读取，座位新增返回桌位行列、坐标、尺寸、旋转等布局字段。
+- 前端座位地图新增 `UNPUBLISHED` 状态，支持真实座位未开放展示，并把统计口径调整为不把“未开放”算作占用。
+- 修复学生签退/取消接口契约，`POST /api/reservations/{id}/check-out` 和 `/cancel` 支持无请求体，避免前端空 body 调用触发 500。
+- 全局异常处理新增未处理异常日志，并把请求体缺失/不可读统一返回 400，方便开发阶段定位问题。
+- 补充前端测试，覆盖“真实座位存在但没有开放时段时显示未开放座位”的学生端场景。
+- 使用真实本地后端跑通管理员发布时段、学生预约、管理员看板统计、学生取消释放的完整联动链路。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/common/GlobalExceptionHandler.java
+- backend/src/main/java/com/lyston/smartseat/reservation/ReservationController.java
+- backend/src/main/java/com/lyston/smartseat/seat/
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/components/SeatMap.tsx
+- frontend/src/constants/seatSlotStatus.ts
+- frontend/src/types/seat.ts
+- frontend/src/App.test.tsx
+- frontend/src/components/SeatMap.test.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端 3 个测试文件、15 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已在 `backend` 目录运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 43 个测试通过。
+- 已用真实 API 冒烟验证：学生读取真实区域和座位，管理员发布 `2026-05-23 18:00-20:00`，学生预约后座位状态变为 `RESERVED` 且看板活跃预约为 1，学生取消后座位回到 `AVAILABLE` 且看板活跃预约为 0。
+
+### 遗留问题
+- 现在学生端会展示真实未开放座位，但管理员侧还可以继续加“一键开放今日/明日常用时段”，减少比赛演示时手动选择座位和时间段的步骤。
+- 本次真实联调产生的临时预约已通过正式取消接口清理；未来如做自动 E2E，建议使用独立测试库或专门 demo seed 接口。
+
+### 对其他成员的影响
+- 学生端座位地图现在依赖 `/api/seats` 返回桌位布局字段，后端调整座位响应结构时需要同步前端 `Seat` 类型。
+- `UNPUBLISHED` 是前端合成状态，不会写入数据库；后端真实状态仍是 `AVAILABLE`、`RESERVED`、`USING`、`ABNORMAL`。
+- 签退/取消接口无需请求体，前端可以直接按空 body 或无 body 调用。
+
 ## 2026-05-18
 
 ### 任务

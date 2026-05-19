@@ -14,6 +14,22 @@ public class Seat {
     private Long tableId;
     @TableField(exist = false)
     private String tableNo;
+    @TableField(exist = false)
+    private Integer tableRowNo;
+    @TableField(exist = false)
+    private Integer tableColumnNo;
+    @TableField(exist = false)
+    private Integer tableDisplayOrder;
+    @TableField(exist = false)
+    private Integer tablePositionX;
+    @TableField(exist = false)
+    private Integer tablePositionY;
+    @TableField(exist = false)
+    private Integer tableWidthPx;
+    @TableField(exist = false)
+    private Integer tableHeightPx;
+    @TableField(exist = false)
+    private Integer tableRotationDeg;
     private String seatNo;
     private String seatLabel;
     private String seatSide;
@@ -55,6 +71,70 @@ public class Seat {
 
     public void setTableNo(String tableNo) {
         this.tableNo = tableNo;
+    }
+
+    public Integer getTableRowNo() {
+        return tableRowNo;
+    }
+
+    public void setTableRowNo(Integer tableRowNo) {
+        this.tableRowNo = tableRowNo;
+    }
+
+    public Integer getTableColumnNo() {
+        return tableColumnNo;
+    }
+
+    public void setTableColumnNo(Integer tableColumnNo) {
+        this.tableColumnNo = tableColumnNo;
+    }
+
+    public Integer getTableDisplayOrder() {
+        return tableDisplayOrder;
+    }
+
+    public void setTableDisplayOrder(Integer tableDisplayOrder) {
+        this.tableDisplayOrder = tableDisplayOrder;
+    }
+
+    public Integer getTablePositionX() {
+        return tablePositionX;
+    }
+
+    public void setTablePositionX(Integer tablePositionX) {
+        this.tablePositionX = tablePositionX;
+    }
+
+    public Integer getTablePositionY() {
+        return tablePositionY;
+    }
+
+    public void setTablePositionY(Integer tablePositionY) {
+        this.tablePositionY = tablePositionY;
+    }
+
+    public Integer getTableWidthPx() {
+        return tableWidthPx;
+    }
+
+    public void setTableWidthPx(Integer tableWidthPx) {
+        this.tableWidthPx = tableWidthPx;
+    }
+
+    public Integer getTableHeightPx() {
+        return tableHeightPx;
+    }
+
+    public void setTableHeightPx(Integer tableHeightPx) {
+        this.tableHeightPx = tableHeightPx;
+    }
+
+    public Integer getTableRotationDeg() {
+        return tableRotationDeg;
+    }
+
+    public void setTableRotationDeg(Integer tableRotationDeg) {
+        this.tableRotationDeg = tableRotationDeg;
     }
 
     public String getSeatNo() {

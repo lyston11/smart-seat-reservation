@@ -15,6 +15,14 @@ export type Seat = {
   areaId: number;
   tableId: number;
   tableNo: string | null;
+  tableRowNo: number | null;
+  tableColumnNo: number | null;
+  tableDisplayOrder: number | null;
+  tablePositionX: number | null;
+  tablePositionY: number | null;
+  tableWidthPx: number | null;
+  tableHeightPx: number | null;
+  tableRotationDeg: number | null;
   seatNo: string;
   seatLabel: string | null;
   seatSide: string | null;
@@ -52,7 +60,7 @@ export type StudyTableQr = {
   checkinPath: string;
 };
 
-export type SeatSlotStatus = 'AVAILABLE' | 'RESERVED' | 'USING' | 'ABNORMAL';
+export type SeatSlotStatus = 'AVAILABLE' | 'RESERVED' | 'USING' | 'ABNORMAL' | 'UNPUBLISHED';
 
 export type SeatSlot = {
   id: number;

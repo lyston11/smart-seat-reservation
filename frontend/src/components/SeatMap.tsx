@@ -7,6 +7,7 @@ type SeatMapProps = {
   slots: SeatSlot[];
   loading?: boolean;
   loadingSlotId?: number | null;
+  emptyDescription?: string;
   onReserve: (slot: SeatSlot) => void;
 };
 
@@ -237,7 +238,13 @@ function getTableSurfaceStyle(table: TableGroup): CSSProperties {
   };
 }
 
-export default function SeatMap({ slots, loading = false, loadingSlotId, onReserve }: SeatMapProps) {
+export default function SeatMap({
+  slots,
+  loading = false,
+  loadingSlotId,
+  emptyDescription = '当前区域日期暂无开放座位',
+  onReserve,
+}: SeatMapProps) {
   const groups = groupSlots(slots);
 
   if (loading) {
@@ -251,7 +258,7 @@ export default function SeatMap({ slots, loading = false, loadingSlotId, onReser
   if (groups.length === 0) {
     return (
       <div className="empty-panel">
-        <Empty description="当前区域日期暂无开放座位" />
+        <Empty description={emptyDescription} />
       </div>
     );
   }
@@ -262,7 +269,7 @@ export default function SeatMap({ slots, loading = false, loadingSlotId, onReser
         <section className="seat-map-section" key={group.timeRange}>
           <div className="seat-map-section-header">
             <strong>{group.timeRange}</strong>
-            <span>{group.totalSeats} 个开放座位</span>
+            <span>{group.totalSeats} 个座位</span>
           </div>
           <div className={`seat-room-layout ${hasCoordinateLayout(group.tables) ? 'seat-room-layout-coordinate' : ''}`}>
             <div className="seat-room-feature seat-room-door">入口</div>

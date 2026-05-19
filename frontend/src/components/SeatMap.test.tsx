@@ -95,7 +95,7 @@ describe('SeatMap', () => {
     render(<SeatMap slots={slots} onReserve={onReserve} />);
 
     expect(screen.getByText('09:00-10:00')).toBeTruthy();
-    expect(screen.getByText('4 个开放座位')).toBeTruthy();
+    expect(screen.getByText('4 个座位')).toBeTruthy();
     const table = screen.getByLabelText('A桌');
     expect(within(table).getByText('A桌')).toBeTruthy();
 
@@ -215,5 +215,26 @@ describe('SeatMap', () => {
 
     expect(screen.getByText('未分配桌位')).toBeTruthy();
     expect(screen.getByRole('button', { name: /L1/ })).toBeTruthy();
+  });
+
+  it('renders unpublished real seats as disabled seats', () => {
+    render(
+      <SeatMap
+        slots={[
+          makeSlot({
+            id: -41,
+            seatId: 41,
+            seatNo: 'A-041',
+            seatLabel: '41号',
+            status: 'UNPUBLISHED',
+          }),
+        ]}
+        onReserve={vi.fn()}
+      />,
+    );
+
+    const seat = screen.getByRole('button', { name: /41号/ });
+    expect(seat).toHaveProperty('disabled', true);
+    expect(screen.getByText('未开放')).toBeTruthy();
   });
 });

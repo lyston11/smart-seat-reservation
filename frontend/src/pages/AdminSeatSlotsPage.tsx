@@ -40,6 +40,7 @@ const statusText: Record<SeatSlotStatus, string> = {
   RESERVED: '已预约',
   USING: '使用中',
   ABNORMAL: '异常占用',
+  UNPUBLISHED: '未开放',
 };
 
 const statusColor: Record<SeatSlotStatus, string> = {
@@ -47,6 +48,7 @@ const statusColor: Record<SeatSlotStatus, string> = {
   RESERVED: 'blue',
   USING: 'orange',
   ABNORMAL: 'red',
+  UNPUBLISHED: 'default',
 };
 
 export default function AdminSeatSlotsPage() {

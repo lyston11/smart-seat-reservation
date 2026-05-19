@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/seats")
-@RequireRole(UserRole.ADMIN)
 public class SeatController {
 
     private final SeatService seatService;
@@ -27,16 +26,19 @@ public class SeatController {
     }
 
     @GetMapping
+    @RequireRole({UserRole.STUDENT, UserRole.ADMIN})
     public ApiResponse<List<SeatResponse>> listSeats(@RequestParam Long areaId) {
         return ApiResponse.ok(seatService.listSeats(areaId));
     }
 
     @PostMapping
+    @RequireRole(UserRole.ADMIN)
     public ApiResponse<SeatResponse> createSeat(@Valid @RequestBody CreateSeatRequest request) {
         return ApiResponse.ok(seatService.createSeat(request));
     }
 
     @PutMapping("/{seatId}")
+    @RequireRole(UserRole.ADMIN)
     public ApiResponse<SeatResponse> updateSeat(
             @PathVariable Long seatId,
             @Valid @RequestBody UpdateSeatRequest request
@@ -45,6 +47,7 @@ public class SeatController {
     }
 
     @PatchMapping("/{seatId}/status")
+    @RequireRole(UserRole.ADMIN)
     public ApiResponse<SeatResponse> updateSeatStatus(
             @PathVariable Long seatId,
             @Valid @RequestBody UpdateSeatStatusRequest request
