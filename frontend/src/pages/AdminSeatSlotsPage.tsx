@@ -20,6 +20,8 @@ import {
   adminMarkSeatSlotAbnormal,
   adminReleaseSeatSlot,
   adminRestoreSeatSlot,
+} from '../api/adminSeatSlots';
+import {
   cancelSeatSlot,
   listSeatSlots,
   publishSeatSlots,

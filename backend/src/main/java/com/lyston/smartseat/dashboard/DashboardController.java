@@ -1,6 +1,7 @@
 package com.lyston.smartseat.dashboard;
 
 import com.lyston.smartseat.auth.RequireRole;
+import com.lyston.smartseat.common.ApiPaths;
 import com.lyston.smartseat.common.ApiResponse;
 import com.lyston.smartseat.user.UserRole;
 import java.time.LocalDate;
@@ -11,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/admin/dashboard")
+@RequestMapping(ApiPaths.ADMIN_DASHBOARD)
 @RequireRole(UserRole.ADMIN)
 public class DashboardController {
 

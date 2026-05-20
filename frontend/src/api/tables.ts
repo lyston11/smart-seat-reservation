@@ -1,4 +1,5 @@
-import { request } from './http';
+import { apiPaths, withPath } from './endpoints';
+import { get, patch, post, put } from './http';
 import type { StudyTable, StudyTableQr, StudyTableStatus } from '../types/seat';
 
 export type CreateTablePayload = {
@@ -31,31 +32,21 @@ export type UpdateTablePayload = {
 };
 
 export function listTables(areaId: number) {
-  const params = new URLSearchParams({ areaId: String(areaId) });
-  return request<StudyTable[]>(`/api/tables?${params.toString()}`);
+  return get<StudyTable[]>(apiPaths.tables, { areaId });
 }
 
 export function createTable(payload: CreateTablePayload) {
-  return request<StudyTable>('/api/tables', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  return post<StudyTable>(apiPaths.tables, payload);
 }
 
 export function updateTable(tableId: number, payload: UpdateTablePayload) {
-  return request<StudyTable>(`/api/tables/${tableId}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  });
+  return put<StudyTable>(withPath(apiPaths.tables, tableId), payload);
 }
 
 export function updateTableStatus(tableId: number, status: StudyTableStatus) {
-  return request<StudyTable>(`/api/tables/${tableId}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status }),
-  });
+  return patch<StudyTable>(withPath(apiPaths.tables, tableId, 'status'), { status });
 }
 
 export function getTableCheckinQr(tableId: number) {
-  return request<StudyTableQr>(`/api/tables/${tableId}/checkin-qr`);
+  return get<StudyTableQr>(withPath(apiPaths.tables, tableId, 'checkin-qr'));
 }

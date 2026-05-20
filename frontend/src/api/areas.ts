@@ -1,8 +1,9 @@
-import { request } from './http';
+import { apiPaths, withPath } from './endpoints';
+import { get, patch, post, put } from './http';
 import type { Area, AreaStatus } from '../types/seat';
 
 export function listAreas() {
-  return request<Area[]>('/api/areas');
+  return get<Area[]>(apiPaths.areas);
 }
 
 export type CreateAreaPayload = {
@@ -25,22 +26,13 @@ export type UpdateAreaPayload = {
 };
 
 export function createArea(payload: CreateAreaPayload) {
-  return request<Area>('/api/areas', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  return post<Area>(apiPaths.areas, payload);
 }
 
 export function updateArea(areaId: number, payload: UpdateAreaPayload) {
-  return request<Area>(`/api/areas/${areaId}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  });
+  return put<Area>(withPath(apiPaths.areas, areaId), payload);
 }
 
 export function updateAreaStatus(areaId: number, status: AreaStatus) {
-  return request<Area>(`/api/areas/${areaId}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status }),
-  });
+  return patch<Area>(withPath(apiPaths.areas, areaId, 'status'), { status });
 }

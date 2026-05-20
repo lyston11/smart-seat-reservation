@@ -28,7 +28,7 @@ import {
   markReservationWifiPresence,
   reactivateSeatLock,
   releaseSeatLock,
-} from '../api/seatSlots';
+} from '../api/reservations';
 import type { ReservationResult } from '../types/reservation';
 import {
   canCancelReservation,

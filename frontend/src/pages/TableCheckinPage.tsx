@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert, Button, Form, Input, Result, Space, Typography, message } from 'antd';
 import { Link, useSearchParams } from 'react-router-dom';
-import { tableCheckInReservation } from '../api/seatSlots';
+import { tableCheckInReservation } from '../api/reservations';
 import type { ReservationResult } from '../types/reservation';
 
 type CheckinForm = {

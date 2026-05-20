@@ -4,6 +4,50 @@
 
 ### 任务
 - Issue: 暂无
+- 分支: feature/lyston11-api-contract-cleanup
+- 目标: 从最新 `main` 新建分支，工程化规整 API 接口组织，减少路径硬编码和前端 API 模块职责混杂。
+
+### 本次改动
+- 后端新增 `ApiPaths`，统一维护 `/api`、管理员接口和资源接口路径常量，Controller 不再散写完整路径字符串。
+- 后端将预约规则接口拆到 `ReservationRuleController`，将管理员手动维护预约任务拆到 `AdminReservationController`。
+- 管理员维护任务路径规整为 `/api/admin/reservations/*`，学生预约主流程继续保留在 `/api/reservations/*`。
+- 前端新增 `api/endpoints.ts`，集中维护路径常量和 `withPath` 路径变量拼接。
+- 前端增强 `api/http.ts`，提供 `get/post/put/patch/del` 方法、统一 query 拼接、统一 JSON body 处理。
+- 前端 API 按业务域拆分：`seatSlots.ts` 只保留开放时段，新增 `reservations.ts`、`reservationRules.ts`、`adminSeatSlots.ts`、`adminReservations.ts`。
+- 页面层 import 调整为按业务域引用 API，不再从 `seatSlots.ts` 读取预约、规则、管理员操作等混合职责函数。
+- 新增 `docs/architecture/API_CONTRACT.md`，记录统一响应格式、后端路径分组、前端 API 模块边界和维护规则。
+- 更新 `docs/API_EXAMPLES.md` 和 README，补充接口契约文档入口，并同步管理员维护任务新路径。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/common/ApiPaths.java
+- backend/src/main/java/com/lyston/smartseat/**/**Controller.java
+- frontend/src/api/
+- frontend/src/pages/
+- docs/architecture/API_CONTRACT.md
+- docs/API_EXAMPLES.md
+- README.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 63 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端 25 个测试通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式问题。
+
+### 遗留问题
+- 本次没有大规模重命名已被前端使用的学生接口，避免破坏现有比赛演示流程。
+- 后续如果要进一步规范 REST 风格，可以单独评估是否将动作型接口增加兼容别名，再分阶段迁移前端。
+
+### 对其他成员的影响
+- 新增后端接口时优先更新 `ApiPaths` 和 `docs/architecture/API_CONTRACT.md`。
+- 新增前端请求时优先放入对应业务 API 模块，不要把不相关接口继续塞进 `seatSlots.ts`。
+- 管理员手动维护预约任务的新路径为 `/api/admin/reservations/*`。
+
+## 2026-05-20
+
+### 任务
+- Issue: 暂无
 - 分支: feature/lyston11-wifi-checkin
 - 目标: 明确项目初期数据库部署方式为每位成员本机一套 MySQL / Redis，并收紧本地 Compose 默认端口暴露范围。
 

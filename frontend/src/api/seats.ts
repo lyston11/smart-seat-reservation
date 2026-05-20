@@ -1,9 +1,9 @@
-import { request } from './http';
+import { apiPaths, withPath } from './endpoints';
+import { get, patch, post, put } from './http';
 import type { Seat, SeatStatus } from '../types/seat';
 
 export function listSeats(areaId: number) {
-  const params = new URLSearchParams({ areaId: String(areaId) });
-  return request<Seat[]>(`/api/seats?${params.toString()}`);
+  return get<Seat[]>(apiPaths.seats, { areaId });
 }
 
 export type CreateSeatPayload = {
@@ -32,22 +32,13 @@ export type UpdateSeatPayload = {
 };
 
 export function createSeat(payload: CreateSeatPayload) {
-  return request<Seat>('/api/seats', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
+  return post<Seat>(apiPaths.seats, payload);
 }
 
 export function updateSeat(seatId: number, payload: UpdateSeatPayload) {
-  return request<Seat>(`/api/seats/${seatId}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  });
+  return put<Seat>(withPath(apiPaths.seats, seatId), payload);
 }
 
 export function updateSeatStatus(seatId: number, status: SeatStatus) {
-  return request<Seat>(`/api/seats/${seatId}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status }),
-  });
+  return patch<Seat>(withPath(apiPaths.seats, seatId, 'status'), { status });
 }

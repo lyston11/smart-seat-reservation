@@ -2,6 +2,7 @@ package com.lyston.smartseat.reservation;
 
 import com.lyston.smartseat.auth.CurrentUser;
 import com.lyston.smartseat.auth.RequireRole;
+import com.lyston.smartseat.common.ApiPaths;
 import com.lyston.smartseat.common.ApiResponse;
 import com.lyston.smartseat.network.ClientIpResolver;
 import com.lyston.smartseat.user.UserRole;
@@ -11,42 +12,24 @@ import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/reservations")
+@RequestMapping(ApiPaths.RESERVATIONS)
 public class ReservationController {
 
     private final ReservationService reservationService;
-    private final ReservationRuleService reservationRuleService;
     private final ClientIpResolver clientIpResolver;
 
     public ReservationController(
             ReservationService reservationService,
-            ReservationRuleService reservationRuleService,
             ClientIpResolver clientIpResolver
     ) {
         this.reservationService = reservationService;
-        this.reservationRuleService = reservationRuleService;
         this.clientIpResolver = clientIpResolver;
-    }
-
-    @GetMapping("/rules")
-    public ApiResponse<ReservationRuleResponse> getReservationRules() {
-        return ApiResponse.ok(reservationRuleService.getRules());
-    }
-
-    @PutMapping("/rules")
-    @RequireRole(UserRole.ADMIN)
-    public ApiResponse<ReservationRuleResponse> updateReservationRules(
-            @Valid @RequestBody UpdateReservationRuleRequest request,
-            CurrentUser currentUser
-    ) {
-        return ApiResponse.ok(reservationRuleService.updateRules(request, currentUser.id()));
     }
 
     @GetMapping
@@ -167,23 +150,5 @@ public class ReservationController {
             CurrentUser currentUser
     ) {
         return ApiResponse.ok(reservationService.cancel(reservationId, currentUser.id()));
-    }
-
-    @PostMapping("/expire-overdue")
-    @RequireRole(UserRole.ADMIN)
-    public ApiResponse<Integer> expireOverdueReservations(@RequestParam(defaultValue = "100") int limit) {
-        return ApiResponse.ok(reservationService.expireOverdueReservations(limit));
-    }
-
-    @PostMapping("/release-wifi-offline")
-    @RequireRole(UserRole.ADMIN)
-    public ApiResponse<Integer> releaseWifiOfflineReservations(@RequestParam(defaultValue = "100") int limit) {
-        return ApiResponse.ok(reservationService.releaseWifiOfflineReservations(limit));
-    }
-
-    @PostMapping("/release-expired-seat-locks")
-    @RequireRole(UserRole.ADMIN)
-    public ApiResponse<Integer> releaseExpiredSeatLocks(@RequestParam(defaultValue = "100") int limit) {
-        return ApiResponse.ok(reservationService.releaseExpiredSeatLocks(limit));
     }
 }

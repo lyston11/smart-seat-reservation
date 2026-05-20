@@ -3,15 +3,15 @@ import { Button, Card, Form, Input, message, Segmented, Select, Space, Statistic
 import dayjs from 'dayjs';
 import { listAreas } from '../api/areas';
 import { listSeats } from '../api/seats';
+import { listSeatSlots } from '../api/seatSlots';
+import { getReservationRules } from '../api/reservationRules';
 import {
   cancelReservation,
   checkInReservation,
   checkOutReservation,
   createReservation,
-  getReservationRules,
   listUserReservations,
-  listSeatSlots,
-} from '../api/seatSlots';
+} from '../api/reservations';
 import SeatMap from '../components/SeatMap';
 import type { ReservationResult } from '../types/reservation';
 import type { Area, Seat, SeatSlot } from '../types/seat';

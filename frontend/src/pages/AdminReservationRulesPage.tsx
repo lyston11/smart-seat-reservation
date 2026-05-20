@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Card, Form, InputNumber, message, Space, Statistic, Typography } from 'antd';
-import { getReservationRules, updateReservationRules } from '../api/seatSlots';
+import { getReservationRules, updateReservationRules } from '../api/reservationRules';
 import {
   normalizeReservationRules,
   type NormalizedReservationRule,

@@ -5,10 +5,10 @@ import { getStoredUser } from '../api/http';
 import {
   checkInReservation,
   checkOutReservation,
-  getReservationRules,
   listUserReservations,
   reactivateSeatLock,
-} from '../api/seatSlots';
+} from '../api/reservations';
+import { getReservationRules } from '../api/reservationRules';
 import type { ReservationResult } from '../types/reservation';
 import {
   canCheckInReservation,
