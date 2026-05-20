@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, Form, Input, message, Select, Space, Statistic, Tag, Typography } from 'antd';
+import { Button, Card, Form, Input, message, Segmented, Select, Space, Statistic, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { listAreas } from '../api/areas';
 import { listSeats } from '../api/seats';
@@ -28,11 +28,23 @@ import {
   type NormalizedReservationRule,
 } from '../utils/reservationRules';
 
+type TimeOption = {
+  label: string;
+  value: string;
+};
+
+type TimeOptions = {
+  startOptions: TimeOption[];
+  endOptions: TimeOption[];
+};
+
 export default function SeatSlotsPage() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [areaId, setAreaId] = useState(1);
   const [areaTimeInitialized, setAreaTimeInitialized] = useState(false);
   const [timeInitializedFromSlots, setTimeInitializedFromSlots] = useState(false);
+  const [now, setNow] = useState(() => dayjs());
+  const [slotDate, setSlotDate] = useState(() => dayjs().format('YYYY-MM-DD'));
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('22:00');
   const [slots, setSlots] = useState<SeatSlot[]>([]);
@@ -46,26 +58,79 @@ export default function SeatSlotsPage() {
   const [reservationAction, setReservationAction] = useState<string | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
 
-  const dateText = useMemo(() => dayjs().add(1, 'day').format('YYYY-MM-DD'), []);
-  const reservationOpened = useMemo(() => {
-    const openHour = reservationRules?.reservationOpenHour ?? DEFAULT_RESERVATION_RULES.reservationOpenHour;
-    return dayjs().hour() >= openHour;
-  }, [reservationRules?.reservationOpenHour]);
+  const todayText = useMemo(() => now.format('YYYY-MM-DD'), [now]);
+  const tomorrowText = useMemo(() => now.add(1, 'day').format('YYYY-MM-DD'), [now]);
+  const reservationOpenHour = reservationRules?.reservationOpenHour ?? DEFAULT_RESERVATION_RULES.reservationOpenHour;
+  const tomorrowReservationOpened = now.hour() >= reservationOpenHour;
+  const dateText = useMemo(
+    () => normalizeStudentSlotDate(slotDate, todayText, tomorrowText, tomorrowReservationOpened),
+    [slotDate, todayText, tomorrowReservationOpened, tomorrowText],
+  );
+  const dateOptions = useMemo(
+    () => [
+      { label: '今天', value: todayText },
+      {
+        label: '明天',
+        value: tomorrowText,
+        disabled: !tomorrowReservationOpened,
+      },
+    ],
+    [todayText, tomorrowReservationOpened, tomorrowText],
+  );
   const activeAreas = useMemo(() => areas.filter((area) => area.status === 'ACTIVE'), [areas]);
   const selectedArea = useMemo(() => areas.find((area) => area.id === areaId), [areas, areaId]);
-  const startTimeText = useMemo(() => normalizeInputTime(startTime), [startTime]);
-  const endTimeText = useMemo(() => normalizeInputTime(endTime), [endTime]);
+  const earliestStartTime = useMemo(
+    () => getEarliestStartTimeForDate(dateText, now, selectedArea?.openTime),
+    [dateText, now, selectedArea?.openTime],
+  );
+  const effectiveStartTime = useMemo(() => {
+    const closeBoundary = toMinutes(toHalfHourFloor(selectedArea?.closeTime?.slice(0, 5) ?? '22:00'));
+    const earliestStartMinutes = toMinutes(earliestStartTime.slice(0, 5));
+    if (Math.max(toMinutes(startTime), earliestStartMinutes) >= closeBoundary) {
+      return earliestStartTime.slice(0, 5);
+    }
+    return startTime;
+  }, [earliestStartTime, selectedArea?.closeTime, startTime]);
   const timeOptions = useMemo(
-    () => buildHalfHourTimeOptions(selectedArea?.openTime, selectedArea?.closeTime, startTime, endTime),
-    [endTime, selectedArea?.closeTime, selectedArea?.openTime, startTime],
+    () =>
+      buildHalfHourTimeOptions(
+        selectedArea?.openTime,
+        selectedArea?.closeTime,
+        effectiveStartTime,
+        earliestStartTime,
+      ),
+    [earliestStartTime, effectiveStartTime, selectedArea?.closeTime, selectedArea?.openTime],
+  );
+  const validStartTime = useMemo(
+    () => pickValidTime(startTime, timeOptions.startOptions),
+    [startTime, timeOptions.startOptions],
+  );
+  const validEndTime = useMemo(
+    () => pickValidTime(endTime, timeOptions.endOptions),
+    [endTime, timeOptions.endOptions],
+  );
+  const startTimeText = useMemo(() => normalizeInputTime(validStartTime), [validStartTime]);
+  const endTimeText = useMemo(() => normalizeInputTime(validEndTime), [validEndTime]);
+  const canReserveSelectedDate = useMemo(
+    () => isStudentReservationDateOpen(dateText, now, reservationOpenHour),
+    [dateText, now, reservationOpenHour],
+  );
+  const selectedTimeStarted = useMemo(
+    () => !isFutureSlotStart(dateText, startTimeText, now),
+    [dateText, now, startTimeText],
+  );
+  const canReserveSelectedTime = canReserveSelectedDate && !selectedTimeStarted;
+  const reservationBlockedReason = useMemo(
+    () => getReservationBlockedReason(dateText, startTimeText, now, reservationOpenHour),
+    [dateText, now, reservationOpenHour, startTimeText],
   );
   const visibleSlots = useMemo(
     () => buildVisibleSlotsForSelectedTime(slots, seats, areaId, dateText, startTimeText, endTimeText),
     [areaId, dateText, endTimeText, seats, slots, startTimeText],
   );
   const availableSeatCount = useMemo(
-    () => visibleSlots.filter((slot) => slot.status === 'AVAILABLE').length,
-    [visibleSlots],
+    () => (canReserveSelectedTime ? visibleSlots.filter((slot) => slot.status === 'AVAILABLE').length : 0),
+    [canReserveSelectedTime, visibleSlots],
   );
   const occupiedSeatCount = useMemo(
     () => visibleSlots.filter((slot) => slot.status !== 'AVAILABLE' && slot.status !== 'UNPUBLISHED').length,
@@ -116,7 +181,10 @@ export default function SeatSlotsPage() {
         return null;
       });
       if (!timeInitializedFromSlots) {
-        const firstSlot = nextSlots.find((slot) => slot.status === 'AVAILABLE') ?? nextSlots[0];
+        const firstSlot =
+          nextSlots.find((slot) => slot.status === 'AVAILABLE' && isFutureSlotStart(slot.slotDate, slot.startTime, now))
+          ?? nextSlots.find((slot) => slot.status === 'AVAILABLE')
+          ?? nextSlots[0];
         if (firstSlot) {
           setStartTime(toHalfHourCeil(firstSlot.startTime.slice(0, 5)));
           setEndTime(toHalfHourFloor(firstSlot.endTime.slice(0, 5)));
@@ -128,7 +196,7 @@ export default function SeatSlotsPage() {
     } finally {
       setLoading(false);
     }
-  }, [areaId, dateText, messageApi, timeInitializedFromSlots]);
+  }, [areaId, dateText, messageApi, now, timeInitializedFromSlots]);
 
   const loadRules = useCallback(async () => {
     try {
@@ -151,14 +219,12 @@ export default function SeatSlotsPage() {
       messageApi.warning('开始时间必须早于结束时间');
       return;
     }
-    if (!isHalfHourTime(startTime) || !isHalfHourTime(endTime)) {
+    if (!isHalfHourTime(validStartTime) || !isHalfHourTime(validEndTime)) {
       messageApi.warning('预约时间只能按半小时选择');
       return;
     }
-    if (!reservationOpened) {
-      messageApi.warning(
-        `今日 ${String(reservationRules?.reservationOpenHour ?? DEFAULT_RESERVATION_RULES.reservationOpenHour).padStart(2, '0')}:00 开放明日预约`,
-      );
+    if (reservationBlockedReason) {
+      messageApi.warning(reservationBlockedReason);
       return;
     }
     if (slot.status !== 'AVAILABLE') {
@@ -227,10 +293,21 @@ export default function SeatSlotsPage() {
     return () => window.clearTimeout(timer);
   }, [loadActiveReservation, loadAreas, loadSlots, loadRules]);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(dayjs()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   function applySelectedArea(area: Area) {
     setAreaId(area.id);
     setStartTime(toHalfHourCeil(area.openTime.slice(0, 5)));
     setEndTime(toHalfHourFloor(area.closeTime.slice(0, 5)));
+    setSelectedSeatId(null);
+    setTimeInitializedFromSlots(false);
+  }
+
+  function changeSlotDate(nextDate: string) {
+    setSlotDate(nextDate);
     setSelectedSeatId(null);
     setTimeInitializedFromSlots(false);
   }
@@ -259,7 +336,7 @@ export default function SeatSlotsPage() {
             />
           </Form.Item>
           <Form.Item label="日期">
-            <Typography.Text strong>{dateText}</Typography.Text>
+            <Segmented<string> value={dateText} options={dateOptions} onChange={changeSlotDate} />
           </Form.Item>
           <Form.Item>
             <Button type="primary" onClick={loadSlots} loading={loading}>
@@ -277,14 +354,14 @@ export default function SeatSlotsPage() {
           <Statistic title="已占用/异常" value={occupiedSeatCount} suffix="个" />
         </Card>
         <Card>
-          <Statistic title="当前日期" value={dateText} />
+          <Statistic title="预约日期" value={dateText} />
         </Card>
       </div>
 
       <div className="reservation-rules">
         <span>同一时间仅允许保留一个活跃预约</span>
         <span>
-          当前选择 {startTime}-{endTime}
+          当前选择 {validStartTime}-{validEndTime}
         </span>
         {selectedArea ? (
           <span>
@@ -296,7 +373,7 @@ export default function SeatSlotsPage() {
         </span>
         <span>已开始或过期时段不可预约</span>
         <span>
-          每日 {String(reservationRules?.reservationOpenHour ?? DEFAULT_RESERVATION_RULES.reservationOpenHour).padStart(2, '0')}:00 开放明日预约
+          每日 {String(reservationOpenHour).padStart(2, '0')}:00 开放明日预约
         </span>
         <span>时间最小粒度为半小时</span>
         <span>预约后 {reservationRules?.checkinGraceMinutes ?? '-'} 分钟内未签到将自动释放</span>
@@ -313,7 +390,7 @@ export default function SeatSlotsPage() {
           loadingSlotId={reservingId}
           sectionTitle="选择座位位置"
           selectedSeatId={selectedSeatId}
-          selectableStatuses={['AVAILABLE', 'UNPUBLISHED']}
+          selectableStatuses={canReserveSelectedTime ? ['AVAILABLE', 'UNPUBLISHED'] : ['UNPUBLISHED']}
           emptyDescription="当前区域暂无真实座位，请管理员先维护区域、桌子和座位"
           onReserve={(slot) => setSelectedSeatId(slot.seatId)}
         />
@@ -341,33 +418,39 @@ export default function SeatSlotsPage() {
                     <span>开始时间</span>
                     <Select
                       aria-label="开始时间"
-                      value={startTime}
+                      value={validStartTime}
                       options={timeOptions.startOptions}
-                      onChange={setStartTime}
+                      onChange={(value) => {
+                        setStartTime(value);
+                        setSelectedSeatId(null);
+                      }}
                     />
                   </label>
                   <label>
                     <span>结束时间</span>
                     <Select
                       aria-label="结束时间"
-                      value={endTime}
+                      value={validEndTime}
                       options={timeOptions.endOptions}
-                      onChange={setEndTime}
+                      onChange={(value) => {
+                        setEndTime(value);
+                        setSelectedSeatId(null);
+                      }}
                     />
                   </label>
                 </div>
                 <Button
                   type="primary"
                   block
-                  disabled={selectedSlot.status !== 'AVAILABLE' || !reservationOpened}
+                  disabled={selectedSlot.status !== 'AVAILABLE' || !canReserveSelectedTime}
                   loading={reservingId === selectedSlot.id}
                   onClick={() => reserve(selectedSlot)}
                 >
                   预约该座位
                 </Button>
-                {!reservationOpened ? (
+                {reservationBlockedReason ? (
                   <Typography.Text type="secondary">
-                    今日 {String(reservationRules?.reservationOpenHour ?? DEFAULT_RESERVATION_RULES.reservationOpenHour).padStart(2, '0')}:00 后开放预约 {dateText}。
+                    {reservationBlockedReason}
                   </Typography.Text>
                 ) : null}
                 {selectedSlot.status === 'UNPUBLISHED' ? (
@@ -472,27 +555,95 @@ function isHalfHourTime(value: string) {
   return minutes % 30 === 0;
 }
 
+function normalizeStudentSlotDate(
+  slotDate: string,
+  todayText: string,
+  tomorrowText: string,
+  tomorrowReservationOpened: boolean,
+) {
+  if (slotDate < todayText || slotDate > tomorrowText) {
+    return todayText;
+  }
+  if (slotDate === tomorrowText && !tomorrowReservationOpened) {
+    return todayText;
+  }
+  return slotDate;
+}
+
+function pickValidTime(value: string, options: TimeOption[]) {
+  if (options.some((option) => option.value === value)) {
+    return value;
+  }
+  return options[0]?.value ?? value;
+}
+
+function getEarliestStartTimeForDate(slotDate: string, now: dayjs.Dayjs, openTime = '08:00:00') {
+  if (slotDate !== now.format('YYYY-MM-DD')) {
+    return openTime;
+  }
+  const openMinutes = toMinutes(openTime.slice(0, 5));
+  const nextHalfHourMinutes = Math.ceil((now.hour() * 60 + now.minute() + 1) / 30) * 30;
+  return toTimeText(Math.max(openMinutes, nextHalfHourMinutes));
+}
+
+function isStudentReservationDateOpen(slotDate: string, now: dayjs.Dayjs, reservationOpenHour: number) {
+  const today = now.format('YYYY-MM-DD');
+  if (slotDate === today) {
+    return true;
+  }
+  if (slotDate === now.add(1, 'day').format('YYYY-MM-DD')) {
+    return now.hour() >= reservationOpenHour;
+  }
+  return false;
+}
+
+function isFutureSlotStart(slotDate: string, startTime: string, now: dayjs.Dayjs) {
+  const startAt = dayjs(`${slotDate} ${startTime.slice(0, 5)}`, 'YYYY-MM-DD HH:mm');
+  return startAt.isAfter(now);
+}
+
+function getReservationBlockedReason(
+  slotDate: string,
+  startTime: string,
+  now: dayjs.Dayjs,
+  reservationOpenHour: number,
+) {
+  const today = now.format('YYYY-MM-DD');
+  const tomorrow = now.add(1, 'day').format('YYYY-MM-DD');
+  if (slotDate < today) {
+    return '过去日期不可预约';
+  }
+  if (slotDate === tomorrow && now.hour() < reservationOpenHour) {
+    return `今日 ${String(reservationOpenHour).padStart(2, '0')}:00 后开放预约明天`;
+  }
+  if (slotDate > tomorrow) {
+    return '当前仅支持预约今天未来时段，18:00 后可预约明天';
+  }
+  if (!isFutureSlotStart(slotDate, startTime, now)) {
+    return '已开始或过去的时间段不可预约';
+  }
+  return null;
+}
+
 function buildHalfHourTimeOptions(
   openTime = '08:00:00',
   closeTime = '22:00:00',
   startTime = '08:00',
-  endTime = '22:00',
-) {
+  minStartTime = openTime,
+): TimeOptions {
   const startBoundary = toMinutes(toHalfHourCeil(openTime.slice(0, 5)));
   const endBoundary = toMinutes(toHalfHourFloor(closeTime.slice(0, 5)));
-  const selectedStart = toMinutes(startTime);
-  const selectedEnd = toMinutes(endTime);
-  const startOptions = [];
-  const endOptions = [];
+  const minStartBoundary = Math.max(startBoundary, toMinutes(toHalfHourCeil(minStartTime.slice(0, 5))));
+  const selectedStart = Math.max(toMinutes(startTime), minStartBoundary);
+  const startOptions: TimeOption[] = [];
+  const endOptions: TimeOption[] = [];
 
-  for (let minutes = startBoundary; minutes < endBoundary; minutes += 30) {
-    if (minutes < selectedEnd) {
-      const value = toTimeText(minutes);
-      startOptions.push({ label: value, value });
-    }
+  for (let minutes = minStartBoundary; minutes < endBoundary; minutes += 30) {
+    const value = toTimeText(minutes);
+    startOptions.push({ label: value, value });
   }
 
-  for (let minutes = startBoundary + 30; minutes <= endBoundary; minutes += 30) {
+  for (let minutes = minStartBoundary + 30; minutes <= endBoundary; minutes += 30) {
     if (minutes > selectedStart) {
       const value = toTimeText(minutes);
       endOptions.push({ label: value, value });

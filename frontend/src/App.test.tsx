@@ -74,10 +74,17 @@ function toLocalDateText(value: Date) {
   return `${year}-${month}-${date}`;
 }
 
-function dayAfterTodayText() {
-  const value = new Date();
-  value.setDate(value.getDate() + 1);
-  return toLocalDateText(value);
+function nextFutureHalfHourText(minOffsetMinutes = 30) {
+  const value = new Date(Date.now() + minOffsetMinutes * 60 * 1000);
+  const minutes = value.getHours() * 60 + value.getMinutes();
+  const nextMinutes = Math.min(Math.ceil((minutes + 1) / 30) * 30, 22 * 60);
+  return `${String(Math.floor(nextMinutes / 60)).padStart(2, '0')}:${String(nextMinutes % 60).padStart(2, '0')}`;
+}
+
+function addMinutesToTimeText(value: string, minutesToAdd: number) {
+  const [hours, minutes] = value.split(':').map(Number);
+  const total = Math.min(hours * 60 + minutes + minutesToAdd, 23 * 60 + 30);
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
 async function selectComboboxValue(label: string, value: string) {
@@ -235,7 +242,9 @@ describe('App', () => {
 
   it('submits a concrete seat reservation with the selected custom time range', async () => {
     storeStudentSession();
-    const tomorrowText = dayAfterTodayText();
+    const todayText = toLocalDateText(new Date());
+    const startText = nextFutureHalfHourText();
+    const endText = addMinutesToTimeText(startText, 60);
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -291,9 +300,9 @@ describe('App', () => {
                 columnNo: 1,
                 displayOrder: 1,
                 areaId: 1,
-                slotDate: tomorrowText,
-                startTime: '08:00:00',
-                endTime: '22:00:00',
+                slotDate: todayText,
+                startTime: `${startText}:00`,
+                endTime: `${endText}:00`,
                 status: 'AVAILABLE',
                 reservedBy: null,
                 reservationId: null,
@@ -342,9 +351,9 @@ describe('App', () => {
         expect(JSON.parse(String(init.body))).toEqual(
           {
             seatId: 9,
-            slotDate: tomorrowText,
-            startTime: '09:30:00',
-            endTime: '10:30:00',
+            slotDate: todayText,
+            startTime: `${startText}:00`,
+            endTime: `${endText}:00`,
           },
         );
         return {
@@ -399,8 +408,8 @@ describe('App', () => {
     );
 
     fireEvent.click(await screen.findByRole('button', { name: /A-001|1号/ }));
-    await selectComboboxValue('开始时间', '09:30');
-    await selectComboboxValue('结束时间', '10:30');
+    await selectComboboxValue('开始时间', startText);
+    await selectComboboxValue('结束时间', endText);
     fireEvent.click(await screen.findByRole('button', { name: '预约该座位' }));
 
     await waitFor(() => {
@@ -1113,6 +1122,8 @@ describe('App', () => {
   it('publishes admin seat slots with table batch selection and time templates', async () => {
     storeAdminSession();
     const todayText = toLocalDateText(new Date());
+    const startText = nextFutureHalfHourText();
+    const endText = addMinutesToTimeText(startText, 60);
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -1223,7 +1234,7 @@ describe('App', () => {
           areaId: 1,
           slotDate: todayText,
           periods: [
-            { startTime: '18:00:00', endTime: '22:00:00' },
+            { startTime: `${startText}:00`, endTime: `${endText}:00` },
           ],
           seatIds: [1, 2],
         });
@@ -1252,7 +1263,6 @@ describe('App', () => {
     );
 
     expect(await screen.findByRole('heading', { level: 3, name: '开放时段' })).toBeTruthy();
-    fireEvent.click(await screen.findByRole('button', { name: /晚\s*间/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'T01 0/2' }));
     expect(await screen.findByText('预计发布 2 个座位时段')).toBeTruthy();
     fireEvent.click(await screen.findByRole('button', { name: /发布\s*时段/ }));

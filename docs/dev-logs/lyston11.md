@@ -1,5 +1,116 @@
 # lyston11 开发日志
 
+## 2026-05-20
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-wifi-checkin
+- 目标: 明确项目初期数据库部署方式为每位成员本机一套 MySQL / Redis，并收紧本地 Compose 默认端口暴露范围。
+
+### 本次改动
+- `docker-compose.yml` 中 MySQL 和 Redis 端口默认绑定到 `127.0.0.1`，避免开发机把 `3306` / `6379` 暴露到局域网。
+- `.env.example` 新增 `MYSQL_BIND_ADDRESS` 和 `REDIS_BIND_ADDRESS`，保留端口可配置能力，方便处理本机端口冲突。
+- 本地开发文档补充“各成员本地数据库互不共享”的初期协作方式。
+- 本地开发文档补充端口冲突、IDE 环境变量、清库重建、表结构变更必须走 Flyway 的说明。
+- README 补充本地数据库默认只监听本机的说明，避免误解为当前阶段必须统一服务器部署。
+
+### 涉及文件
+- docker-compose.yml
+- .env.example
+- README.md
+- docs/deployment/LOCAL_DEVELOPMENT.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `docker compose config`，Compose 配置可解析。
+- 已运行 `git diff --check`，未发现空白格式问题。
+
+### 遗留问题
+- 当前仍是开发期本地数据库方案，后续演示或正式部署时需要再补服务器部署、备份和托管数据库方案。
+- IDE 启动后端不会自动读取 `.env`，如果成员自定义端口，需要手动同步 IDE 环境变量。
+
+### 对其他成员的影响
+- 每位成员继续使用自己电脑上的 MySQL / Redis，本地数据不互通是正常现象。
+- 不要手动共享或提交本地数据库数据文件；表结构统一通过 Flyway 迁移脚本维护。
+- 不要把 `MYSQL_BIND_ADDRESS` / `REDIS_BIND_ADDRESS` 改成 `0.0.0.0` 后提交。
+
+## 2026-05-19
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-wifi-checkin
+- 目标: 优化管理员桌子管理和座位管理页面，解决表格列不对齐、操作按钮分散、管理信息展示不清晰的问题。
+
+### 本次改动
+- 新增管理员资源操作组件 `AdminResourceActions`，统一编辑、启用、停用、签到码等行内操作的按钮样式和确认交互。
+- 桌子管理表格重构为“桌位信息 / 平面位置 / 网格顺序 / 桌型 / 状态 / 操作”的管理视图，减少原始字段堆叠。
+- 桌子管理新增当前区域桌子、启用桌子、启用座位统计卡片，便于管理员快速判断区域资源规模。
+- 座位管理表格重构为“座位信息 / 所属桌位 / 桌上位置 / 网格顺序 / 状态 / 操作”的管理视图，移除噪声较大的区域 ID 列。
+- 座位管理新增当前区域座位、启用座位、停用座位、已配置桌位统计卡片，管理入口更完整。
+- 管理表格统一固定关键列和操作列，补充横向滚动与移动端单列统计卡适配，避免窄屏错位。
+- 桌子页启用座位统计改为按当前管理桌子 ID 统计，避免依赖临时对象转换。
+
+### 涉及文件
+- frontend/src/components/AdminResourceActions.tsx
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/pages/AdminSeatsPage.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端 25 个测试通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式问题。
+
+### 遗留问题
+- 当前只是管理表格和统计信息优化，后续如果要进一步提升管理效率，可以继续增加座位批量生成、批量停用、按桌子筛选座位等能力。
+- 桌子和座位仍分别维护，后续可以在桌子详情中嵌入座位管理入口，减少管理员在页面之间切换。
+
+### 对其他成员的影响
+- 管理员资源行内操作优先复用 `AdminResourceActions`，不要在各页面重复写一套按钮和 `Popconfirm`。
+- 新增桌子/座位字段时，应优先归入现有信息分组，避免再次把原始字段直接堆到表格中。
+
+## 2026-05-19
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-wifi-checkin
+- 目标: 修正管理员开放时段和学生预约时间窗口，避免 2026-05-19 晚上仍可发布/预约 2026-05-19 已过时段；学生端支持今天未来时段，18:00 后再开放明天。
+
+### 本次改动
+- 后端预约规则改为只允许“今天未来时段”和“明天且已到预约开放小时”的预约，过去日期、已开始时段、后天及更远日期均拒绝。
+- 管理员开放时段服务接入统一 `Clock`，发布时校验过去日期、已开始时段和 30 分钟粒度，防止仅靠前端限制。
+- 新增 `SeatSlotServiceTest`，覆盖管理员发布过去日期、今天已开始时段、非半小时粒度、今天未来时段正常发布。
+- 学生选座页新增“今天/明天”日期切换：今天默认可查可约未来时段；明天在预约开放小时前禁用。
+- 学生端时间选择按区域营业时间和当前时间生成半小时选项，已过时间不会作为可预约时间提交。
+- 管理员开放时段页禁用过去日期，时间段改为半小时下拉选择，模板会自动跳过已开始时段，并在提交前再次拦截。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/reservation/ReservationService.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotService.java
+- backend/src/test/java/com/lyston/smartseat/reservation/ReservationServiceTest.java
+- backend/src/test/java/com/lyston/smartseat/seat/SeatSlotServiceTest.java
+- frontend/src/App.test.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/pages/AdminSeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 63 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端 25 个测试通过。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 管理员开放时段仍按全局时间判断，后续如果要按区域营业时间进一步收窄发布范围，可结合 `areas.open_time/close_time` 加服务端校验。
+- 学生端现在支持今天/明天两个日期，后续若业务再次扩展提前预约天数，需要同步调整后端窗口和前端日期控件。
+
+### 对其他成员的影响
+- 不要再在前端写死“只查明天”或“只有明天可约”，当前规则是今天未来时段可约，18:00 后额外开放明天。
+- 调整开放时段发布逻辑时必须保留后端 `SeatSlotService` 的时间窗口校验，前端禁用只是体验增强。
+
 ## 2026-05-19
 
 ### 任务

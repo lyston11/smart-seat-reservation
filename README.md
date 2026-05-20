@@ -26,6 +26,8 @@ cp .env.example .env
 docker compose up -d
 ```
 
+项目初期默认每位成员在自己电脑上运行一套本地 MySQL / Redis。`docker-compose.yml` 默认只绑定 `127.0.0.1`，不会把数据库端口暴露到局域网。
+
 启动后端：
 
 ```bash

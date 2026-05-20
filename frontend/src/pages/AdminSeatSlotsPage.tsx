@@ -7,7 +7,6 @@ import {
   Modal,
   Select,
   Space,
-  TimePicker,
   message,
   Table,
   Tag,
@@ -33,8 +32,23 @@ import type { Area, Seat, SeatSlot, SeatSlotStatus } from '../types/seat';
 type PublishFormValues = {
   areaId: number;
   slotDate: dayjs.Dayjs;
-  timeRanges: [dayjs.Dayjs, dayjs.Dayjs][];
+  timeRanges: TimeRangeValue[];
   seatIds: number[];
+};
+
+type TimeRangeValue = {
+  startTime: string;
+  endTime: string;
+};
+
+type TimeOption = {
+  label: string;
+  value: string;
+};
+
+type TimeOptions = {
+  startOptions: TimeOption[];
+  endOptions: TimeOption[];
 };
 
 type SeatGroup = {
@@ -112,8 +126,57 @@ function getSeatOptionLabel(seat: Seat) {
   return `${tableText} · ${seat.seatNo}${labelText}`;
 }
 
-function toDayjsPeriod(period: [string, string]) {
-  return [dayjs(period[0], 'HH:mm'), dayjs(period[1], 'HH:mm')] as [dayjs.Dayjs, dayjs.Dayjs];
+function toTimeRangeValue(period: [string, string]): TimeRangeValue {
+  return { startTime: period[0], endTime: period[1] };
+}
+
+function toTimeText(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+function getAdminEarliestStartMinutes(slotDate: dayjs.Dayjs, now: dayjs.Dayjs) {
+  if (!slotDate.isSame(now, 'day')) {
+    return 0;
+  }
+  return Math.ceil((now.hour() * 60 + now.minute() + 1) / 30) * 30;
+}
+
+function buildAdminTimeOptions(slotDate: dayjs.Dayjs, now: dayjs.Dayjs): TimeOptions {
+  const earliestStartMinutes = getAdminEarliestStartMinutes(slotDate, now);
+  const latestEndMinutes = 23 * 60 + 30;
+  const latestStartMinutes = latestEndMinutes - 30;
+  const startOptions: TimeOption[] = [];
+  const endOptions: TimeOption[] = [];
+
+  for (let minutes = earliestStartMinutes; minutes <= latestStartMinutes; minutes += 30) {
+    const value = toTimeText(minutes);
+    startOptions.push({ label: value, value });
+  }
+
+  for (let minutes = Math.max(earliestStartMinutes + 30, 30); minutes <= latestEndMinutes; minutes += 30) {
+    const value = toTimeText(minutes);
+    endOptions.push({ label: value, value });
+  }
+
+  return { startOptions, endOptions };
+}
+
+function isPastOrStartedPeriod(slotDate: dayjs.Dayjs, startTime: string, now: dayjs.Dayjs) {
+  const startAt = dayjs(`${slotDate.format('YYYY-MM-DD')}T${startTime}:00`);
+  return !startAt.isAfter(now);
+}
+
+function getDefaultFutureRange(slotDate: dayjs.Dayjs, now: dayjs.Dayjs): TimeRangeValue {
+  const latestStartMinutes = 23 * 60;
+  const latestEndMinutes = 23 * 60 + 30;
+  const startMinutes = Math.min(getAdminEarliestStartMinutes(slotDate, now), latestStartMinutes);
+  const endMinutes = Math.min(startMinutes + 120, latestEndMinutes);
+  return {
+    startTime: toTimeText(startMinutes),
+    endTime: toTimeText(endMinutes),
+  };
 }
 
 export default function AdminSeatSlotsPage() {
@@ -122,6 +185,7 @@ export default function AdminSeatSlotsPage() {
   const [seats, setSeats] = useState<Seat[]>([]);
   const [slots, setSlots] = useState<SeatSlot[]>([]);
   const [areaId, setAreaId] = useState(1);
+  const [now, setNow] = useState(() => dayjs());
   const [slotDate, setSlotDate] = useState(dayjs());
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -143,6 +207,16 @@ export default function AdminSeatSlotsPage() {
     [seats],
   );
   const selectedSeatIdSet = useMemo(() => new Set(selectedSeatIds), [selectedSeatIds]);
+  const timeOptions = useMemo(
+    () => buildAdminTimeOptions(slotDate, now),
+    [now, slotDate],
+  );
+  const startTimeOptions = timeOptions.startOptions;
+  const endTimeOptions = timeOptions.endOptions;
+  const defaultFutureRange = useMemo(
+    () => getDefaultFutureRange(slotDate, now),
+    [now, slotDate],
+  );
   const seatGroups = useMemo<SeatGroup[]>(() => {
     const groups = new Map<string, SeatGroup>();
     activeSeats.forEach((seat) => {
@@ -165,10 +239,15 @@ export default function AdminSeatSlotsPage() {
     return Array.from(groups.values());
   }, [activeSeats, selectedSeatIdSet]);
   const validPeriodCount = useMemo(
-    () => (watchedTimeRanges ?? []).filter((range) => range?.[0] && range?.[1]).length,
+    () => (watchedTimeRanges ?? []).filter((range) => range?.startTime && range?.endTime).length,
     [watchedTimeRanges],
   );
   const publishEstimateCount = selectedSeatIds.length * validPeriodCount;
+  const hasFuturePublishTime = startTimeOptions.length > 0;
+  const watchedTimeRangeKeys = useMemo(
+    () => (watchedTimeRanges ?? []).map((range) => `${range?.startTime ?? ''}-${range?.endTime ?? ''}`).join('|'),
+    [watchedTimeRanges],
+  );
   const seatSelectOptions = useMemo(
     () =>
       seatGroups.map((group) => ({
@@ -211,15 +290,20 @@ export default function AdminSeatSlotsPage() {
 
   async function publishSlots() {
     const values = await form.validateFields();
-    const timeRanges = values.timeRanges.filter(Boolean);
+    const timeRanges = values.timeRanges.filter((range) => range?.startTime && range?.endTime);
+    const invalidPeriod = timeRanges.find((range) => isPastOrStartedPeriod(values.slotDate, range.startTime, now));
+    if (invalidPeriod) {
+      messageApi.warning(`${values.slotDate.format('YYYY-MM-DD')} ${invalidPeriod.startTime} 已开始或已过去，不能发布`);
+      return;
+    }
     setPublishing(true);
     try {
       const result = await publishSeatSlots({
         areaId: values.areaId,
         slotDate: values.slotDate.format('YYYY-MM-DD'),
         periods: timeRanges.map((range) => ({
-          startTime: range[0].format('HH:mm:ss'),
-          endTime: range[1].format('HH:mm:ss'),
+          startTime: `${range.startTime}:00`,
+          endTime: `${range.endTime}:00`,
         })),
         seatIds: values.seatIds,
       });
@@ -310,20 +394,32 @@ export default function AdminSeatSlotsPage() {
   }
 
   function applyTimeTemplate(template: TimeTemplate) {
-    form.setFieldValue('timeRanges', template.periods.map(toDayjsPeriod));
+    const nextRanges = template.periods
+      .map(toTimeRangeValue)
+      .filter((range) => !isPastOrStartedPeriod(slotDate, range.startTime, now));
+    if (nextRanges.length === 0) {
+      messageApi.warning('该模板的时间段都已开始或过去，请选择后续时间段');
+      return;
+    }
+    if (nextRanges.length < template.periods.length) {
+      messageApi.info('已自动跳过开始时间已过的时间段');
+    }
+    form.setFieldValue('timeRanges', nextRanges);
   }
 
   useEffect(() => {
+    const existingRanges = form.getFieldValue('timeRanges');
     form.setFieldsValue({
       areaId,
       slotDate,
       seatIds: form.getFieldValue('seatIds') ?? [],
-      timeRanges: [
-        [dayjs('08:00:00', 'HH:mm:ss'), dayjs('10:00:00', 'HH:mm:ss')],
-        [dayjs('10:00:00', 'HH:mm:ss'), dayjs('12:00:00', 'HH:mm:ss')],
-      ],
+      timeRanges: existingRanges?.length
+        ? existingRanges
+        : [
+            defaultFutureRange,
+          ],
     });
-  }, [areaId, form, slotDate]);
+  }, [areaId, defaultFutureRange, form, slotDate]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -333,6 +429,36 @@ export default function AdminSeatSlotsPage() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [loadAreas, loadSeats, loadSlots]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(dayjs()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const ranges = (form.getFieldValue('timeRanges') ?? []) as TimeRangeValue[];
+    let changed = false;
+    const normalizedRanges = ranges.map((range) => {
+      if (!range?.startTime || !range?.endTime) {
+        return range;
+      }
+      const nextRange = { ...range };
+      if (isPastOrStartedPeriod(slotDate, nextRange.startTime, now)) {
+        nextRange.startTime = startTimeOptions[0]?.value ?? nextRange.startTime;
+        changed = true;
+      }
+      if (nextRange.endTime <= nextRange.startTime) {
+        nextRange.endTime =
+          endTimeOptions.find((option) => option.value > nextRange.startTime)?.value
+          ?? nextRange.endTime;
+        changed = true;
+      }
+      return nextRange;
+    });
+    if (changed) {
+      form.setFieldValue('timeRanges', normalizedRanges);
+    }
+  }, [endTimeOptions, form, now, slotDate, startTimeOptions, watchedTimeRangeKeys]);
 
   const columns: TableColumnsType<SeatSlot> = [
     { title: '时段 ID', dataIndex: 'id', width: 120 },
@@ -405,7 +531,10 @@ export default function AdminSeatSlotsPage() {
                   name="slotDate"
                   rules={[{ required: true, message: '请选择开放日期' }]}
                 >
-                  <DatePicker onChange={(value) => setSlotDate(value ?? dayjs())} />
+                  <DatePicker
+                    disabledDate={(current) => Boolean(current && current.isBefore(now, 'day'))}
+                    onChange={(value) => setSlotDate(value ?? dayjs())}
+                  />
                 </Form.Item>
               </div>
             </div>
@@ -415,10 +544,18 @@ export default function AdminSeatSlotsPage() {
                 <Clock3 size={16} />
                 <Typography.Text strong>开放时间</Typography.Text>
                 <Typography.Text type="secondary">半小时步进，最多 12 段</Typography.Text>
+                {!hasFuturePublishTime ? (
+                  <Typography.Text type="secondary">今天已无可发布时间段，请选择后续日期</Typography.Text>
+                ) : null}
               </Space>
               <Space className="slot-template-row" wrap>
                 {timeTemplates.map((template) => (
-                  <Button key={template.label} size="small" onClick={() => applyTimeTemplate(template)}>
+                  <Button
+                    key={template.label}
+                    size="small"
+                    disabled={!template.periods.some((period) => !isPastOrStartedPeriod(slotDate, period[0], now))}
+                    onClick={() => applyTimeTemplate(template)}
+                  >
                     {template.label}
                   </Button>
                 ))}
@@ -436,14 +573,15 @@ export default function AdminSeatSlotsPage() {
                           throw new Error('一次最多发布 12 个时间段');
                         }
                         const normalizedRanges = value
-                          .filter((range: [dayjs.Dayjs, dayjs.Dayjs] | undefined) => range?.[0] && range?.[1])
-                          .map((range: [dayjs.Dayjs, dayjs.Dayjs]) => {
-                            const startTime = range[0].format('HH:mm');
-                            const endTime = range[1].format('HH:mm');
-                            if (!range[0].isBefore(range[1])) {
+                          .filter((range: TimeRangeValue | undefined) => range?.startTime && range?.endTime)
+                          .map((range: TimeRangeValue) => {
+                            if (range.startTime >= range.endTime) {
                               throw new Error('结束时间必须晚于开始时间');
                             }
-                            return `${startTime}-${endTime}`;
+                            if (isPastOrStartedPeriod(slotDate, range.startTime, now)) {
+                              throw new Error(`${range.startTime} 已开始或已过去`);
+                            }
+                            return `${range.startTime}-${range.endTime}`;
                           });
                         if (new Set(normalizedRanges).size !== normalizedRanges.length) {
                           throw new Error('存在重复时间段');
@@ -457,10 +595,24 @@ export default function AdminSeatSlotsPage() {
                       {fields.map(({ key, ...field }) => (
                         <Space key={key} className="period-item" align="baseline">
                           <Form.Item
-                            {...field}
+                            name={[field.name, 'startTime']}
+                            rules={[{ required: true, message: '请选择开始时间' }]}
+                          >
+                            <Select
+                              aria-label="开始时间"
+                              className="slot-time-select"
+                              options={startTimeOptions}
+                            />
+                          </Form.Item>
+                          <Form.Item
+                            name={[field.name, 'endTime']}
                             rules={[{ required: true, message: '请选择时间段' }]}
                           >
-                            <TimePicker.RangePicker format="HH:mm" minuteStep={30} />
+                            <Select
+                              aria-label="结束时间"
+                              className="slot-time-select"
+                              options={endTimeOptions}
+                            />
                           </Form.Item>
                           {fields.length > 1 ? (
                             <Button
@@ -474,7 +626,8 @@ export default function AdminSeatSlotsPage() {
                       ))}
                       <Button
                         icon={<Plus size={15} />}
-                        onClick={() => add([dayjs('14:00', 'HH:mm'), dayjs('16:00', 'HH:mm')])}
+                        disabled={startTimeOptions.length === 0}
+                        onClick={() => add(getDefaultFutureRange(slotDate, now))}
                       >
                         添加时间段
                       </Button>
@@ -547,7 +700,7 @@ export default function AdminSeatSlotsPage() {
               </Typography.Text>
             </Space>
             <Space wrap>
-              <Button type="primary" loading={publishing} onClick={publishSlots}>
+              <Button type="primary" loading={publishing} disabled={!hasFuturePublishTime} onClick={publishSlots}>
                 发布时段
               </Button>
               <Button loading={loading} onClick={() => loadSlots()}>

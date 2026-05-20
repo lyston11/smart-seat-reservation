@@ -7,6 +7,7 @@ import com.lyston.smartseat.common.BusinessException;
 import com.lyston.smartseat.table.StudyTable;
 import com.lyston.smartseat.table.StudyTableMapper;
 import com.lyston.smartseat.table.StudyTableStatus;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -27,19 +28,22 @@ public class SeatSlotService {
     private final StudyTableMapper studyTableMapper;
     private final SeatSlotMapper seatSlotMapper;
     private final SeatSlotCacheService seatSlotCacheService;
+    private final Clock clock;
 
     public SeatSlotService(
             AreaMapper areaMapper,
             SeatMapper seatMapper,
             StudyTableMapper studyTableMapper,
             SeatSlotMapper seatSlotMapper,
-            SeatSlotCacheService seatSlotCacheService
+            SeatSlotCacheService seatSlotCacheService,
+            Clock clock
     ) {
         this.areaMapper = areaMapper;
         this.seatMapper = seatMapper;
         this.studyTableMapper = studyTableMapper;
         this.seatSlotMapper = seatSlotMapper;
         this.seatSlotCacheService = seatSlotCacheService;
+        this.clock = clock;
     }
 
     public List<SeatSlotResponse> listSeatSlots(Long areaId, LocalDate date) {
@@ -59,8 +63,8 @@ public class SeatSlotService {
     public PublishSeatSlotsResponse publishSeatSlots(PublishSeatSlotsRequest request) {
         requireActiveArea(request.areaId());
         List<Long> seatIds = normalizeSeatIds(request.seatIds());
-        List<PublishSeatSlotPeriod> periods = normalizePeriods(request);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
+        List<PublishSeatSlotPeriod> periods = normalizePeriods(request, now);
 
         List<SeatSlot> createdSlots = seatIds.stream()
                 .flatMap(seatId -> periods.stream().map(period -> createSlotIfAbsent(request, period, seatId, now)))
@@ -99,7 +103,8 @@ public class SeatSlotService {
         return uniqueSeatIds.stream().toList();
     }
 
-    private List<PublishSeatSlotPeriod> normalizePeriods(PublishSeatSlotsRequest request) {
+    private List<PublishSeatSlotPeriod> normalizePeriods(PublishSeatSlotsRequest request, LocalDateTime now) {
+        validateSlotDate(request.slotDate(), now);
         List<PublishSeatSlotPeriod> periods = request.periods();
         if (periods == null || periods.isEmpty()) {
             periods = List.of(new PublishSeatSlotPeriod(request.startTime(), request.endTime()));
@@ -109,17 +114,40 @@ public class SeatSlotService {
         }
         Set<String> uniqueKeys = new LinkedHashSet<>();
         return periods.stream()
-                .peek(this::validatePeriod)
+                .peek(period -> validatePeriod(request.slotDate(), period, now))
                 .filter(period -> uniqueKeys.add(period.startTime() + "-" + period.endTime()))
                 .toList();
     }
 
-    private void validatePeriod(PublishSeatSlotPeriod period) {
+    private void validateSlotDate(LocalDate slotDate, LocalDateTime now) {
+        if (slotDate == null) {
+            throw new BusinessException("INVALID_SLOT_DATE", "Slot date is required");
+        }
+        if (slotDate.isBefore(now.toLocalDate())) {
+            throw new BusinessException("SEAT_SLOT_DATE_PAST", "Past slot dates cannot be published");
+        }
+    }
+
+    private void validatePeriod(LocalDate slotDate, PublishSeatSlotPeriod period, LocalDateTime now) {
+        if (period == null) {
+            throw new BusinessException("INVALID_SLOT_TIME_RANGE", "Slot time range is required");
+        }
         LocalTime startTime = period.startTime();
         LocalTime endTime = period.endTime();
         if (startTime == null || endTime == null || !startTime.isBefore(endTime)) {
             throw new BusinessException("INVALID_SLOT_TIME_RANGE", "Slot start time must be before end time");
         }
+        if (!isHalfHourBoundary(startTime) || !isHalfHourBoundary(endTime)) {
+            throw new BusinessException("INVALID_SLOT_TIME_GRANULARITY", "Slot time must use 30-minute intervals");
+        }
+        LocalDateTime slotStartAt = LocalDateTime.of(slotDate, startTime);
+        if (!slotStartAt.isAfter(now)) {
+            throw new BusinessException("SEAT_SLOT_ALREADY_STARTED", "Past seat slots cannot be published");
+        }
+    }
+
+    private boolean isHalfHourBoundary(LocalTime time) {
+        return time.getSecond() == 0 && time.getNano() == 0 && (time.getMinute() == 0 || time.getMinute() == 30);
     }
 
     private List<SeatSlot> createSlotIfAbsent(

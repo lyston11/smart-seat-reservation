@@ -620,20 +620,34 @@ public class ReservationService {
     }
 
     private void ensureReservationDateIsOpen(LocalDate slotDate, LocalDateTime now, ReservationRuleResponse rules) {
-        LocalDate targetDate = now.toLocalDate().plusDays(1);
-        if (!slotDate.equals(targetDate)) {
+        LocalDate today = now.toLocalDate();
+        if (slotDate.isBefore(today)) {
             throw new BusinessException(
-                    "RESERVATION_ONLY_TOMORROW_ALLOWED",
-                    "Only tomorrow's reservations are allowed"
+                    "RESERVATION_DATE_PAST",
+                    "Past reservation dates cannot be reserved"
             );
         }
-        LocalDateTime openAt = LocalDateTime.of(now.toLocalDate(), LocalTime.of(rules.reservationOpenHour(), 0));
-        if (now.isBefore(openAt)) {
-            throw new BusinessException(
-                    "RESERVATION_NOT_OPEN",
-                    "Tomorrow's reservations open at the configured hour"
-            );
+
+        if (slotDate.equals(today)) {
+            return;
         }
+
+        LocalDate tomorrow = today.plusDays(1);
+        if (slotDate.equals(tomorrow)) {
+            LocalDateTime openAt = LocalDateTime.of(today, LocalTime.of(rules.reservationOpenHour(), 0));
+            if (now.isBefore(openAt)) {
+                throw new BusinessException(
+                        "RESERVATION_NOT_OPEN",
+                        "Tomorrow's reservations open at the configured hour"
+                );
+            }
+            return;
+        }
+
+        throw new BusinessException(
+                "RESERVATION_DATE_NOT_OPEN",
+                "Only today's future slots and tomorrow's slots after the configured open hour can be reserved"
+        );
     }
 
     private int calculateSeatLockQuota(LocalTime startTime, LocalTime endTime) {

@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Button, Form, Input, InputNumber, message, Modal, Popconfirm, Select, Space, Table, Tag } from 'antd';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button, Form, Input, InputNumber, message, Modal, Select, Space, Statistic, Table, Tag, Typography } from 'antd';
 import type { TableColumnsType } from 'antd';
+import { Edit3, Power } from 'lucide-react';
 import { listAreas } from '../api/areas';
 import { createSeat, listSeats, updateSeat, updateSeatStatus } from '../api/seats';
 import { listTables } from '../api/tables';
+import AdminResourceActions from '../components/AdminResourceActions';
 import type { Area, Seat, SeatStatus, StudyTable } from '../types/seat';
 
 type SeatFormValues = {
@@ -39,6 +41,14 @@ const seatSideOptions: Array<{ label: string; value: SeatSide }> = [
   { label: '单人位', value: 'SINGLE' },
 ];
 
+function getSeatSideLabel(side?: string | null) {
+  return seatSideOptions.find((option) => option.value === side)?.label ?? side ?? '未配置方位';
+}
+
+function isManagedSeat(seat: Seat) {
+  return (seat.tableNo ?? '').toUpperCase() !== 'LEGACY';
+}
+
 export default function AdminSeatsPage() {
   const [form] = Form.useForm<SeatFormValues>();
   const [areaId, setAreaId] = useState(1);
@@ -50,6 +60,28 @@ export default function AdminSeatsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSeat, setEditingSeat] = useState<Seat | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
+
+  const managedSeats = useMemo(() => seats.filter(isManagedSeat), [seats]);
+  const tablesById = useMemo(
+    () =>
+      tables.reduce<Record<number, StudyTable>>((map, table) => {
+        map[table.id] = table;
+        return map;
+      }, {}),
+    [tables],
+  );
+  const activeSeatCount = useMemo(
+    () => managedSeats.filter((seat) => seat.status === 'ACTIVE').length,
+    [managedSeats],
+  );
+  const inactiveSeatCount = useMemo(
+    () => managedSeats.filter((seat) => seat.status === 'INACTIVE').length,
+    [managedSeats],
+  );
+  const configuredTableCount = useMemo(
+    () => new Set(managedSeats.map((seat) => seat.tableId).filter(Boolean)).size,
+    [managedSeats],
+  );
 
   const loadAreas = useCallback(async () => {
     try {
@@ -188,59 +220,92 @@ export default function AdminSeatsPage() {
   }, [loadAreas, loadSeats, loadTablesForArea]);
 
   const columns: TableColumnsType<Seat> = [
-    { title: '座位 ID', dataIndex: 'id', width: 120 },
-    { title: '区域 ID', dataIndex: 'areaId', width: 120 },
-    { title: '所属桌子', dataIndex: 'tableNo', width: 120, render: (value) => value ?? '-' },
-    { title: '座位编号', dataIndex: 'seatNo', width: 180 },
+    { title: '座位 ID', dataIndex: 'id', width: 90, fixed: 'left' },
     {
-      title: '桌上位置',
-      width: 180,
+      title: '座位信息',
+      width: 220,
+      fixed: 'left',
+      render: (_, record) => (
+        <Space direction="vertical" size={2}>
+          <Typography.Text strong>{record.seatNo}</Typography.Text>
+          <Typography.Text type="secondary">{record.seatLabel ?? '未配置桌上标签'}</Typography.Text>
+        </Space>
+      ),
+    },
+    {
+      title: '所属桌位',
+      width: 190,
       render: (_, record) => {
-        const sideLabel = seatSideOptions.find((option) => option.value === record.seatSide)?.label;
-        return record.seatLabel
-          ? `${record.seatLabel} / ${sideLabel ?? record.seatSide ?? '-'} / ${record.seatOrder ?? 1}`
-          : '-';
+        const table = tablesById[record.tableId];
+        const tableRowNo = record.tableRowNo ?? table?.rowNo;
+        const tableColumnNo = record.tableColumnNo ?? table?.columnNo;
+        const tableNo = record.tableNo ?? table?.tableNo;
+        return (
+          <Space direction="vertical" size={2}>
+            <Typography.Text>{tableNo ?? '未绑定桌子'}</Typography.Text>
+            <Typography.Text type="secondary">
+              {tableRowNo && tableColumnNo ? `第 ${tableRowNo} 排 / 第 ${tableColumnNo} 列` : '桌位行列未配'}
+            </Typography.Text>
+          </Space>
+        );
       },
     },
     {
-      title: '布局位置',
+      title: '桌上位置',
       width: 160,
-      render: (_, record) =>
-        record.rowNo && record.columnNo ? `第 ${record.rowNo} 排 / 第 ${record.columnNo} 列` : '-',
+      render: (_, record) => (
+        <Space direction="vertical" size={2}>
+          <Typography.Text>{getSeatSideLabel(record.seatSide)}</Typography.Text>
+          <Typography.Text type="secondary">同侧顺序 {record.seatOrder ?? '-'}</Typography.Text>
+        </Space>
+      ),
     },
-    { title: '展示顺序', dataIndex: 'displayOrder', width: 120, render: (value) => value ?? '-' },
     {
-      title: '资源状态',
+      title: '网格顺序',
+      width: 160,
+      render: (_, record) => (
+        <Space direction="vertical" size={2}>
+          <Typography.Text>
+            {record.rowNo && record.columnNo ? `第 ${record.rowNo} 排 / 第 ${record.columnNo} 列` : '未配置行列'}
+          </Typography.Text>
+          <Typography.Text type="secondary">顺序 {record.displayOrder ?? '-'}</Typography.Text>
+        </Space>
+      ),
+    },
+    {
+      title: '状态',
       dataIndex: 'status',
-      width: 140,
+      width: 100,
       render: (status: SeatStatus) => <Tag color={statusColors[status]}>{statusLabels[status]}</Tag>,
     },
     {
       title: '操作',
-      width: 240,
+      width: 180,
+      fixed: 'right',
       render: (_, record) => (
-        <Space>
-          <Button size="small" onClick={() => openEditModal(record)}>
-            编辑
-          </Button>
-          {record.status === 'ACTIVE' ? (
-            <Popconfirm
-              title="停用座位"
-              description="停用后学生端不再展示该座位的开放时段。"
-              okText="停用"
-              cancelText="取消"
-              onConfirm={() => changeStatus(record, 'INACTIVE')}
-            >
-              <Button size="small" danger>
-                停用
-              </Button>
-            </Popconfirm>
-          ) : (
-            <Button size="small" type="primary" onClick={() => changeStatus(record, 'ACTIVE')}>
-              启用
-            </Button>
-          )}
-        </Space>
+        <AdminResourceActions
+          actions={[
+            { key: 'edit', label: '编辑', icon: <Edit3 size={14} />, onClick: () => openEditModal(record) },
+            record.status === 'ACTIVE'
+              ? {
+                  key: 'disable',
+                  label: '停用',
+                  icon: <Power size={14} />,
+                  danger: true,
+                  confirmTitle: '停用座位',
+                  confirmDescription: '停用后学生端不再展示该座位的开放时段。',
+                  confirmOkText: '停用',
+                  onClick: () => changeStatus(record, 'INACTIVE'),
+                }
+              : {
+                  key: 'enable',
+                  label: '启用',
+                  icon: <Power size={14} />,
+                  type: 'primary',
+                  onClick: () => changeStatus(record, 'ACTIVE'),
+                },
+          ]}
+        />
       ),
     },
   ];
@@ -275,7 +340,31 @@ export default function AdminSeatsPage() {
           </Form.Item>
         </Form>
       </div>
-      <Table rowKey="id" loading={loading} dataSource={seats} columns={columns} pagination={false} />
+
+      <div className="admin-resource-summary-grid">
+        <div className="admin-resource-summary-item">
+          <Statistic title="当前区域座位" value={managedSeats.length} suffix="个" />
+        </div>
+        <div className="admin-resource-summary-item">
+          <Statistic title="启用座位" value={activeSeatCount} suffix="个" />
+        </div>
+        <div className="admin-resource-summary-item">
+          <Statistic title="停用座位" value={inactiveSeatCount} suffix="个" />
+        </div>
+        <div className="admin-resource-summary-item">
+          <Statistic title="已配置桌位" value={configuredTableCount} suffix="张" />
+        </div>
+      </div>
+
+      <Table
+        className="admin-resource-table admin-seats-table"
+        rowKey="id"
+        loading={loading}
+        dataSource={managedSeats}
+        columns={columns}
+        pagination={false}
+        scroll={{ x: 1100 }}
+      />
       <Modal
         title={editingSeat ? '编辑座位' : '新增座位'}
         open={modalOpen}
