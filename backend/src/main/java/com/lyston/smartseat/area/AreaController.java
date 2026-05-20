@@ -2,6 +2,7 @@ package com.lyston.smartseat.area;
 
 import com.lyston.smartseat.auth.CurrentUser;
 import com.lyston.smartseat.auth.RequireRole;
+import com.lyston.smartseat.common.ApiPaths;
 import com.lyston.smartseat.common.ApiResponse;
 import com.lyston.smartseat.user.UserRole;
 import jakarta.validation.Valid;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/areas")
+@RequestMapping(ApiPaths.AREAS)
 public class AreaController {
 
     private final AreaService areaService;

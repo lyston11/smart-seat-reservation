@@ -1,5 +1,6 @@
 package com.lyston.smartseat.auth;
 
+import com.lyston.smartseat.common.ApiPaths;
 import com.lyston.smartseat.common.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -10,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping(ApiPaths.AUTH)
 public class AuthController {
 
     private static final String AUTH_HEADER = "X-Auth-Token";

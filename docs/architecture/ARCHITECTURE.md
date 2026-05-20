@@ -93,6 +93,8 @@ seat_slots:   RESERVED -> USING
 
 ## 5. 防超卖策略
 
+接口路径、响应格式、前后端 API 模块边界见：[API 接口契约说明](./API_CONTRACT.md)。
+
 预约接口必须使用数据库条件更新：
 
 ```sql

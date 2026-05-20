@@ -6,6 +6,8 @@
 http://localhost:18080
 ```
 
+接口分组、统一响应格式和前端 API 模块边界见：[API 接口契约说明](./architecture/API_CONTRACT.md)。
+
 ## 1. 健康检查
 
 ```bash
@@ -481,7 +483,7 @@ curl -X POST http://localhost:18080/api/reservations/1/seat-lock/release \
 手动触发过期锁位释放：
 
 ```bash
-curl -X POST "http://localhost:18080/api/reservations/release-expired-seat-locks?limit=100" \
+curl -X POST "http://localhost:18080/api/admin/reservations/release-expired-seat-locks?limit=100" \
   -H "X-Auth-Token: 替换为管理员 token"
 ```
 
@@ -521,7 +523,7 @@ curl -X POST http://localhost:18080/api/reservations/1/cancel \
 当前既保留手动触发接口，也已经提供定时任务入口。默认每 60 秒扫描一次超时未签到预约。
 
 ```bash
-curl -X POST "http://localhost:18080/api/reservations/expire-overdue?limit=100" \
+curl -X POST "http://localhost:18080/api/admin/reservations/expire-overdue?limit=100" \
   -H "X-Auth-Token: 替换为管理员 token"
 ```
 
@@ -530,7 +532,7 @@ curl -X POST "http://localhost:18080/api/reservations/expire-overdue?limit=100" 
 释放 WiFi 离线使用中预约：
 
 ```bash
-curl -X POST "http://localhost:18080/api/reservations/release-wifi-offline?limit=100" \
+curl -X POST "http://localhost:18080/api/admin/reservations/release-wifi-offline?limit=100" \
   -H "X-Auth-Token: 替换为管理员 token"
 ```
 

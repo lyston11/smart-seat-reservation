@@ -2,6 +2,7 @@ package com.lyston.smartseat.admin;
 
 import com.lyston.smartseat.auth.CurrentUser;
 import com.lyston.smartseat.auth.RequireRole;
+import com.lyston.smartseat.common.ApiPaths;
 import com.lyston.smartseat.common.ApiResponse;
 import com.lyston.smartseat.user.UserRole;
 import jakarta.validation.Valid;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/admin/seat-slots")
+@RequestMapping(ApiPaths.ADMIN_SEAT_SLOTS)
 @RequireRole(UserRole.ADMIN)
 public class AdminSeatSlotController {
 

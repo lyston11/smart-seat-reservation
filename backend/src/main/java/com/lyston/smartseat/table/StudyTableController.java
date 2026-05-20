@@ -1,6 +1,7 @@
 package com.lyston.smartseat.table;
 
 import com.lyston.smartseat.auth.RequireRole;
+import com.lyston.smartseat.common.ApiPaths;
 import com.lyston.smartseat.common.ApiResponse;
 import com.lyston.smartseat.user.UserRole;
 import jakarta.validation.Valid;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/tables")
+@RequestMapping(ApiPaths.TABLES)
 public class StudyTableController {
 
     private final StudyTableService studyTableService;

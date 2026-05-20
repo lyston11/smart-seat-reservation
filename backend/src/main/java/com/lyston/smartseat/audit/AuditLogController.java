@@ -1,6 +1,7 @@
 package com.lyston.smartseat.audit;
 
 import com.lyston.smartseat.auth.RequireRole;
+import com.lyston.smartseat.common.ApiPaths;
 import com.lyston.smartseat.common.ApiResponse;
 import com.lyston.smartseat.user.UserRole;
 import java.time.LocalDateTime;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/admin/audit-logs")
+@RequestMapping(ApiPaths.ADMIN_AUDIT_LOGS)
 @RequireRole(UserRole.ADMIN)
 public class AuditLogController {
 
