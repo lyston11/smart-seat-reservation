@@ -1,5 +1,39 @@
 # lyston11 开发日志
 
+## 2026-05-20
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-wifi-checkin
+- 目标: 明确项目初期数据库部署方式为每位成员本机一套 MySQL / Redis，并收紧本地 Compose 默认端口暴露范围。
+
+### 本次改动
+- `docker-compose.yml` 中 MySQL 和 Redis 端口默认绑定到 `127.0.0.1`，避免开发机把 `3306` / `6379` 暴露到局域网。
+- `.env.example` 新增 `MYSQL_BIND_ADDRESS` 和 `REDIS_BIND_ADDRESS`，保留端口可配置能力，方便处理本机端口冲突。
+- 本地开发文档补充“各成员本地数据库互不共享”的初期协作方式。
+- 本地开发文档补充端口冲突、IDE 环境变量、清库重建、表结构变更必须走 Flyway 的说明。
+- README 补充本地数据库默认只监听本机的说明，避免误解为当前阶段必须统一服务器部署。
+
+### 涉及文件
+- docker-compose.yml
+- .env.example
+- README.md
+- docs/deployment/LOCAL_DEVELOPMENT.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `docker compose config`，Compose 配置可解析。
+- 已运行 `git diff --check`，未发现空白格式问题。
+
+### 遗留问题
+- 当前仍是开发期本地数据库方案，后续演示或正式部署时需要再补服务器部署、备份和托管数据库方案。
+- IDE 启动后端不会自动读取 `.env`，如果成员自定义端口，需要手动同步 IDE 环境变量。
+
+### 对其他成员的影响
+- 每位成员继续使用自己电脑上的 MySQL / Redis，本地数据不互通是正常现象。
+- 不要手动共享或提交本地数据库数据文件；表结构统一通过 Flyway 迁移脚本维护。
+- 不要把 `MYSQL_BIND_ADDRESS` / `REDIS_BIND_ADDRESS` 改成 `0.0.0.0` 后提交。
+
 ## 2026-05-19
 
 ### 任务
