@@ -38,6 +38,11 @@ management:
 smart-seat:
   reservation-expiration:
     fixed-delay-ms: ${RESERVATION_EXPIRATION_DELAY_MS:60000}
+  auto-seat-slots:
+    enabled: ${AUTO_SEAT_SLOTS_ENABLED:true}
+    fixed-delay-ms: ${AUTO_SEAT_SLOTS_DELAY_MS:300000}
+    zone-id: ${AUTO_SEAT_SLOTS_ZONE_ID:Asia/Shanghai}
+    reservation-open-hour: ${AUTO_SEAT_SLOTS_OPEN_HOUR:18}
   wifi-presence:
     fixed-delay-ms: ${WIFI_PRESENCE_RELEASE_DELAY_MS:60000}
   reservation-rules:

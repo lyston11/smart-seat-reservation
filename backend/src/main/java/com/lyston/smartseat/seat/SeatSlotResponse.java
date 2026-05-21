@@ -1,5 +1,6 @@
 package com.lyston.smartseat.seat;
 
+import com.lyston.smartseat.reservation.ReservationStatus;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -57,9 +58,16 @@ public record SeatSlotResponse(
                 slot.getSlotDate(),
                 slot.getStartTime(),
                 slot.getEndTime(),
-                slot.getStatus(),
+                displayStatus(slot),
                 slot.getReservedBy(),
                 slot.getReservationId()
         );
+    }
+
+    private static String displayStatus(SeatSlot slot) {
+        if (ReservationStatus.LOCKED.equals(slot.getReservationStatus())) {
+            return ReservationStatus.LOCKED;
+        }
+        return slot.getStatus();
     }
 }

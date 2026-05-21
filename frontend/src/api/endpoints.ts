@@ -6,6 +6,7 @@ export const apiPaths = {
   seatSlots: '/api/seat-slots',
   tables: '/api/tables',
   reservations: '/api/reservations',
+  reservationRules: '/api/reservations/rules',
   admin: {
     auditLogs: '/api/admin/audit-logs',
     dashboard: '/api/admin/dashboard',

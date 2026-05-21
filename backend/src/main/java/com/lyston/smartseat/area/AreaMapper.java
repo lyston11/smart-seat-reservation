@@ -15,6 +15,14 @@ public interface AreaMapper extends BaseMapper<Area> {
     List<Area> findAllOrderById();
 
     @Select("""
+            SELECT id, name, floor, description, status, open_time, close_time, checkin_ip_cidrs, created_at, updated_at
+            FROM areas
+            WHERE status = 'ACTIVE'
+            ORDER BY id
+            """)
+    List<Area> findActiveAreasForAutoPublish();
+
+    @Select("""
             SELECT COUNT(*)
             FROM areas
             WHERE name = #{name}

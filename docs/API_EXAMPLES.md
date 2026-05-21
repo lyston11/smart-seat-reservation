@@ -64,6 +64,8 @@ seatLabel / seatSide / seatOrder
 
 前端会按学生当前选择的开始/结束时间展示座位状态，并优先使用桌子坐标字段渲染真实平面图。长方形桌子建议使用 `NORTH` 两个座位和 `SOUTH` 两个座位表达“上方两个、下方两个”的常见四人桌布局。
 
+座位时段响应的 `status` 可能返回 `LOCKED`。这是为了座位图独立展示“已锁位”的派生展示状态：数据库中的 `seat_slots.status` 仍是 `USING`，接口会根据关联预约 `reservations.status = LOCKED` 返回 `LOCKED`，前端会禁用该座位并显示“已锁位”。
+
 管理员按模板批量发布开放时段：
 
 ```bash
@@ -82,6 +84,8 @@ curl -X POST http://localhost:18080/api/seat-slots/publish \
 ```
 
 重复发布相同座位、日期和时间段时不会报错，会返回 `skippedCount` 说明跳过数量。
+
+系统也会按北京时间自动开放预约时段。默认配置为 `AUTO_SEAT_SLOTS_ENABLED=true`、`AUTO_SEAT_SLOTS_ZONE_ID=Asia/Shanghai`、`AUTO_SEAT_SLOTS_OPEN_HOUR=18`、`AUTO_SEAT_SLOTS_DELAY_MS=300000`：达到开放小时后，定时任务会为启用区域的启用座位发布次日 `openTime-closeTime` 完整窗口，重复执行会跳过已存在的窗口。
 
 撤销未被预约的开放时段：
 
@@ -118,7 +122,7 @@ curl -X POST http://localhost:18080/api/admin/seat-slots/1/restore \
 
 只有未绑定预约的 `ABNORMAL` 时段可以直接恢复为空闲。已绑定预约的异常时段应走管理员释放流程。
 
-管理员释放已预约或使用中的座位时段：
+管理员释放已预约、使用中或已锁位的座位时段：
 
 ```bash
 curl -X POST http://localhost:18080/api/admin/seat-slots/1/release \
@@ -583,7 +587,7 @@ curl "http://localhost:18080/api/admin/dashboard?date=2026-05-14" \
 - 开放时段页按区域、座位、日期和多个时间段模板批量发布可预约资源。
 - 开放时段页撤销未被预约的空闲时段。
 - 开放时段页填写原因后标记异常占用和恢复异常时段。
-- 开放时段页填写原因后释放已预约、使用中或异常占用的座位时段。
+- 开放时段页填写原因后释放已预约、使用中、已锁位或异常占用的座位时段。
 - 占用看板页查询区域利用率和统计卡片。
 - 审计日志页按动作、操作人、对象和时间范围筛选管理员操作记录。
 - 预约规则页维护签到宽限、提前预约天数和每日活跃预约上限。

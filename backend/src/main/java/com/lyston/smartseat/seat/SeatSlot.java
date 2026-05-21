@@ -60,6 +60,8 @@ public class SeatSlot {
     private String status;
     private Long reservedBy;
     private Long reservationId;
+    @TableField(exist = false)
+    private String reservationStatus;
     private Integer version;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -294,6 +296,14 @@ public class SeatSlot {
 
     public void setReservationId(Long reservationId) {
         this.reservationId = reservationId;
+    }
+
+    public String getReservationStatus() {
+        return reservationStatus;
+    }
+
+    public void setReservationStatus(String reservationStatus) {
+        this.reservationStatus = reservationStatus;
     }
 
     public Integer getVersion() {

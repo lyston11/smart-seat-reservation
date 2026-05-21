@@ -944,8 +944,13 @@ body {
 
 .seat-map-cell-reserved.ant-btn,
 .seat-map-cell-using.ant-btn,
+.seat-map-cell-locked.ant-btn,
 .seat-map-cell-abnormal.ant-btn {
   background: #f9fafb;
+}
+
+.seat-map-cell-locked.ant-btn {
+  border-color: #c4b5fd;
 }
 
 .ant-table-wrapper {

@@ -21,8 +21,11 @@ public interface SeatSlotMapper extends BaseMapper<SeatSlot> {
                    s.seat_label, s.seat_side, s.seat_order,
                    s.row_no, s.column_no, s.display_order,
                    ss.area_id, ss.slot_date, ss.start_time, ss.end_time, ss.status,
-                   ss.reserved_by, ss.reservation_id, ss.version, ss.created_at, ss.updated_at
+                   ss.reserved_by, ss.reservation_id, r.status AS reservation_status,
+                   ss.version, ss.created_at, ss.updated_at
             FROM seat_slots ss
+            LEFT JOIN reservations r
+              ON r.id = ss.reservation_id
             JOIN seats s
               ON s.id = ss.seat_id
              AND s.status = 'ACTIVE'
@@ -54,8 +57,11 @@ public interface SeatSlotMapper extends BaseMapper<SeatSlot> {
                    s.row_no, s.column_no, s.display_order,
                    ss.area_id, a.name AS area_name, a.floor, a.checkin_ip_cidrs,
                    ss.slot_date, ss.start_time, ss.end_time, ss.status,
-                   ss.reserved_by, ss.reservation_id, ss.version, ss.created_at, ss.updated_at
+                   ss.reserved_by, ss.reservation_id, r.status AS reservation_status,
+                   ss.version, ss.created_at, ss.updated_at
             FROM seat_slots ss
+            LEFT JOIN reservations r
+              ON r.id = ss.reservation_id
             JOIN seats s
               ON s.id = ss.seat_id
             LEFT JOIN tables t
@@ -108,9 +114,12 @@ public interface SeatSlotMapper extends BaseMapper<SeatSlot> {
                    s.row_no, s.column_no, s.display_order,
                    ss.area_id, a.name AS area_name, a.floor, a.checkin_ip_cidrs,
                    ss.slot_date, ss.start_time, ss.end_time, ss.status,
-                   ss.reserved_by, ss.reservation_id, ss.version, ss.created_at, ss.updated_at,
+                   ss.reserved_by, ss.reservation_id, r.status AS reservation_status,
+                   ss.version, ss.created_at, ss.updated_at,
                    a.open_time, a.close_time
             FROM seat_slots ss
+            LEFT JOIN reservations r
+              ON r.id = ss.reservation_id
             JOIN seats s
               ON s.id = ss.seat_id
              AND s.status = 'ACTIVE'

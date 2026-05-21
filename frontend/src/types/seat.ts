@@ -61,7 +61,7 @@ export type StudyTableQr = {
   checkinPath: string;
 };
 
-export type SeatSlotStatus = 'AVAILABLE' | 'RESERVED' | 'USING' | 'ABNORMAL' | 'UNPUBLISHED';
+export type SeatSlotStatus = 'AVAILABLE' | 'RESERVED' | 'USING' | 'LOCKED' | 'ABNORMAL' | 'UNPUBLISHED';
 
 export type SeatSlot = {
   id: number;
