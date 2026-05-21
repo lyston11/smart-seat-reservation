@@ -79,6 +79,7 @@ const pageTitles: Record<string, string> = {
   '/student/home': '学生首页',
   '/student/seats': '学生选座',
   '/student/reservations': '我的预约',
+  '/student/seat-checkin': '座位码签到',
   '/student/table-checkin': '桌码签到',
   '/admin/areas': '区域管理',
   '/admin/tables': '桌子管理',

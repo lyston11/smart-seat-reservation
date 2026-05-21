@@ -117,6 +117,50 @@ public interface ReservationMapper extends BaseMapper<Reservation> {
             @Param("checkinCode") String checkinCode
     );
 
+    @Select("""
+            SELECT r.id, r.user_id, r.seat_id, r.seat_slot_id, r.status, r.checkin_code, r.reserved_at,
+                   r.checked_in_at, r.checked_out_at, r.last_wifi_seen_at, r.last_wifi_ip,
+                   r.seat_lock_quota, r.seat_lock_used_count, r.locked_until_at,
+                   r.expires_at, r.created_at, r.updated_at
+            FROM reservations r
+            JOIN seats s
+              ON s.id = r.seat_id
+            WHERE r.user_id = #{userId}
+              AND s.qr_token = #{seatQrToken}
+              AND s.status = 'ACTIVE'
+              AND r.status = 'RESERVED'
+              AND r.checkin_code = #{checkinCode}
+            ORDER BY r.reserved_at DESC
+            LIMIT 1
+            """)
+    Reservation findReservedForSeatCheckin(
+            @Param("userId") Long userId,
+            @Param("seatQrToken") String seatQrToken,
+            @Param("checkinCode") String checkinCode
+    );
+
+    @Select("""
+            SELECT r.id, r.user_id, r.seat_id, r.seat_slot_id, r.status, r.checkin_code, r.reserved_at,
+                   r.checked_in_at, r.checked_out_at, r.last_wifi_seen_at, r.last_wifi_ip,
+                   r.seat_lock_quota, r.seat_lock_used_count, r.locked_until_at,
+                   r.expires_at, r.created_at, r.updated_at
+            FROM reservations r
+            JOIN seats s
+              ON s.id = r.seat_id
+            WHERE r.user_id = #{userId}
+              AND s.qr_token = #{seatQrToken}
+              AND s.status = 'ACTIVE'
+              AND r.status = 'LOCKED'
+              AND r.checkin_code = #{checkinCode}
+            ORDER BY r.locked_until_at DESC, r.reserved_at DESC
+            LIMIT 1
+            """)
+    Reservation findLockedForSeatCheckin(
+            @Param("userId") Long userId,
+            @Param("seatQrToken") String seatQrToken,
+            @Param("checkinCode") String checkinCode
+    );
+
     @Update("""
             UPDATE reservations
             SET status = 'ADMIN_RELEASED',

@@ -127,6 +127,39 @@ public class ReservationService {
         );
     }
 
+    @Transactional
+    public ReservationResponse seatCheckIn(SeatCheckinRequest request, Long userId, String clientIp) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        String effectiveIp = normalizeClientIp(clientIp);
+        Reservation lockedReservation = reservationMapper.findLockedForSeatCheckin(
+                userId,
+                request.seatQrToken(),
+                request.checkinCode()
+        );
+        if (lockedReservation != null) {
+            return reactivateLockedReservation(lockedReservation, request.checkinCode(), userId, effectiveIp, now);
+        }
+
+        Reservation reservation = reservationMapper.findReservedForSeatCheckin(
+                userId,
+                request.seatQrToken(),
+                request.checkinCode()
+        );
+        if (reservation == null) {
+            throw new BusinessException("SEAT_CHECKIN_NOT_MATCHED", "No matching reservation for this seat");
+        }
+        if (reservation.getExpiresAt() != null && reservation.getExpiresAt().isBefore(now)) {
+            throw new BusinessException("RESERVATION_EXPIRED", "Reservation has expired");
+        }
+        return completeCheckIn(
+                reservation,
+                request.checkinCode(),
+                userId,
+                effectiveIp,
+                now
+        );
+    }
+
     private ReservationResponse completeCheckIn(
             Reservation reservation,
             String checkinCode,
@@ -229,6 +262,16 @@ public class ReservationService {
         LocalDateTime now = LocalDateTime.now(clock);
         String effectiveIp = normalizeClientIp(clientIp);
         Reservation reservation = requireReservation(reservationId);
+        return reactivateLockedReservation(reservation, request.checkinCode(), userId, effectiveIp, now);
+    }
+
+    private ReservationResponse reactivateLockedReservation(
+            Reservation reservation,
+            String checkinCode,
+            Long userId,
+            String effectiveIp,
+            LocalDateTime now
+    ) {
         if (!ReservationStatus.LOCKED.equals(reservation.getStatus())) {
             throw new BusinessException("RESERVATION_NOT_LOCKED", "Reservation is not locked");
         }
@@ -239,14 +282,14 @@ public class ReservationService {
         if (!now.isBefore(slotEndAt)
                 || (reservation.getLockedUntilAt() != null && !reservation.getLockedUntilAt().isAfter(now))) {
             forceReleaseLockedReservation(reservation, now, CheckinAction.SEAT_LOCK_EXPIRE);
-            Reservation updated = requireReservation(reservationId);
+            Reservation updated = requireReservation(reservation.getId());
             return toResponse(updated);
         }
 
         int reservationRows = reservationMapper.markLockReactivated(
-                reservationId,
+                reservation.getId(),
                 userId,
-                request.checkinCode(),
+                checkinCode,
                 effectiveIp,
                 now
         );
@@ -254,8 +297,8 @@ public class ReservationService {
             throw new BusinessException("SEAT_LOCK_REACTIVATE_FAILED", "Locked seat cannot be reactivated");
         }
 
-        recordAction(reservationId, userId, CheckinAction.SEAT_LOCK_REACTIVATE, now);
-        Reservation updated = requireReservation(reservationId);
+        recordAction(reservation.getId(), userId, CheckinAction.SEAT_LOCK_REACTIVATE, now);
+        Reservation updated = requireReservation(reservation.getId());
         return toResponse(updated);
     }
 

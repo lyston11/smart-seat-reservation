@@ -80,6 +80,20 @@ public class ReservationController {
         ));
     }
 
+    @PostMapping("/seat-check-in")
+    @RequireRole(UserRole.STUDENT)
+    public ApiResponse<ReservationResponse> seatCheckIn(
+            @Valid @RequestBody SeatCheckinRequest request,
+            CurrentUser currentUser,
+            HttpServletRequest servletRequest
+    ) {
+        return ApiResponse.ok(reservationService.seatCheckIn(
+                request,
+                currentUser.id(),
+                clientIpResolver.resolve(servletRequest)
+        ));
+    }
+
     @PostMapping("/{reservationId}/wifi-presence")
     @RequireRole(UserRole.STUDENT)
     public ApiResponse<WifiPresenceResponse> markWifiPresence(

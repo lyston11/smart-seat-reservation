@@ -87,6 +87,10 @@ function addMinutesToTimeText(value: string, minutesToAdd: number) {
   return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
+function withOrigin(path: string) {
+  return `${window.location.origin}${path}`;
+}
+
 async function selectComboboxValue(label: string, value: string) {
   fireEvent.mouseDown(await screen.findByLabelText(label));
   const options = await screen.findAllByText(value);
@@ -193,6 +197,59 @@ describe('App', () => {
       );
     });
     expect(await screen.findByText('预约 7 已完成签到，座位进入使用中状态。')).toBeTruthy();
+  });
+
+  it('submits seat QR check-in with token and can restore a locked reservation', async () => {
+    storeStudentSession();
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === '/api/reservations/seat-check-in') {
+        expect(init?.method).toBe('POST');
+        expect(JSON.parse(String(init?.body))).toEqual({ seatQrToken: 'seat-token-1', checkinCode: '246810' });
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: makeReservation({
+              status: 'CHECKED_IN',
+              seatNo: 'A-001',
+              lockedUntilAt: null,
+            }),
+          }),
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/student/seat-checkin?token=seat-token-1']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 3, name: '座位码签到' })).toBeTruthy();
+    fireEvent.change(await screen.findByLabelText('签到码'), {
+      target: { value: '246810' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '确认签到/解锁' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/reservations/seat-check-in',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ seatQrToken: 'seat-token-1', checkinCode: '246810' }),
+        }),
+      );
+    });
+    expect(await screen.findByText('预约 7 已通过座位码确认到场或恢复使用。')).toBeTruthy();
   });
 
   it('restores checked-in reservation on student seat page so the student can check out', async () => {
@@ -1121,6 +1178,136 @@ describe('App', () => {
       );
     });
     expect(await screen.findByText(/当前 IP 10\.10\.1\.20 命中该网段/)).toBeTruthy();
+  });
+
+  it('shows a fixed seat QR code in admin seat management', async () => {
+    storeAdminSession();
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('/api/areas')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                name: 'A 区',
+                floor: '1F',
+                description: null,
+                status: 'ACTIVE',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
+              },
+            ],
+          }),
+        };
+      }
+      if (url.startsWith('/api/tables?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                areaId: 1,
+                tableNo: 'T01',
+                name: 'A 区 T01',
+                status: 'ACTIVE',
+                rowNo: 1,
+                columnNo: 1,
+                displayOrder: 1,
+                positionX: 120,
+                positionY: 80,
+                widthPx: 260,
+                heightPx: 96,
+                rotationDeg: 0,
+              },
+            ],
+          }),
+        };
+      }
+      if (url.startsWith('/api/seats?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 9,
+                areaId: 1,
+                tableId: 1,
+                tableNo: 'T01',
+                tableRowNo: 1,
+                tableColumnNo: 1,
+                tableDisplayOrder: 1,
+                tablePositionX: 120,
+                tablePositionY: 80,
+                tableWidthPx: 260,
+                tableHeightPx: 96,
+                tableRotationDeg: 0,
+                seatNo: 'A-001',
+                seatLabel: '1号',
+                seatSide: 'NORTH',
+                seatOrder: 1,
+                rowNo: 1,
+                columnNo: 1,
+                displayOrder: 1,
+                status: 'ACTIVE',
+              },
+            ],
+          }),
+        };
+      }
+      if (url === '/api/seats/9/checkin-qr') {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: {
+              seatId: 9,
+              tableId: 1,
+              tableNo: 'T01',
+              seatNo: 'A-001',
+              seatLabel: '1号',
+              qrToken: 'seat-token-1',
+              checkinPath: '/student/seat-checkin?token=seat-token-1',
+            },
+          }),
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/admin/seats']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 3, name: '座位管理' })).toBeTruthy();
+    expect(await screen.findByText('A-001')).toBeTruthy();
+    fireEvent.click(await screen.findByText('座位码'));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/seats/9/checkin-qr', expect.any(Object));
+    });
+    expect(await screen.findByText(withOrigin('/student/seat-checkin?token=seat-token-1'))).toBeTruthy();
   });
 
   it('saves dragged admin table layout changes without exposing coordinate inputs', async () => {

@@ -49,6 +49,11 @@ export type TableCheckinPayload = {
   checkinCode: string;
 };
 
+export type SeatCheckinPayload = {
+  seatQrToken: string;
+  checkinCode: string;
+};
+
 export type WifiPresencePayload = object;
 
 export type WifiPresenceResult = {

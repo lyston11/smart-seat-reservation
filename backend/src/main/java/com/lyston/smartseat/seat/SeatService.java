@@ -8,6 +8,7 @@ import com.lyston.smartseat.table.StudyTableStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,6 +59,7 @@ public class SeatService {
         seat.setSeatLabel(normalizeNullable(request.seatLabel()));
         seat.setSeatSide(normalizeSeatSide(request.seatSide()));
         seat.setSeatOrder(request.seatOrder());
+        seat.setQrToken(generateSeatQrToken());
         seat.setRowNo(request.rowNo());
         seat.setColumnNo(request.columnNo());
         seat.setDisplayOrder(resolveDisplayOrder(request.displayOrder(), areaId));
@@ -115,6 +117,20 @@ public class SeatService {
         return SeatResponse.from(seat);
     }
 
+    public SeatQrResponse getSeatCheckinQr(Long seatId) {
+        Seat seat = seatMapper.findByIdWithQrToken(seatId);
+        if (seat == null) {
+            throw new BusinessException("SEAT_NOT_FOUND", "Seat not found");
+        }
+        if (!SeatStatus.ACTIVE.equals(seat.getStatus())) {
+            throw new BusinessException("SEAT_NOT_ACTIVE", "Seat is not active");
+        }
+        if (seat.getQrToken() == null || seat.getQrToken().isBlank()) {
+            throw new BusinessException("SEAT_QR_NOT_CONFIGURED", "Seat check-in QR token is not configured");
+        }
+        return SeatQrResponse.from(seat);
+    }
+
     private String normalizeSeatNo(String seatNo) {
         return seatNo.trim();
     }
@@ -152,6 +168,10 @@ public class SeatService {
             throw new BusinessException("INVALID_SEAT_STATUS", "Seat status is invalid");
         }
         return normalizedStatus;
+    }
+
+    private String generateSeatQrToken() {
+        return UUID.randomUUID().toString().replace("-", "");
     }
 
     private void requireArea(Long areaId) {

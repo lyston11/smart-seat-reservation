@@ -1928,3 +1928,55 @@
 ### 对其他成员的影响
 - 锁位状态文案统一走 `reservationDisplay.ts`，后续新增锁位状态或规则说明时优先维护这里。
 - 管理员看板现在会同时请求预约规则接口，用于展示单次锁位时长。
+
+## 2026-05-21
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-api-error-hardening
+- 目标: 做签到相关增强，为每个座位提供固定二维码签到，并支持学生锁位后扫描同一座位二维码恢复使用。
+
+### 本次改动
+- 新增 Flyway 迁移 `V13__add_seat_qr_tokens.sql`，为 `seats` 表增加唯一且稳定的 `qr_token`，历史座位自动回填，新建座位自动生成 token。
+- 后端新增管理员接口 `GET /api/seats/{seatId}/checkin-qr`，只返回单个座位的二维码信息，普通座位列表继续不暴露 `qrToken`。
+- 后端新增学生接口 `POST /api/reservations/seat-check-in`，使用 `seatQrToken + checkinCode` 完成座位码签到。
+- 座位码签到会优先匹配当前学生该座位下的 `LOCKED` 预约，命中则走锁位恢复；否则匹配 `RESERVED` 预约并完成普通签到。
+- 座位码签到和锁位恢复继续复用现有 IP 网段校验、签到时间窗/锁位有效期校验、座位时段状态更新和签到记录写入逻辑。
+- 前端新增学生路由 `/student/seat-checkin`，扫码进入后输入预约签到码，可完成签到或锁位恢复。
+- 管理员座位管理页新增“座位码”操作，弹窗展示固定座位二维码、完整扫码链接和座位/桌位信息。
+- API 示例、接口契约和架构文档同步补充座位码、座位码签到和锁位扫码恢复流程。
+
+### 涉及文件
+- backend/src/main/resources/db/migration/V13__add_seat_qr_tokens.sql
+- backend/src/main/java/com/lyston/smartseat/seat/
+- backend/src/main/java/com/lyston/smartseat/reservation/
+- backend/src/test/java/com/lyston/smartseat/seat/SeatServiceTest.java
+- backend/src/test/java/com/lyston/smartseat/reservation/ReservationServiceTest.java
+- frontend/src/pages/SeatCheckinPage.tsx
+- frontend/src/pages/AdminSeatsPage.tsx
+- frontend/src/api/seats.ts
+- frontend/src/api/reservations.ts
+- frontend/src/types/seat.ts
+- frontend/src/types/reservation.ts
+- frontend/src/App.tsx
+- frontend/src/App.test.tsx
+- docs/API_EXAMPLES.md
+- docs/architecture/API_CONTRACT.md
+- docs/architecture/ARCHITECTURE.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 72 个测试通过。
+- 已运行 `npm run test`，前端 37 个测试通过；jsdom 仍提示不支持 QRCode canvas 和 Ant Design pseudo-element 相关能力，不影响测试结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白字符问题。
+
+### 遗留问题
+- 当前管理员端展示单个座位二维码，后续可继续做按区域/桌位批量导出打印版二维码。
+- 座位码页面仍需要学生输入动态签到码；如果后续想进一步提升体验，可以在预约详情中增加“扫码恢复使用”的显式引导。
+
+### 对其他成员的影响
+- `seats.qr_token` 是固定座位码的核心字段，后续手工导入座位数据必须保证该字段唯一且非空，推荐仍通过后端创建接口生成。
+- 普通座位列表不暴露 `qrToken`，管理员打印/查看座位码必须走 `/api/seats/{seatId}/checkin-qr`。
+- 锁位恢复现在既可以通过原预约详情入口，也可以通过扫描座位固定二维码完成。

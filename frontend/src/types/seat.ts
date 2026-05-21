@@ -61,6 +61,16 @@ export type StudyTableQr = {
   checkinPath: string;
 };
 
+export type SeatQr = {
+  seatId: number;
+  tableId: number | null;
+  tableNo: string | null;
+  seatNo: string;
+  seatLabel: string | null;
+  qrToken: string;
+  checkinPath: string;
+};
+
 export type SeatSlotStatus = 'AVAILABLE' | 'RESERVED' | 'USING' | 'ABNORMAL' | 'UNPUBLISHED';
 
 export type SeatSlot = {

@@ -34,6 +34,7 @@ public class Seat {
     private String seatLabel;
     private String seatSide;
     private Integer seatOrder;
+    private String qrToken;
     private Integer rowNo;
     private Integer columnNo;
     private Integer displayOrder;
@@ -167,6 +168,14 @@ public class Seat {
 
     public void setSeatOrder(Integer seatOrder) {
         this.seatOrder = seatOrder;
+    }
+
+    public String getQrToken() {
+        return qrToken;
+    }
+
+    public void setQrToken(String qrToken) {
+        this.qrToken = qrToken;
     }
 
     public Integer getRowNo() {
