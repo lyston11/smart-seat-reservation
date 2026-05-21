@@ -119,6 +119,37 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 3, name: '学生选座' })).toBeTruthy();
   });
 
+  it('clears stored session and redirects to login when token is invalid', async () => {
+    storeAdminSession();
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: async () => ({
+          success: false,
+          code: 'AUTH_INVALID',
+          message: 'Authentication token is invalid or expired',
+          data: null,
+        }),
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/admin/dashboard']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 3, name: '占用看板' })).toBeTruthy();
+    await waitFor(() => {
+      expect(window.localStorage.getItem('smart-seat-auth-token')).toBeNull();
+      expect(window.localStorage.getItem('smart-seat-auth-user')).toBeNull();
+    });
+    expect(await screen.findByRole('button', { name: /登\s*录/ })).toBeTruthy();
+  });
+
   it('submits table QR check-in with token and check-in code', async () => {
     storeStudentSession();
 

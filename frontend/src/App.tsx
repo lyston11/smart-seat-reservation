@@ -1,7 +1,7 @@
 import { App as AntApp } from 'antd';
-import { lazy, Suspense } from 'react';
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { getStoredUser } from './api/http';
+import { lazy, Suspense, useEffect } from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { AUTH_EXPIRED_EVENT, getStoredUser } from './api/http';
 import AppLayout from './layout/AppLayout';
 import RoleRoute from './router/RoleRoute';
 
@@ -27,9 +27,28 @@ function ProtectedRoute() {
   return <AppLayout />;
 }
 
+function AuthExpiredListener() {
+  const { message } = AntApp.useApp();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    function handleAuthExpired(event: Event) {
+      const detail = event instanceof CustomEvent ? event.detail : null;
+      message.warning(detail?.message ?? '登录状态已过期，请重新登录');
+      navigate('/login', { replace: true, state: { from: window.location.pathname + window.location.search } });
+    }
+
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+  }, [message, navigate]);
+
+  return null;
+}
+
 export default function App() {
   return (
     <AntApp>
+      <AuthExpiredListener />
       <Suspense fallback={<div className="route-loading">加载中...</div>}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
