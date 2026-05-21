@@ -108,7 +108,7 @@ export function getSeatLockHelpText(reservation: ReservationResult) {
   const remainingCount = getRemainingSeatLockCount(reservation);
 
   if (reservation.status === 'LOCKED') {
-    return '锁位期间暂停 WiFi 离线释放，可重新签到恢复或主动释放座位';
+    return '锁位期间暂停 WiFi 离线释放，可扫码座位码恢复或主动释放座位';
   }
 
   if (reservation.status === 'CHECKED_IN' && remainingCount > 0) {

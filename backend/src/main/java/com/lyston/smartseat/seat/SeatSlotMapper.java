@@ -141,6 +141,48 @@ public interface SeatSlotMapper extends BaseMapper<SeatSlot> {
     );
 
     @Select("""
+            SELECT ss.id, ss.seat_id, s.seat_no,
+                   t.id AS table_id, t.table_no, t.row_no AS table_row_no,
+                   t.column_no AS table_column_no, t.display_order AS table_display_order,
+                   t.position_x AS table_position_x, t.position_y AS table_position_y,
+                   t.width_px AS table_width_px, t.height_px AS table_height_px,
+                   t.rotation_deg AS table_rotation_deg,
+                   s.seat_label, s.seat_side, s.seat_order,
+                   s.row_no, s.column_no, s.display_order,
+                   ss.area_id, a.name AS area_name, a.floor, a.checkin_ip_cidrs,
+                   ss.slot_date, ss.start_time, ss.end_time, ss.status,
+                   ss.reserved_by, ss.reservation_id, ss.version, ss.created_at, ss.updated_at,
+                   a.open_time, a.close_time
+            FROM seat_slots ss
+            JOIN seats s
+              ON s.id = ss.seat_id
+             AND s.status = 'ACTIVE'
+            JOIN tables t
+              ON t.id = s.table_id
+             AND t.status = 'ACTIVE'
+            JOIN areas a
+              ON a.id = ss.area_id
+             AND a.status = 'ACTIVE'
+            WHERE ss.seat_id = #{seatId}
+              AND ss.slot_date = #{slotDate}
+              AND ss.status = 'AVAILABLE'
+              AND ss.reserved_by IS NULL
+              AND ss.reservation_id IS NULL
+              AND ss.start_time < #{endTime}
+              AND ss.end_time > #{startTime}
+              AND a.open_time <= #{startTime}
+              AND a.close_time >= #{endTime}
+            ORDER BY ss.start_time, ss.end_time
+            FOR UPDATE
+            """)
+    List<SeatSlot> findAvailableWindowsForSeat(
+            @Param("seatId") Long seatId,
+            @Param("slotDate") LocalDate slotDate,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime
+    );
+
+    @Select("""
             SELECT COUNT(*)
             FROM seat_slots
             WHERE seat_id = #{seatId}

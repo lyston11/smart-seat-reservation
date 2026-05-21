@@ -153,7 +153,7 @@ export default function MyReservationsPage() {
           loading={actionId === reservation.reservationId}
           onClick={() => runAction(reservation, 'check-in')}
         >
-          签到
+          开发测试签到
         </Button>
         <Button
           disabled={!canCheckOutReservation(reservation)}
@@ -190,7 +190,7 @@ export default function MyReservationsPage() {
           loading={actionId === reservation.reservationId}
           onClick={() => runAction(reservation, 'reactivate-lock')}
         >
-          重新签到
+          开发测试恢复
         </Button>
         <Popconfirm
           title="释放锁位"
@@ -318,7 +318,7 @@ export default function MyReservationsPage() {
       <div className="student-section">
         <div className="seat-map-section-header">
           <strong>当前可操作预约</strong>
-          <span>签到 / 签退 / 取消 / 锁位</span>
+          <span>扫码签到 / 开发测试 / 签退 / 锁位</span>
         </div>
         {activeReservations.length > 0 ? (
           <div className="student-card-grid">
@@ -341,7 +341,12 @@ export default function MyReservationsPage() {
                   ) : null}
                   {reservation.status === 'LOCKED' ? (
                     <Typography.Text type="secondary">
-                      已锁位至 {formatDateTime(reservation.lockedUntilAt)}，可重新签到恢复使用。
+                      已锁位至 {formatDateTime(reservation.lockedUntilAt)}，可扫码座位码恢复使用。
+                    </Typography.Text>
+                  ) : null}
+                  {reservation.status === 'RESERVED' || reservation.status === 'LOCKED' ? (
+                    <Typography.Text type="secondary" className="reservation-qr-checkin-hint">
+                      正式流程请扫描桌面/座位二维码；下方入口仅用于开发测试，仍会校验校园网 IP 和签到时间窗。
                     </Typography.Text>
                   ) : null}
                   <div className="seat-lock-status-box">

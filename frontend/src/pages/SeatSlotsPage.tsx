@@ -470,6 +470,11 @@ export default function SeatSlotsPage() {
                   锁位次数 {activeReservation.seatLockUsedCount ?? 0}/{activeReservation.seatLockQuota ?? 0}
                   {activeReservation.lockedUntilAt ? ` · 锁位至 ${formatDateTime(activeReservation.lockedUntilAt)}` : ''}
                 </Typography.Text>
+                {activeReservation.status === 'RESERVED' ? (
+                  <Typography.Text type="secondary" className="reservation-qr-checkin-hint">
+                    正式签到请扫描桌面/座位二维码；测试入口仍会校验校园网 IP 和签到时间窗。
+                  </Typography.Text>
+                ) : null}
                 <div className="reservation-code-field reservation-code">
                   <span>签到码</span>
                   <Input
@@ -484,7 +489,7 @@ export default function SeatSlotsPage() {
                     loading={reservationAction === 'check-in'}
                     onClick={() => runReservationAction('check-in')}
                   >
-                    签到
+                    开发测试签到
                   </Button>
                   <Button
                     disabled={!activeReservation}
@@ -626,7 +631,27 @@ function getBusySlot(slots: SeatSlot[], startTime: string, endTime: string) {
 }
 
 function getAvailableWindow(slots: SeatSlot[], startTime: string, endTime: string) {
-  return slots.find((slot) => slot.status === 'AVAILABLE' && contains(slot, startTime, endTime));
+  const windows = mergeAvailableWindows(slots);
+  return windows.find((slot) => contains(slot, startTime, endTime));
+}
+
+function mergeAvailableWindows(slots: SeatSlot[]) {
+  const sortedSlots = slots
+    .filter((slot) => slot.status === 'AVAILABLE')
+    .slice()
+    .sort((left, right) => toMinutes(left.startTime) - toMinutes(right.startTime));
+  const windows: SeatSlot[] = [];
+
+  sortedSlots.forEach((slot) => {
+    const latest = windows[windows.length - 1];
+    if (latest && latest.endTime === slot.startTime) {
+      latest.endTime = slot.endTime;
+      return;
+    }
+    windows.push({ ...slot });
+  });
+
+  return windows;
 }
 
 function buildVisibleSlotsForSelectedTime(

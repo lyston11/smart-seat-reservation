@@ -512,6 +512,10 @@ body {
   border-radius: 0 6px 6px 0;
 }
 
+.reservation-qr-checkin-hint {
+  line-height: 1.6;
+}
+
 .student-home-hero {
   padding: 22px 24px;
   margin-bottom: 16px;
