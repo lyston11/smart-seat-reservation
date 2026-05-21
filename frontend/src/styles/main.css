@@ -216,6 +216,11 @@ body {
   width: 100%;
 }
 
+.form-inline-actions {
+  margin-top: -12px;
+  margin-bottom: 18px;
+}
+
 .table-qr-panel {
   display: grid;
   gap: 16px;

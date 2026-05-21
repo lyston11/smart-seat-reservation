@@ -1841,3 +1841,51 @@
 ### 对其他成员的影响
 - 后续接口仍应返回统一 `ApiResponse`，否则前端会按响应格式异常处理。
 - 所有前端 API 模块继续复用公共 `request/get/post/put/patch/del`，不要绕过认证失效和响应格式校验逻辑。
+
+## 2026-05-21
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-api-error-hardening
+- 目标: 按用户要求直接基于当前分支继续开发签到/WiFi 检测加固，补可信代理配置、全局 WiFi 心跳、管理员网段校验/测试和反向代理说明。
+
+### 本次改动
+- 后端新增 `smart-seat.network.trusted-proxy-cidrs` 配置和 `NetworkProperties`，只有请求来源命中可信代理网段时才采信 `X-Forwarded-For` / `X-Real-IP`。
+- `ClientIpResolver` 新增详细解析结果，保留真实识别 IP、remoteAddr、转发头和是否可信代理，避免客户端伪造转发头绕过校园网检测。
+- `IpRangeMatcher` 增加 CIDR 列表校验能力，区域保存和测试网段时会拒绝非法 CIDR。
+- 区域管理新增 `/api/areas/checkin-ip-test`，管理员可测试当前请求 IP 是否命中输入的签到校园网网段。
+- 前端新增 `WifiPresenceGuard`，学生登录后只要存在 `CHECKED_IN` 预约，就会全局周期性上报 WiFi 在线心跳，不再依赖停留在“我的预约”页面。
+- 管理员区域页面新增 CIDR 前端校验和“测试当前 IP”按钮，显示当前后端识别 IP 是否命中网段。
+- 部署文档补充 Nginx 反向代理头、`TRUSTED_PROXY_CIDRS` 配置和不要信任公网转发头的安全说明。
+- 补充前后端测试，覆盖可信代理解析、CIDR 校验、全局 WiFi 心跳和管理员 IP 测试交互。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/network/
+- backend/src/main/java/com/lyston/smartseat/area/
+- backend/src/main/java/com/lyston/smartseat/SmartSeatApplication.java
+- backend/src/main/resources/application.yml
+- backend/src/test/java/com/lyston/smartseat/network/
+- frontend/src/components/WifiPresenceGuard.tsx
+- frontend/src/App.tsx
+- frontend/src/App.test.tsx
+- frontend/src/api/areas.ts
+- frontend/src/pages/AdminAreasPage.tsx
+- frontend/src/pages/MyReservationsPage.tsx
+- frontend/src/styles/main.css
+- docs/deployment/LOCAL_DEVELOPMENT.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 67 个测试通过。
+- 已运行 `npm run test`，前端 33 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白字符问题。
+
+### 遗留问题
+- 全局 WiFi 心跳当前按 60 秒固定间隔上报，后续可把间隔提取为前端配置并和后台 WiFi 离线释放时间联动。
+- 当前 IP 测试接口用于管理员配置校验，不写审计日志；如果后续要追踪配置验证行为，可补充审计动作。
+
+### 对其他成员的影响
+- 部署到 Nginx/网关后必须正确配置 `TRUSTED_PROXY_CIDRS`，否则后端会忽略转发头，只使用代理 IP 做校园网判断。
+- 区域 `checkinIpCidrs` 现在会严格校验 CIDR 格式，种子数据和手工导入数据也需要使用合法 CIDR。

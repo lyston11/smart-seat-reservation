@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Form, Input, message, Modal, Popconfirm, Select, Space, Table, Tag } from 'antd';
 import type { TableColumnsType } from 'antd';
-import { createArea, listAreas, updateArea, updateAreaStatus } from '../api/areas';
+import { createArea, listAreas, testCheckinIp, updateArea, updateAreaStatus } from '../api/areas';
 import type { Area, AreaStatus } from '../types/seat';
 
 type AreaFormValues = {
@@ -29,6 +29,7 @@ export default function AdminAreasPage() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [testingIp, setTestingIp] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingArea, setEditingArea] = useState<Area | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
@@ -107,6 +108,26 @@ export default function AdminAreasPage() {
       messageApi.error(error instanceof Error ? error.message : '状态更新失败');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function runCheckinIpTest() {
+    const checkinIpCidrs = form.getFieldValue('checkinIpCidrs');
+    try {
+      validateCidrList(checkinIpCidrs);
+      setTestingIp(true);
+      const result = await testCheckinIp(checkinIpCidrs);
+      const proxyText = result.trustedProxy ? '可信代理转发' : '直连/未信任转发';
+      const forwardedText = result.forwardedFor ? `，转发头 ${result.forwardedFor}` : '';
+      if (result.matched) {
+        messageApi.success(`当前 IP ${result.clientIp} 命中该网段（${proxyText}${forwardedText}）`);
+      } else {
+        messageApi.warning(`当前 IP ${result.clientIp} 未命中该网段（${proxyText}${forwardedText}）`);
+      }
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : 'IP 网段测试失败');
+    } finally {
+      setTestingIp(false);
     }
   }
 
@@ -237,10 +258,25 @@ export default function AdminAreasPage() {
             rules={[
               { required: true, message: '请输入允许签到的校园网 IP 网段' },
               { max: 512, message: '签到网段不能超过 512 个字符' },
+              {
+                validator: (_, value) => {
+                  try {
+                    validateCidrList(value);
+                    return Promise.resolve();
+                  } catch (error) {
+                    return Promise.reject(error);
+                  }
+                },
+              },
             ]}
           >
             <Input placeholder="例如 10.10.0.0/16,172.16.20.0/24" />
           </Form.Item>
+          <Space className="form-inline-actions">
+            <Button loading={testingIp} onClick={runCheckinIpTest}>
+              测试当前 IP
+            </Button>
+          </Space>
           {editingArea ? (
             <Form.Item
               label="状态"
@@ -266,4 +302,25 @@ function normalizeFormTime(value?: string) {
     return undefined;
   }
   return value.length === 5 ? `${value}:00` : value;
+}
+
+function validateCidrList(value?: string) {
+  if (!value || !value.trim()) {
+    throw new Error('请输入允许签到的校园网 IP 网段');
+  }
+  const ranges = value.split(',').map((range) => range.trim()).filter(Boolean);
+  if (ranges.length === 0) {
+    throw new Error('请输入允许签到的校园网 IP 网段');
+  }
+  ranges.forEach((range) => {
+    const [address, prefix, extra] = range.split('/');
+    if (!address || !prefix || extra !== undefined) {
+      throw new Error('请使用 CIDR 格式，例如 10.10.0.0/16');
+    }
+    const prefixLength = Number(prefix);
+    const maxPrefixLength = address.includes(':') ? 128 : 32;
+    if (!Number.isInteger(prefixLength) || prefixLength < 0 || prefixLength > maxPrefixLength) {
+      throw new Error('CIDR 前缀长度不合法');
+    }
+  });
 }

@@ -2,6 +2,7 @@ import { App as AntApp } from 'antd';
 import { lazy, Suspense, useEffect } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AUTH_EXPIRED_EVENT, getStoredUser } from './api/http';
+import WifiPresenceGuard from './components/WifiPresenceGuard';
 import AppLayout from './layout/AppLayout';
 import RoleRoute from './router/RoleRoute';
 
@@ -49,6 +50,7 @@ export default function App() {
   return (
     <AntApp>
       <AuthExpiredListener />
+      <WifiPresenceGuard />
       <Suspense fallback={<div className="route-loading">加载中...</div>}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

@@ -609,6 +609,72 @@ describe('App', () => {
     expect(await screen.findByText('A 区 · 1F')).toBeTruthy();
   });
 
+  it('sends WiFi presence heartbeats globally for checked-in student reservations', async () => {
+    storeStudentSession();
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.startsWith('/api/reservations?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [makeReservation({ status: 'CHECKED_IN' })],
+          }),
+        };
+      }
+      if (url === '/api/reservations/7/wifi-presence') {
+        expect(init?.method).toBe('POST');
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: {
+              reservationId: 7,
+              status: 'CHECKED_IN',
+              lastWifiSeenAt: '2026-05-19T09:01:00',
+              offlineReleaseMinutes: 15,
+            },
+          }),
+        };
+      }
+      if (url.startsWith('/api/reservations/rules')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: makeReservationRules(),
+          }),
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/student/home']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 3, name: '学生首页' })).toBeTruthy();
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/reservations/7/wifi-presence',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+  });
+
   it('lets students check in from the reservation management page', async () => {
     storeStudentSession();
 
@@ -811,6 +877,84 @@ describe('App', () => {
     expect(await screen.findByDisplayValue('18')).toBeTruthy();
     expect(await screen.findByDisplayValue('60')).toBeTruthy();
     expect(await screen.findByDisplayValue('15')).toBeTruthy();
+  });
+
+  it('tests admin area check-in IP ranges against the current request IP', async () => {
+    storeAdminSession();
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.startsWith('/api/areas') && url !== '/api/areas/checkin-ip-test') {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                name: 'A 区',
+                floor: '1F',
+                description: null,
+                status: 'ACTIVE',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+                checkinIpCidrs: '10.10.0.0/16',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url === '/api/areas/checkin-ip-test') {
+        expect(init?.method).toBe('POST');
+        expect(JSON.parse(String(init?.body))).toEqual({ checkinIpCidrs: '10.10.0.0/16' });
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: {
+              clientIp: '10.10.1.20',
+              remoteAddr: '127.0.0.1',
+              forwardedFor: '10.10.1.20',
+              trustedProxy: true,
+              matched: true,
+              checkinIpCidrs: '10.10.0.0/16',
+            },
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/admin/areas']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 3, name: '区域管理' })).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: '新增区域' }));
+    fireEvent.change(await screen.findByLabelText('签到校园网 IP 网段'), {
+      target: { value: '10.10.0.0/16' },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: '测试当前 IP' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/areas/checkin-ip-test',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+    expect(await screen.findByText(/当前 IP 10\.10\.1\.20 命中该网段/)).toBeTruthy();
   });
 
   it('saves dragged admin table layout changes without exposing coordinate inputs', async () => {

@@ -13,7 +13,29 @@ public class ClientIpResolver {
             "WL-Proxy-Client-IP"
     };
 
+    private final IpRangeMatcher ipRangeMatcher;
+    private final NetworkProperties networkProperties;
+
+    public ClientIpResolver(IpRangeMatcher ipRangeMatcher, NetworkProperties networkProperties) {
+        this.ipRangeMatcher = ipRangeMatcher;
+        this.networkProperties = networkProperties;
+    }
+
     public String resolve(HttpServletRequest request) {
+        return resolveDetailed(request).clientIp();
+    }
+
+    public ResolvedClientIp resolveDetailed(HttpServletRequest request) {
+        String remoteAddr = normalizeIp(request.getRemoteAddr());
+        boolean trustedProxy = ipRangeMatcher.matches(remoteAddr, networkProperties.trustedProxyCidrList());
+        String forwardedFor = firstUsableForwardedIp(request);
+        if (trustedProxy && forwardedFor != null) {
+            return new ResolvedClientIp(forwardedFor, remoteAddr, forwardedFor, true);
+        }
+        return new ResolvedClientIp(remoteAddr, remoteAddr, forwardedFor, trustedProxy);
+    }
+
+    private String firstUsableForwardedIp(HttpServletRequest request) {
         for (String header : FORWARDED_HEADERS) {
             String value = request.getHeader(header);
             String ip = firstUsableIp(value);
@@ -21,7 +43,7 @@ public class ClientIpResolver {
                 return ip;
             }
         }
-        return request.getRemoteAddr();
+        return null;
     }
 
     private String firstUsableIp(String value) {
@@ -35,5 +57,9 @@ public class ClientIpResolver {
             }
         }
         return null;
+    }
+
+    private String normalizeIp(String value) {
+        return value == null ? "" : value.trim();
     }
 }
