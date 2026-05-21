@@ -1,5 +1,5 @@
 import { apiPaths, withPath } from './endpoints';
-import { get, post, request, setAuthSession } from './http';
+import { clearAuthSession, get, post, request } from './http';
 import type { CurrentUser, LoginResult } from '../types/auth';
 
 export function login(studentNo: string, password: string) {
@@ -7,10 +7,13 @@ export function login(studentNo: string, password: string) {
 }
 
 export async function logout() {
-  await request<void>(withPath(apiPaths.auth, 'logout'), {
-    method: 'POST',
-  });
-  setAuthSession(null);
+  try {
+    await request<void>(withPath(apiPaths.auth, 'logout'), {
+      method: 'POST',
+    });
+  } finally {
+    clearAuthSession();
+  }
 }
 
 export function getCurrentUser() {

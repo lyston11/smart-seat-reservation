@@ -1778,3 +1778,35 @@
 ### 对其他成员的影响
 - 预约规则现在优先以数据库 `reservation_rules` 为准，配置项只作为兜底默认值。
 - 新增影响预约策略的代码时，应通过 `ReservationRuleService` 读取规则。
+
+## 2026-05-21
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-auth-expiry-redirect
+- 目标: 修复前端只依赖 `localStorage` 判断登录态的问题，接口返回 `401` / `AUTH_INVALID` 时自动清理登录态并跳转登录页。
+
+### 本次改动
+- 前端请求封装新增认证失效事件，遇到 `AUTH_INVALID`、`AUTH_REQUIRED`、`AUTH_USER_NOT_FOUND` 这类 401 响应时统一清理 token 和用户信息。
+- `App.tsx` 新增全局认证失效监听器，在 Ant Design `App` Provider 内弹出过期提示并跳转 `/login`。
+- `logout()` 增加 `finally` 兜底清理，避免旧 token 导致后端登出失败后前端仍残留登录态。
+- 补充前端测试，覆盖失效 token 访问管理员页面后清理本地会话并回到登录页。
+
+### 涉及文件
+- frontend/src/api/http.ts
+- frontend/src/api/auth.ts
+- frontend/src/App.tsx
+- frontend/src/App.test.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 26 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白字符问题。
+
+### 遗留问题
+- 当前只处理后端已返回统一 JSON 的认证错误；如果未来出现网关层 401 HTML/空响应，需要再增强 `request` 的非 JSON 响应兜底解析。
+
+### 对其他成员的影响
+- 后续新增需要登录的接口时，只要复用 `frontend/src/api/http.ts` 的 `request/get/post/put/patch/del`，就会自动获得 token 过期清理和跳转登录页能力。

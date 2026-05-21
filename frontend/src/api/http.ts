@@ -3,6 +3,7 @@ import type { LoginResult } from '../types/auth';
 
 const AUTH_TOKEN_KEY = 'smart-seat-auth-token';
 const AUTH_USER_KEY = 'smart-seat-auth-user';
+export const AUTH_EXPIRED_EVENT = 'smart-seat-auth-expired';
 
 export function getAuthToken() {
   return window.localStorage.getItem(AUTH_TOKEN_KEY);
@@ -28,6 +29,19 @@ export function setAuthSession(session: LoginResult | null) {
   }
   window.localStorage.setItem(AUTH_TOKEN_KEY, session.token);
   window.localStorage.setItem(AUTH_USER_KEY, JSON.stringify(session.user));
+}
+
+export function clearAuthSession() {
+  setAuthSession(null);
+}
+
+function isAuthExpiredResponse(response: Response, body: ApiResponse<unknown>) {
+  return response.status === 401 && (body.code === 'AUTH_INVALID' || body.code === 'AUTH_REQUIRED' || body.code === 'AUTH_USER_NOT_FOUND');
+}
+
+function notifyAuthExpired(message: string) {
+  clearAuthSession();
+  window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT, { detail: { message } }));
 }
 
 type QueryValue = boolean | number | string | null | undefined;
@@ -79,6 +93,9 @@ export async function request<T>(url: string, options?: ApiRequestOptions): Prom
 
   const apiBody = (await response.json()) as ApiResponse<T>;
   if (!response.ok || !apiBody.success) {
+    if (isAuthExpiredResponse(response, apiBody)) {
+      notifyAuthExpired(apiBody.message || '登录状态已过期，请重新登录');
+    }
     throw new Error(apiBody.message || '请求失败');
   }
 
