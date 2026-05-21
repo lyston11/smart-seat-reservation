@@ -216,6 +216,11 @@ body {
   width: 100%;
 }
 
+.form-inline-actions {
+  margin-top: -12px;
+  margin-bottom: 18px;
+}
+
 .table-qr-panel {
   display: grid;
   gap: 16px;
@@ -529,9 +534,37 @@ body {
 
 .student-summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 16px;
+}
+
+.student-seat-lock-panel {
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+}
+
+.student-seat-lock-panel > div,
+.seat-lock-status-box,
+.admin-seat-lock-content,
+.rule-explain-grid > div {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.seat-lock-status-box {
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
 }
 
 .student-section {
@@ -974,6 +1007,24 @@ body {
   margin-top: 8px;
 }
 
+.admin-seat-lock-card {
+  margin-bottom: 16px;
+}
+
+.admin-seat-lock-content {
+  gap: 12px;
+}
+
+.rule-explain-card {
+  margin-bottom: 16px;
+}
+
+.rule-explain-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
 .reservation-rule-stats-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1097,6 +1148,7 @@ body {
   .stats-grid,
   .reservation-rule-stats-grid,
   .student-summary-grid,
+  .rule-explain-grid,
   .student-card-grid,
   .student-seat-workspace,
   .student-seat-time-grid,
@@ -1129,6 +1181,11 @@ body {
 
   .seat-map-section-header {
     align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .student-seat-lock-panel {
+    align-items: stretch;
     flex-direction: column;
   }
 

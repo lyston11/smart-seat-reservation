@@ -232,6 +232,50 @@ class ReservationServiceTest {
     }
 
     @Test
+    void seatCheckInShouldCheckInMatchingReservedSeatQr() {
+        Reservation reservation = reservedReservation();
+        reservationMapper.reservation = reservation;
+        reservationMapper.seatCheckinReservation = reservation;
+        reservationMapper.markCheckedInRows = 1;
+        seatSlotMapper.markUsingRows = 1;
+        seatSlotMapper.slot = checkinWindowSeatSlot();
+
+        ReservationResponse response = reservationService.seatCheckIn(
+                new SeatCheckinRequest("seat-token", "code"),
+                10L,
+                "10.10.1.20"
+        );
+
+        assertThat(response.status()).isEqualTo(ReservationStatus.CHECKED_IN);
+        assertThat(reservationMapper.seatCheckinUserId).isEqualTo(10L);
+        assertThat(reservationMapper.seatCheckinToken).isEqualTo("seat-token");
+        assertThat(reservationMapper.seatCheckinCode).isEqualTo("code");
+        assertThat(seatSlotMapper.markUsingCalls).isEqualTo(1);
+        assertThat(checkinRecordMapper.insertedRecord.getAction()).isEqualTo("CHECK_IN");
+    }
+
+    @Test
+    void seatCheckInShouldReactivateMatchingLockedSeatQr() {
+        Reservation reservation = lockedReservation();
+        reservationMapper.reservation = reservation;
+        reservationMapper.lockedSeatCheckinReservation = reservation;
+        reservationMapper.markLockReactivatedRows = 1;
+        seatSlotMapper.slot = seatSlot(TODAY, LocalTime.of(17, 0), LocalTime.of(22, 0));
+
+        ReservationResponse response = reservationService.seatCheckIn(
+                new SeatCheckinRequest("seat-token", "code"),
+                10L,
+                "10.10.1.20"
+        );
+
+        assertThat(response.status()).isEqualTo(ReservationStatus.CHECKED_IN);
+        assertThat(response.lockedUntilAt()).isNull();
+        assertThat(reservationMapper.lockedSeatCheckinToken).isEqualTo("seat-token");
+        assertThat(reservationMapper.markLockReactivatedIp).isEqualTo("10.10.1.20");
+        assertThat(checkinRecordMapper.insertedRecord.getAction()).isEqualTo("SEAT_LOCK_REACTIVATE");
+    }
+
+    @Test
     void createReservationShouldCreateCustomSlotFromSeatAndRequestedTimeRange() {
         seatSlotMapper.reserveRows = 1;
         seatSlotMapper.attachRows = 1;
@@ -368,6 +412,20 @@ class ReservationServiceTest {
 
         assertThat(seatSlotMapper.markUsingRows).isZero();
         assertThat(checkinRecordMapper.insertedRecord).isNull();
+    }
+
+    @Test
+    void seatCheckInShouldFailWhenNoReservedOrLockedReservationMatchesSeatToken() {
+        assertThatThrownBy(() -> reservationService.seatCheckIn(
+                new SeatCheckinRequest("wrong-seat", "bad-code"),
+                10L,
+                "10.10.1.20"
+        ))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("No matching reservation for this seat");
+
+        assertThat(seatSlotMapper.markUsingRows).isZero();
+        assertThat(reservationMapper.markLockReactivatedRows).isZero();
     }
 
     @Test
@@ -691,6 +749,8 @@ class ReservationServiceTest {
     private static final class ReservationMapperFake {
         private Reservation reservation;
         private Reservation tableCheckinReservation;
+        private Reservation seatCheckinReservation;
+        private Reservation lockedSeatCheckinReservation;
         private Reservation insertedReservation;
         private int markCheckedInRows;
         private int markCheckedOutRows;
@@ -714,6 +774,10 @@ class ReservationServiceTest {
         private Long tableCheckinUserId;
         private String tableCheckinToken;
         private String tableCheckinCode;
+        private Long seatCheckinUserId;
+        private String seatCheckinToken;
+        private String seatCheckinCode;
+        private String lockedSeatCheckinToken;
         private Long markCheckedInReservationId;
         private Long markCheckedInUserId;
         private String markCheckedInCheckinCode;
@@ -731,6 +795,16 @@ class ReservationServiceTest {
                     tableCheckinToken = (String) args[1];
                     tableCheckinCode = (String) args[2];
                     yield tableCheckinReservation;
+                }
+                case "findReservedForSeatCheckin" -> {
+                    seatCheckinUserId = (Long) args[0];
+                    seatCheckinToken = (String) args[1];
+                    seatCheckinCode = (String) args[2];
+                    yield seatCheckinReservation;
+                }
+                case "findLockedForSeatCheckin" -> {
+                    lockedSeatCheckinToken = (String) args[1];
+                    yield lockedSeatCheckinReservation;
                 }
                 case "markCheckedIn" -> {
                     markCheckedInReservationId = (Long) args[0];

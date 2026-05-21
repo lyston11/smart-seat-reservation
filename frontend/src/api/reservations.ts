@@ -3,6 +3,7 @@ import { get, post } from './http';
 import type {
   CheckinPayload,
   ReservationResult,
+  SeatCheckinPayload,
   TableCheckinPayload,
   WifiPresencePayload,
   WifiPresenceResult,
@@ -33,6 +34,10 @@ export function checkInReservation(reservationId: number, payload: CheckinPayloa
 
 export function tableCheckInReservation(payload: TableCheckinPayload) {
   return post<ReservationResult>(withPath(apiPaths.reservations, 'table-check-in'), payload);
+}
+
+export function seatCheckInReservation(payload: SeatCheckinPayload) {
+  return post<ReservationResult>(withPath(apiPaths.reservations, 'seat-check-in'), payload);
 }
 
 export function markReservationWifiPresence(reservationId: number, payload: WifiPresencePayload = {}) {

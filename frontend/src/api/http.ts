@@ -3,6 +3,10 @@ import type { LoginResult } from '../types/auth';
 
 const AUTH_TOKEN_KEY = 'smart-seat-auth-token';
 const AUTH_USER_KEY = 'smart-seat-auth-user';
+const DEFAULT_AUTH_EXPIRED_MESSAGE = '登录状态已过期，请重新登录';
+const DEFAULT_REQUEST_ERROR_MESSAGE = '请求失败';
+const DEFAULT_RESPONSE_FORMAT_ERROR_MESSAGE = '响应格式异常';
+const AUTH_EXPIRED_CODES = new Set(['AUTH_INVALID', 'AUTH_REQUIRED', 'AUTH_USER_NOT_FOUND']);
 export const AUTH_EXPIRED_EVENT = 'smart-seat-auth-expired';
 
 export function getAuthToken() {
@@ -35,8 +39,67 @@ export function clearAuthSession() {
   setAuthSession(null);
 }
 
-function isAuthExpiredResponse(response: Response, body: ApiResponse<unknown>) {
-  return response.status === 401 && (body.code === 'AUTH_INVALID' || body.code === 'AUTH_REQUIRED' || body.code === 'AUTH_USER_NOT_FOUND');
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isApiResponse(value: unknown): value is ApiResponse<unknown> {
+  return (
+    isRecord(value) &&
+    typeof value.success === 'boolean' &&
+    typeof value.code === 'string' &&
+    typeof value.message === 'string' &&
+    'data' in value
+  );
+}
+
+async function parseResponsePayload(response: Response) {
+  if (typeof response.text === 'function') {
+    const text = await response.text();
+    if (!text.trim()) {
+      return null;
+    }
+    try {
+      return JSON.parse(text) as unknown;
+    } catch {
+      return null;
+    }
+  }
+
+  if (typeof response.json === 'function') {
+    try {
+      return (await response.json()) as unknown;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+async function parseApiResponse<T>(response: Response): Promise<ApiResponse<T> | null> {
+  const payload = await parseResponsePayload(response);
+  if (!isApiResponse(payload)) {
+    return null;
+  }
+  return payload as ApiResponse<T>;
+}
+
+function isAuthExpiredResponse(response: Response, body: ApiResponse<unknown> | null) {
+  return response.status === 401 || (body !== null && AUTH_EXPIRED_CODES.has(body.code));
+}
+
+function getErrorMessage(response: Response, body: ApiResponse<unknown> | null) {
+  if (isAuthExpiredResponse(response, body)) {
+    return body?.message || DEFAULT_AUTH_EXPIRED_MESSAGE;
+  }
+  if (body) {
+    return body.message || DEFAULT_REQUEST_ERROR_MESSAGE;
+  }
+  if (response.ok) {
+    return DEFAULT_RESPONSE_FORMAT_ERROR_MESSAGE;
+  }
+  return response.statusText || DEFAULT_REQUEST_ERROR_MESSAGE;
 }
 
 function notifyAuthExpired(message: string) {
@@ -91,12 +154,12 @@ export async function request<T>(url: string, options?: ApiRequestOptions): Prom
     body: buildBody(requestBody),
   });
 
-  const apiBody = (await response.json()) as ApiResponse<T>;
-  if (!response.ok || !apiBody.success) {
+  const apiBody = await parseApiResponse<T>(response);
+  if (!apiBody || !response.ok || !apiBody.success) {
     if (isAuthExpiredResponse(response, apiBody)) {
-      notifyAuthExpired(apiBody.message || '登录状态已过期，请重新登录');
+      notifyAuthExpired(getErrorMessage(response, apiBody));
     }
-    throw new Error(apiBody.message || '请求失败');
+    throw new Error(getErrorMessage(response, apiBody));
   }
 
   return apiBody.data;

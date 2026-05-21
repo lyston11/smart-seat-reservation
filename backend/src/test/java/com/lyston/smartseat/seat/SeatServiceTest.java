@@ -153,6 +153,42 @@ class SeatServiceTest {
         assertThat(seatMapper.insertedSeat.getSeatLabel()).isEqualTo("A1");
         assertThat(seatMapper.insertedSeat.getSeatSide()).isEqualTo("WEST");
         assertThat(seatMapper.insertedSeat.getSeatOrder()).isEqualTo(2);
+        assertThat(seatMapper.insertedSeat.getQrToken()).isNotBlank();
+    }
+
+    @Test
+    void getSeatCheckinQrShouldReturnStableSeatQrPath() {
+        Seat seat = new Seat();
+        seat.setId(7L);
+        seat.setAreaId(1L);
+        seat.setTableId(10L);
+        seat.setTableNo("T10");
+        seat.setSeatNo("A-01");
+        seat.setSeatLabel("1");
+        seat.setQrToken("seat-token");
+        seat.setStatus(SeatStatus.ACTIVE);
+        seatMapper.qrSeat = seat;
+
+        SeatQrResponse response = seatService.getSeatCheckinQr(7L);
+
+        assertThat(response.seatId()).isEqualTo(7L);
+        assertThat(response.qrToken()).isEqualTo("seat-token");
+        assertThat(response.checkinPath()).isEqualTo("/student/seat-checkin?token=seat-token");
+    }
+
+    @Test
+    void getSeatCheckinQrShouldRejectInactiveSeat() {
+        Seat seat = new Seat();
+        seat.setId(7L);
+        seat.setQrToken("seat-token");
+        seat.setStatus(SeatStatus.INACTIVE);
+        seatMapper.qrSeat = seat;
+
+        assertThatThrownBy(() -> seatService.getSeatCheckinQr(7L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Seat is not active")
+                .extracting("code")
+                .isEqualTo("SEAT_NOT_ACTIVE");
     }
 
     private Area area(Long areaId) {
@@ -186,6 +222,7 @@ class SeatServiceTest {
 
     private static final class SeatMapperFake {
         private Seat insertedSeat;
+        private Seat qrSeat;
 
         SeatMapper proxy() {
             return SeatServiceTest.proxy(SeatMapper.class, (unused, method, args) -> switch (method.getName()) {
@@ -194,6 +231,7 @@ class SeatServiceTest {
                     insertedSeat.setId(100L);
                     yield 1;
                 }
+                case "findByIdWithQrToken" -> qrSeat;
                 case "countByAreaId" -> 4;
                 case "countDuplicateSeatNo" -> 0;
                 default -> defaultValue(method.getReturnType());

@@ -55,4 +55,10 @@ public class SeatController {
     ) {
         return ApiResponse.ok(seatService.updateSeatStatus(seatId, request));
     }
+
+    @GetMapping("/{seatId}/checkin-qr")
+    @RequireRole(UserRole.ADMIN)
+    public ApiResponse<SeatQrResponse> getSeatCheckinQr(@PathVariable Long seatId) {
+        return ApiResponse.ok(seatService.getSeatCheckinQr(seatId));
+    }
 }

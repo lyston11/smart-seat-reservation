@@ -3,6 +3,8 @@ package com.lyston.smartseat.area;
 import com.lyston.smartseat.audit.AuditAction;
 import com.lyston.smartseat.audit.AuditService;
 import com.lyston.smartseat.common.BusinessException;
+import com.lyston.smartseat.network.IpRangeMatcher;
+import com.lyston.smartseat.network.ResolvedClientIp;
 import com.lyston.smartseat.seat.SeatMapper;
 import com.lyston.smartseat.seat.SeatSlotMapper;
 import java.time.LocalDateTime;
@@ -22,17 +24,20 @@ public class AreaService {
     private final SeatMapper seatMapper;
     private final SeatSlotMapper seatSlotMapper;
     private final AuditService auditService;
+    private final IpRangeMatcher ipRangeMatcher;
 
     public AreaService(
             AreaMapper areaMapper,
             SeatMapper seatMapper,
             SeatSlotMapper seatSlotMapper,
-            AuditService auditService
+            AuditService auditService,
+            IpRangeMatcher ipRangeMatcher
     ) {
         this.areaMapper = areaMapper;
         this.seatMapper = seatMapper;
         this.seatSlotMapper = seatSlotMapper;
         this.auditService = auditService;
+        this.ipRangeMatcher = ipRangeMatcher;
     }
 
     public List<AreaResponse> listAreas() {
@@ -87,6 +92,19 @@ public class AreaService {
         return AreaResponse.from(requireArea(areaId));
     }
 
+    public CheckinIpTestResponse testCheckinIp(String checkinIpCidrs, ResolvedClientIp resolvedClientIp) {
+        String normalizedCidrs = normalizeCheckinIpCidrs(checkinIpCidrs);
+        boolean matched = ipRangeMatcher.matches(resolvedClientIp.clientIp(), normalizedCidrs);
+        return new CheckinIpTestResponse(
+                resolvedClientIp.clientIp(),
+                resolvedClientIp.remoteAddr(),
+                resolvedClientIp.forwardedFor(),
+                resolvedClientIp.trustedProxy(),
+                matched,
+                normalizedCidrs
+        );
+    }
+
     @Transactional
     public AreaResponse updateAreaStatus(Long areaId, UpdateAreaStatusRequest request, Long actorUserId) {
         Area area = requireArea(areaId);
@@ -135,9 +153,14 @@ public class AreaService {
 
     private String normalizeCheckinIpCidrs(String value) {
         if (value == null || value.isBlank()) {
-            return DEFAULT_CHECKIN_IP_CIDRS;
+            return validateCheckinIpCidrs(DEFAULT_CHECKIN_IP_CIDRS);
         }
-        return value.trim().replaceAll("\\s+", "");
+        return validateCheckinIpCidrs(value.trim().replaceAll("\\s+", ""));
+    }
+
+    private String validateCheckinIpCidrs(String value) {
+        ipRangeMatcher.validateCidrList(value);
+        return value;
     }
 
     private Area requireArea(Long areaId) {

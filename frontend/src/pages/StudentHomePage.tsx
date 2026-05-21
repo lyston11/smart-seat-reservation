@@ -6,20 +6,27 @@ import {
   checkInReservation,
   checkOutReservation,
   listUserReservations,
+  lockReservationSeat,
   reactivateSeatLock,
+  releaseSeatLock,
 } from '../api/reservations';
 import { getReservationRules } from '../api/reservationRules';
 import type { ReservationResult } from '../types/reservation';
 import {
   canCheckInReservation,
   canCheckOutReservation,
+  canLockReservation,
   canReactivateSeatLock,
+  canReleaseSeatLock,
   compareReservationsByStartTime,
   formatDateTime,
   formatReservationLocation,
   formatReservationTime,
   formatTime,
   getCheckinCountdown,
+  getRemainingSeatLockCount,
+  getSeatLockHelpText,
+  getSeatLockStatusText,
   isActiveReservation,
   isTodayReservation,
   reservationStatusColor,
@@ -75,15 +82,22 @@ export default function StudentHomePage() {
       .slice(0, 3);
   }, [reservations]);
 
-  async function runQuickAction(reservation: ReservationResult, action: 'check-in' | 'check-out' | 'reactivate-lock') {
+  async function runQuickAction(
+    reservation: ReservationResult,
+    action: 'check-in' | 'check-out' | 'lock' | 'reactivate-lock' | 'release-lock',
+  ) {
     setActionId(reservation.reservationId);
     try {
       if (action === 'check-in') {
         await checkInReservation(reservation.reservationId, { checkinCode: reservation.checkinCode });
       } else if (action === 'check-out') {
         await checkOutReservation(reservation.reservationId);
-      } else {
+      } else if (action === 'lock') {
+        await lockReservationSeat(reservation.reservationId);
+      } else if (action === 'reactivate-lock') {
         await reactivateSeatLock(reservation.reservationId, { checkinCode: reservation.checkinCode });
+      } else {
+        await releaseSeatLock(reservation.reservationId);
       }
       messageApi.success('操作成功');
       await loadHomeData();
@@ -106,7 +120,7 @@ export default function StudentHomePage() {
     );
   }
 
-  function renderQuickAction(reservation: ReservationResult) {
+  function renderQuickActions(reservation: ReservationResult) {
     if (canCheckInReservation(reservation)) {
       return (
         <Button
@@ -120,24 +134,56 @@ export default function StudentHomePage() {
     }
     if (canCheckOutReservation(reservation)) {
       return (
-        <Button loading={actionId === reservation.reservationId} onClick={() => runQuickAction(reservation, 'check-out')}>
-          快速签退
-        </Button>
+        <>
+          <Button
+            type="primary"
+            disabled={!canLockReservation(reservation)}
+            loading={actionId === reservation.reservationId}
+            onClick={() => runQuickAction(reservation, 'lock')}
+          >
+            锁位
+          </Button>
+          <Button
+            loading={actionId === reservation.reservationId}
+            onClick={() => runQuickAction(reservation, 'check-out')}
+          >
+            快速签退
+          </Button>
+        </>
       );
     }
     if (canReactivateSeatLock(reservation)) {
       return (
-        <Button
-          type="primary"
-          loading={actionId === reservation.reservationId}
-          onClick={() => runQuickAction(reservation, 'reactivate-lock')}
-        >
-          恢复使用
-        </Button>
+        <>
+          <Button
+            type="primary"
+            loading={actionId === reservation.reservationId}
+            onClick={() => runQuickAction(reservation, 'reactivate-lock')}
+          >
+            恢复使用
+          </Button>
+          <Button
+            danger
+            disabled={!canReleaseSeatLock(reservation)}
+            loading={actionId === reservation.reservationId}
+            onClick={() => runQuickAction(reservation, 'release-lock')}
+          >
+            释放锁位
+          </Button>
+        </>
       );
     }
     return null;
   }
+
+  const seatLockQuotaTotal = activeReservations.reduce(
+    (total, reservation) => total + (reservation.seatLockQuota ?? 0),
+    0,
+  );
+  const remainingSeatLockTotal = activeReservations.reduce(
+    (total, reservation) => total + getRemainingSeatLockCount(reservation),
+    0,
+  );
 
   return (
     <div className="page">
@@ -173,6 +219,21 @@ export default function StudentHomePage() {
         <Card loading={loading}>
           <Statistic title="开放明日预约" value={rules?.reservationOpenHour ?? 0} suffix="点" />
         </Card>
+        <Card loading={loading}>
+          <Statistic title="可锁位次数" value={remainingSeatLockTotal} suffix={`/ ${seatLockQuotaTotal}`} />
+        </Card>
+      </div>
+
+      <div className="student-seat-lock-panel">
+        <div>
+          <Typography.Text strong>锁位权益</Typography.Text>
+          <Typography.Text type="secondary">
+            单次 {rules?.seatLockMinutes ?? 0} 分钟，跨 12:00 生成 1 次，跨 18:00 再生成 1 次
+          </Typography.Text>
+        </div>
+        <Tag color={remainingSeatLockTotal > 0 ? 'green' : 'default'}>
+          当前剩余 {remainingSeatLockTotal} 次
+        </Tag>
       </div>
 
       <div className="student-section">
@@ -195,13 +256,20 @@ export default function StudentHomePage() {
                   <Typography.Text type="secondary">
                     签到码 {reservation.checkinCode} · 截止 {formatDateTime(reservation.expiresAt)}
                   </Typography.Text>
-                  <Typography.Text type="secondary">
-                    锁位 {reservation.seatLockUsedCount ?? 0}/{reservation.seatLockQuota ?? 0}
-                    {reservation.lockedUntilAt ? ` · 至 ${formatDateTime(reservation.lockedUntilAt)}` : ''}
-                  </Typography.Text>
+                  <div className="seat-lock-status-box">
+                    <Space wrap>
+                      <Tag color={canLockReservation(reservation) ? 'green' : reservation.status === 'LOCKED' ? 'gold' : 'default'}>
+                        {getSeatLockStatusText(reservation)}
+                      </Tag>
+                      <Typography.Text type="secondary">
+                        {reservation.seatLockUsedCount ?? 0}/{reservation.seatLockQuota ?? 0}
+                      </Typography.Text>
+                    </Space>
+                    <Typography.Text type="secondary">{getSeatLockHelpText(reservation)}</Typography.Text>
+                  </div>
                   <Space wrap>
                     {renderCountdown(reservation)}
-                    {renderQuickAction(reservation)}
+                    {renderQuickActions(reservation)}
                     <Button>
                       <Link to="/student/reservations">处理预约</Link>
                     </Button>
@@ -236,8 +304,11 @@ export default function StudentHomePage() {
                     {renderCountdown(reservation)}
                   </Space>
                   <Typography.Text strong>{formatReservationLocation(reservation)}</Typography.Text>
+                  <Typography.Text type="secondary">{getSeatLockStatusText(reservation)}</Typography.Text>
                 </div>
-                <div className="student-timeline-action">{renderQuickAction(reservation)}</div>
+                <div className="student-timeline-action">
+                  <Space wrap>{renderQuickActions(reservation)}</Space>
+                </div>
               </div>
             ))}
           </div>

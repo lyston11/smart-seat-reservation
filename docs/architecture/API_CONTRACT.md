@@ -26,7 +26,7 @@
 | Auth | `/api/auth` | 登录、退出、当前用户 |
 | Areas | `/api/areas` | 区域资源 |
 | Tables | `/api/tables` | 桌子资源和桌码 |
-| Seats | `/api/seats` | 座位资源 |
+| Seats | `/api/seats` | 座位资源和座位码 |
 | Seat Slots | `/api/seat-slots` | 开放时段查询、发布、撤销 |
 | Reservations | `/api/reservations` | 学生预约、签到、签退、锁位 |
 | Reservation Rules | `/api/reservations/rules` | 预约规则查询和管理员维护 |
@@ -51,9 +51,9 @@
 | `auth.ts` | 登录、退出、当前用户 |
 | `areas.ts` | 区域 CRUD |
 | `tables.ts` | 桌子 CRUD、桌码 |
-| `seats.ts` | 座位 CRUD |
+| `seats.ts` | 座位 CRUD、座位码 |
 | `seatSlots.ts` | 开放时段查询、发布、撤销 |
-| `reservations.ts` | 学生预约、签到、签退、锁位、桌码签到、WiFi 心跳 |
+| `reservations.ts` | 学生预约、签到、签退、锁位、桌码/座位码签到、WiFi 心跳 |
 | `reservationRules.ts` | 预约规则查询和更新 |
 | `adminSeatSlots.ts` | 管理员释放座位时段、标异常、恢复异常 |
 | `adminReservations.ts` | 管理员手动维护预约状态任务 |

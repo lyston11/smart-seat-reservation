@@ -1,6 +1,6 @@
 import { apiPaths, withPath } from './endpoints';
 import { get, patch, post, put } from './http';
-import type { Seat, SeatStatus } from '../types/seat';
+import type { Seat, SeatQr, SeatStatus } from '../types/seat';
 
 export function listSeats(areaId: number) {
   return get<Seat[]>(apiPaths.seats, { areaId });
@@ -41,4 +41,8 @@ export function updateSeat(seatId: number, payload: UpdateSeatPayload) {
 
 export function updateSeatStatus(seatId: number, status: SeatStatus) {
   return patch<Seat>(withPath(apiPaths.seats, seatId, 'status'), { status });
+}
+
+export function getSeatCheckinQr(seatId: number) {
+  return get<SeatQr>(withPath(apiPaths.seats, seatId, 'checkin-qr'));
 }

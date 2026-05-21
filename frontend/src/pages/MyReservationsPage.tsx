@@ -25,7 +25,6 @@ import {
   checkOutReservation,
   listUserReservations,
   lockReservationSeat,
-  markReservationWifiPresence,
   reactivateSeatLock,
   releaseSeatLock,
 } from '../api/reservations';
@@ -44,6 +43,8 @@ import {
   formatReservationTime,
   formatTime,
   getCheckinCountdown,
+  getSeatLockHelpText,
+  getSeatLockStatusText,
   isActiveReservation,
   reservationStatusColor,
   reservationStatusFilterOptions,
@@ -59,7 +60,6 @@ export default function MyReservationsPage() {
   const [detailReservation, setDetailReservation] = useState<ReservationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [actionId, setActionId] = useState<number | null>(null);
-  const [wifiHeartbeatAt, setWifiHeartbeatAt] = useState<Record<number, string>>({});
   const [messageApi, contextHolder] = message.useMessage();
 
   const loadReservations = useCallback(async () => {
@@ -87,43 +87,6 @@ export default function MyReservationsPage() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [loadReservations]);
-
-  useEffect(() => {
-    const usingReservations = reservations.filter((reservation) => reservation.status === 'CHECKED_IN');
-    if (usingReservations.length === 0) {
-      return undefined;
-    }
-
-    let stopped = false;
-    async function sendHeartbeat() {
-      await Promise.all(
-        usingReservations.map(async (reservation) => {
-          try {
-            const result = await markReservationWifiPresence(reservation.reservationId);
-            if (!stopped) {
-              setWifiHeartbeatAt((previous) => ({
-                ...previous,
-                [reservation.reservationId]: result.lastWifiSeenAt ?? new Date().toISOString(),
-              }));
-            }
-          } catch (error) {
-            if (!stopped) {
-              messageApi.warning(error instanceof Error ? error.message : 'WiFi 在线检测失败');
-            }
-          }
-        }),
-      );
-    }
-
-    void sendHeartbeat();
-    const timer = window.setInterval(() => {
-      void sendHeartbeat();
-    }, 60000);
-    return () => {
-      stopped = true;
-      window.clearInterval(timer);
-    };
-  }, [messageApi, reservations]);
 
   async function runAction(
     reservation: ReservationResult,
@@ -272,13 +235,19 @@ export default function MyReservationsPage() {
     { title: '签到截止', dataIndex: 'expiresAt', width: 180, render: (value) => formatDateTime(value) },
     {
       title: '锁位',
-      width: 170,
+      width: 220,
       render: (_, record) => {
         const quota = record.seatLockQuota ?? 0;
         const usedCount = record.seatLockUsedCount ?? 0;
         return (
-          <Space orientation="vertical" size={2}>
-            <Typography.Text>{usedCount}/{quota} 次</Typography.Text>
+          <Space orientation="vertical" size={4}>
+            <Space wrap size={6}>
+              <Tag color={canLockReservation(record) ? 'green' : record.status === 'LOCKED' ? 'gold' : 'default'}>
+                {getSeatLockStatusText(record)}
+              </Tag>
+              <Typography.Text>{usedCount}/{quota}</Typography.Text>
+            </Space>
+            <Typography.Text type="secondary">{getSeatLockHelpText(record)}</Typography.Text>
             {record.lockedUntilAt ? (
               <Typography.Text type="secondary">{formatDateTime(record.lockedUntilAt)}</Typography.Text>
             ) : null}
@@ -349,7 +318,7 @@ export default function MyReservationsPage() {
       <div className="student-section">
         <div className="seat-map-section-header">
           <strong>当前可操作预约</strong>
-          <span>签到 / 签退 / 取消</span>
+          <span>签到 / 签退 / 取消 / 锁位</span>
         </div>
         {activeReservations.length > 0 ? (
           <div className="student-card-grid">
@@ -367,7 +336,7 @@ export default function MyReservationsPage() {
                   <div className="reservation-countdown-row">{renderCountdown(reservation)}</div>
                   {reservation.status === 'CHECKED_IN' ? (
                     <Typography.Text type="secondary">
-                      WiFi 在线检测 {formatDateTime(wifiHeartbeatAt[reservation.reservationId] ?? reservation.lastWifiSeenAt)}
+                      WiFi 在线检测 {formatDateTime(reservation.lastWifiSeenAt)}
                     </Typography.Text>
                   ) : null}
                   {reservation.status === 'LOCKED' ? (
@@ -375,9 +344,17 @@ export default function MyReservationsPage() {
                       已锁位至 {formatDateTime(reservation.lockedUntilAt)}，可重新签到恢复使用。
                     </Typography.Text>
                   ) : null}
-                  <Typography.Text type="secondary">
-                    锁位次数 {reservation.seatLockUsedCount ?? 0}/{reservation.seatLockQuota ?? 0}
-                  </Typography.Text>
+                  <div className="seat-lock-status-box">
+                    <Space wrap>
+                      <Tag color={canLockReservation(reservation) ? 'green' : reservation.status === 'LOCKED' ? 'gold' : 'default'}>
+                        {getSeatLockStatusText(reservation)}
+                      </Tag>
+                      <Typography.Text type="secondary">
+                        锁位次数 {reservation.seatLockUsedCount ?? 0}/{reservation.seatLockQuota ?? 0}
+                      </Typography.Text>
+                    </Space>
+                    <Typography.Text type="secondary">{getSeatLockHelpText(reservation)}</Typography.Text>
+                  </div>
                   <div className="reservation-code-field">
                     <span>签到码</span>
                     <Input
@@ -445,12 +422,28 @@ export default function MyReservationsPage() {
               <Descriptions.Item label="锁位次数">
                 {detailReservation.seatLockUsedCount ?? 0}/{detailReservation.seatLockQuota ?? 0}
               </Descriptions.Item>
+              <Descriptions.Item label="锁位状态">
+                <Space orientation="vertical" size={4}>
+                  <Tag
+                    color={
+                      canLockReservation(detailReservation)
+                        ? 'green'
+                        : detailReservation.status === 'LOCKED'
+                          ? 'gold'
+                          : 'default'
+                    }
+                  >
+                    {getSeatLockStatusText(detailReservation)}
+                  </Tag>
+                  <Typography.Text type="secondary">{getSeatLockHelpText(detailReservation)}</Typography.Text>
+                </Space>
+              </Descriptions.Item>
               <Descriptions.Item label="锁位截止">
                 {formatDateTime(detailReservation.lockedUntilAt)}
               </Descriptions.Item>
               <Descriptions.Item label="校园网检测">
                 {detailReservation.status === 'CHECKED_IN'
-                  ? `最近在线 ${formatDateTime(wifiHeartbeatAt[detailReservation.reservationId] ?? detailReservation.lastWifiSeenAt)}`
+                  ? `最近在线 ${formatDateTime(detailReservation.lastWifiSeenAt)}`
                   : detailReservation.status === 'LOCKED'
                     ? '锁位期间暂停 WiFi 离线释放，超时或预约结束会自动释放'
                   : '签到和使用中需要保持连接区域校园网'}

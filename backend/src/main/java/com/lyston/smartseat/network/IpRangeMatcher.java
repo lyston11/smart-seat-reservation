@@ -21,6 +21,27 @@ public class IpRangeMatcher {
         return false;
     }
 
+    public void validateCidrList(String cidrList) {
+        if (cidrList == null || cidrList.isBlank()) {
+            throw new BusinessException("INVALID_CHECKIN_IP_CIDR", "Area check-in IP range is invalid");
+        }
+        for (String range : cidrList.split(",")) {
+            String cidr = range.trim();
+            if (!cidr.isBlank()) {
+                validateCidr(cidr);
+            }
+        }
+    }
+
+    private void validateCidr(String cidr) {
+        String[] parts = cidr.split("/", -1);
+        if (parts.length != 2) {
+            throw new BusinessException("INVALID_CHECKIN_IP_CIDR", "Area check-in IP range is invalid");
+        }
+        byte[] networkBytes = toAddress(parts[0]);
+        parsePrefixLength(parts[1], networkBytes.length * 8);
+    }
+
     private boolean matchesCidr(String ip, String cidr) {
         String[] parts = cidr.split("/", -1);
         if (parts.length != 2) {

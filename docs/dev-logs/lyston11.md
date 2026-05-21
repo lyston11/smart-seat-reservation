@@ -1810,3 +1810,234 @@
 
 ### 对其他成员的影响
 - 后续新增需要登录的接口时，只要复用 `frontend/src/api/http.ts` 的 `request/get/post/put/patch/del`，就会自动获得 token 过期清理和跳转登录页能力。
+
+## 2026-05-21
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-api-error-hardening
+- 目标: 从最新 `main` 创建新分支，继续工程化加固前端公共 API 请求层，处理网关/代理返回空响应或非 JSON 401 的认证失效场景。
+
+### 本次改动
+- `frontend/src/api/http.ts` 新增安全响应解析逻辑，避免 `response.json()` 在空 body 或 HTML 响应上直接抛错导致统一错误处理失效。
+- 401 响应现在即使没有标准 JSON body，也会统一清理本地 token 和用户信息，并触发登录过期事件。
+- 对成功但响应结构不符合统一 `ApiResponse` 的情况返回“响应格式异常”，避免页面误用异常数据。
+- 新增 `frontend/src/api/http.test.ts`，覆盖成功响应、业务错误、非 JSON 401、空 401 和 malformed success。
+
+### 涉及文件
+- frontend/src/api/http.ts
+- frontend/src/api/http.test.ts
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 31 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白字符问题。
+
+### 遗留问题
+- 当前网络中断、超时这类 `fetch` 自身失败仍会直接向上抛原始错误；后续可以按页面体验需要增加统一网络错误文案。
+
+### 对其他成员的影响
+- 后续接口仍应返回统一 `ApiResponse`，否则前端会按响应格式异常处理。
+- 所有前端 API 模块继续复用公共 `request/get/post/put/patch/del`，不要绕过认证失效和响应格式校验逻辑。
+
+## 2026-05-21
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-api-error-hardening
+- 目标: 按用户要求直接基于当前分支继续开发签到/WiFi 检测加固，补可信代理配置、全局 WiFi 心跳、管理员网段校验/测试和反向代理说明。
+
+### 本次改动
+- 后端新增 `smart-seat.network.trusted-proxy-cidrs` 配置和 `NetworkProperties`，只有请求来源命中可信代理网段时才采信 `X-Forwarded-For` / `X-Real-IP`。
+- `ClientIpResolver` 新增详细解析结果，保留真实识别 IP、remoteAddr、转发头和是否可信代理，避免客户端伪造转发头绕过校园网检测。
+- `IpRangeMatcher` 增加 CIDR 列表校验能力，区域保存和测试网段时会拒绝非法 CIDR。
+- 区域管理新增 `/api/areas/checkin-ip-test`，管理员可测试当前请求 IP 是否命中输入的签到校园网网段。
+- 前端新增 `WifiPresenceGuard`，学生登录后只要存在 `CHECKED_IN` 预约，就会全局周期性上报 WiFi 在线心跳，不再依赖停留在“我的预约”页面。
+- 管理员区域页面新增 CIDR 前端校验和“测试当前 IP”按钮，显示当前后端识别 IP 是否命中网段。
+- 部署文档补充 Nginx 反向代理头、`TRUSTED_PROXY_CIDRS` 配置和不要信任公网转发头的安全说明。
+- 补充前后端测试，覆盖可信代理解析、CIDR 校验、全局 WiFi 心跳和管理员 IP 测试交互。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/network/
+- backend/src/main/java/com/lyston/smartseat/area/
+- backend/src/main/java/com/lyston/smartseat/SmartSeatApplication.java
+- backend/src/main/resources/application.yml
+- backend/src/test/java/com/lyston/smartseat/network/
+- frontend/src/components/WifiPresenceGuard.tsx
+- frontend/src/App.tsx
+- frontend/src/App.test.tsx
+- frontend/src/api/areas.ts
+- frontend/src/pages/AdminAreasPage.tsx
+- frontend/src/pages/MyReservationsPage.tsx
+- frontend/src/styles/main.css
+- docs/deployment/LOCAL_DEVELOPMENT.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 67 个测试通过。
+- 已运行 `npm run test`，前端 33 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白字符问题。
+
+### 遗留问题
+- 全局 WiFi 心跳当前按 60 秒固定间隔上报，后续可把间隔提取为前端配置并和后台 WiFi 离线释放时间联动。
+- 当前 IP 测试接口用于管理员配置校验，不写审计日志；如果后续要追踪配置验证行为，可补充审计动作。
+
+### 对其他成员的影响
+- 部署到 Nginx/网关后必须正确配置 `TRUSTED_PROXY_CIDRS`，否则后端会忽略转发头，只使用代理 IP 做校园网判断。
+- 区域 `checkinIpCidrs` 现在会严格校验 CIDR 格式，种子数据和手工导入数据也需要使用合法 CIDR。
+
+## 2026-05-21
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-api-error-hardening
+- 目标: 回答并修复锁位能力在学生端和管理员端“不明显、看不到”的体验问题。
+
+### 本次改动
+- 学生首页新增锁位权益展示，汇总当前活跃预约的可锁位次数和总额度。
+- 学生首页对使用中预约直接提供“锁位”入口，对已锁位预约提供“恢复使用”和“释放锁位”入口。
+- “我的预约”列表、卡片和详情弹窗补充锁位状态、次数和不可用原因，避免只显示灰色按钮。
+- 管理员占用看板新增“锁位运维”模块，可手动触发释放过期锁位，并展示锁位核心规则。
+- 管理员预约规则页补充锁位计算和释放说明，便于比赛演示讲清业务闭环。
+- 抽取前端锁位展示文案工具，统一学生首页和预约记录页的状态说明。
+
+### 涉及文件
+- frontend/src/pages/StudentHomePage.tsx
+- frontend/src/pages/MyReservationsPage.tsx
+- frontend/src/pages/AdminDashboardPage.tsx
+- frontend/src/pages/AdminReservationRulesPage.tsx
+- frontend/src/utils/reservationDisplay.ts
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 35 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白字符问题。
+
+### 遗留问题
+- 本轮只做前端可见性和运维入口增强，没有新增后端锁位字段或状态。
+- 管理员端后续可继续增加“当前锁位中预约列表”，方便直接查看每个锁位的学生、座位和到期时间。
+
+### 对其他成员的影响
+- 锁位状态文案统一走 `reservationDisplay.ts`，后续新增锁位状态或规则说明时优先维护这里。
+- 管理员看板现在会同时请求预约规则接口，用于展示单次锁位时长。
+
+## 2026-05-21
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-api-error-hardening
+- 目标: 做签到相关增强，为每个座位提供固定二维码签到，并支持学生锁位后扫描同一座位二维码恢复使用。
+
+### 本次改动
+- 新增 Flyway 迁移 `V13__add_seat_qr_tokens.sql`，为 `seats` 表增加唯一且稳定的 `qr_token`，历史座位自动回填，新建座位自动生成 token。
+- 后端新增管理员接口 `GET /api/seats/{seatId}/checkin-qr`，只返回单个座位的二维码信息，普通座位列表继续不暴露 `qrToken`。
+- 后端新增学生接口 `POST /api/reservations/seat-check-in`，使用 `seatQrToken + checkinCode` 完成座位码签到。
+- 座位码签到会优先匹配当前学生该座位下的 `LOCKED` 预约，命中则走锁位恢复；否则匹配 `RESERVED` 预约并完成普通签到。
+- 座位码签到和锁位恢复继续复用现有 IP 网段校验、签到时间窗/锁位有效期校验、座位时段状态更新和签到记录写入逻辑。
+- 前端新增学生路由 `/student/seat-checkin`，扫码进入后输入预约签到码，可完成签到或锁位恢复。
+- 管理员座位管理页新增“座位码”操作，弹窗展示固定座位二维码、完整扫码链接和座位/桌位信息。
+- API 示例、接口契约和架构文档同步补充座位码、座位码签到和锁位扫码恢复流程。
+
+### 涉及文件
+- backend/src/main/resources/db/migration/V13__add_seat_qr_tokens.sql
+- backend/src/main/java/com/lyston/smartseat/seat/
+- backend/src/main/java/com/lyston/smartseat/reservation/
+- backend/src/test/java/com/lyston/smartseat/seat/SeatServiceTest.java
+- backend/src/test/java/com/lyston/smartseat/reservation/ReservationServiceTest.java
+- frontend/src/pages/SeatCheckinPage.tsx
+- frontend/src/pages/AdminSeatsPage.tsx
+- frontend/src/api/seats.ts
+- frontend/src/api/reservations.ts
+- frontend/src/types/seat.ts
+- frontend/src/types/reservation.ts
+- frontend/src/App.tsx
+- frontend/src/App.test.tsx
+- docs/API_EXAMPLES.md
+- docs/architecture/API_CONTRACT.md
+- docs/architecture/ARCHITECTURE.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 72 个测试通过。
+- 已运行 `npm run test`，前端 37 个测试通过；jsdom 仍提示不支持 QRCode canvas 和 Ant Design pseudo-element 相关能力，不影响测试结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白字符问题。
+
+### 遗留问题
+- 当前管理员端展示单个座位二维码，后续可继续做按区域/桌位批量导出打印版二维码。
+- 座位码页面仍需要学生输入动态签到码；如果后续想进一步提升体验，可以在预约详情中增加“扫码恢复使用”的显式引导。
+
+### 对其他成员的影响
+- `seats.qr_token` 是固定座位码的核心字段，后续手工导入座位数据必须保证该字段唯一且非空，推荐仍通过后端创建接口生成。
+- 普通座位列表不暴露 `qrToken`，管理员打印/查看座位码必须走 `/api/seats/{seatId}/checkin-qr`。
+- 锁位恢复现在既可以通过原预约详情入口，也可以通过扫描座位固定二维码完成。
+
+## 2026-05-21
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-api-error-hardening
+- 目标: 修复学生选座页可选择管理员未发布时间段的问题，避免用户点 `17:00` 后座位全部显示“未开放”，但 `18:00-20:00` 实际可以预约。
+
+### 本次改动
+- 学生端时间下拉不再只按区域营业时间生成，而是优先根据当天当前区域真实已发布的座位时段推导可选开始/结束时间。
+- 若管理员只发布了 `18:00-20:00`，学生端会展示 `18:00`、`18:30`、`19:00`、`19:30` 等合法开始时间，并不会再出现 `17:00-20:00` 这种未发布组合。
+- 当某个已发布时段全部被占用时，前端仍保留该发布窗口用于查看占用状态，但不会退回到全天营业时间。
+- 将学生端时间选项生成逻辑抽到 `frontend/src/utils/studentTimeOptions.ts`，避免页面组件混入可测试业务函数。
+- 新增 `SeatSlotsPage.test.ts`，覆盖“按发布时段而非营业时间生成选项”和“全被占用时仍显示发布窗口”的回归场景。
+
+### 涉及文件
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/pages/SeatSlotsPage.test.ts
+- frontend/src/utils/studentTimeOptions.ts
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test -- SeatSlotsPage.test.ts`，新增测试 2 个通过。
+- 已运行 `npm run test`，前端 39 个测试通过；jsdom 仍提示不支持 QRCode canvas 和 Ant Design pseudo-element 相关能力，不影响测试结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 当前时间选项仍允许在已发布大窗口内按半小时切分，例如 `18:00-20:00` 可选 `18:00-19:00`；后端会继续校验所选时间必须落在管理员已发布的可用窗口内。
+
+### 对其他成员的影响
+- 后续学生端时间选择逻辑优先维护 `studentTimeOptions.ts`，不要再在页面里直接按区域营业时间生成预约时间。
+
+## 2026-05-21
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-api-error-hardening
+- 目标: 修复学生选座页已选择座位后，调整开始/结束时间会导致右侧已选座位面板被清空、界面突然跳回未选择状态的问题。
+
+### 本次改动
+- 学生选座页开始时间和结束时间下拉变更时，不再主动清空 `selectedSeatId`。
+- 改时间后保留当前座位选择，由 `visibleSlots` 根据新时间重新计算该座位的可预约/未开放/已占用状态，避免用户感觉“点一下时间页面跳掉”。
+- 补充前端页面测试，覆盖选中座位后修改开始时间，右侧已选座位仍保留的场景。
+
+### 涉及文件
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/App.test.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test -- App.test.tsx SeatSlotsPage.test.ts`，相关测试 25 个通过。
+- 已运行 `npm run test`，前端 40 个测试通过；jsdom 仍提示不支持 QRCode canvas 和 Ant Design pseudo-element 相关能力，不影响测试结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 若后续希望时间变化时自动滚动到当前座位或闪烁提示状态变化，可以在此基础上增加轻量视觉反馈。
+
+### 对其他成员的影响
+- 学生端选座交互应优先保留用户当前上下文，只有切换区域、日期或座位真实不存在时再清空选择。

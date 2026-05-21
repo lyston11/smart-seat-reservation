@@ -1,12 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Form, Input, InputNumber, message, Modal, Select, Space, Statistic, Table, Tag, Typography } from 'antd';
+import {
+  Button,
+  Form,
+  Input,
+  InputNumber,
+  message,
+  Modal,
+  QRCode,
+  Select,
+  Space,
+  Statistic,
+  Table,
+  Tag,
+  Typography,
+} from 'antd';
 import type { TableColumnsType } from 'antd';
-import { Edit3, Power } from 'lucide-react';
+import { Edit3, Power, QrCode } from 'lucide-react';
 import { listAreas } from '../api/areas';
-import { createSeat, listSeats, updateSeat, updateSeatStatus } from '../api/seats';
+import { createSeat, getSeatCheckinQr, listSeats, updateSeat, updateSeatStatus } from '../api/seats';
 import { listTables } from '../api/tables';
 import AdminResourceActions from '../components/AdminResourceActions';
-import type { Area, Seat, SeatStatus, StudyTable } from '../types/seat';
+import type { Area, Seat, SeatQr, SeatStatus, StudyTable } from '../types/seat';
 
 type SeatFormValues = {
   areaId: number;
@@ -49,6 +63,13 @@ function isManagedSeat(seat: Seat) {
   return (seat.tableNo ?? '').toUpperCase() !== 'LEGACY';
 }
 
+function buildCheckinUrl(checkinPath: string) {
+  if (checkinPath.startsWith('http')) {
+    return checkinPath;
+  }
+  return `${window.location.origin}${checkinPath}`;
+}
+
 export default function AdminSeatsPage() {
   const [form] = Form.useForm<SeatFormValues>();
   const [areaId, setAreaId] = useState(1);
@@ -59,6 +80,9 @@ export default function AdminSeatsPage() {
   const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSeat, setEditingSeat] = useState<Seat | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [seatQr, setSeatQr] = useState<SeatQr | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
 
   const managedSeats = useMemo(() => seats.filter(isManagedSeat), [seats]);
@@ -82,6 +106,7 @@ export default function AdminSeatsPage() {
     () => new Set(managedSeats.map((seat) => seat.tableId).filter(Boolean)).size,
     [managedSeats],
   );
+  const checkinUrl = seatQr ? buildCheckinUrl(seatQr.checkinPath) : '';
 
   const loadAreas = useCallback(async () => {
     try {
@@ -199,6 +224,20 @@ export default function AdminSeatsPage() {
     }
   }
 
+  async function openSeatQrModal(seat: Seat) {
+    setQrModalOpen(true);
+    setQrLoading(true);
+    setSeatQr(null);
+    try {
+      setSeatQr(await getSeatCheckinQr(seat.id));
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '加载座位二维码失败');
+      setQrModalOpen(false);
+    } finally {
+      setQrLoading(false);
+    }
+  }
+
   async function changeFormArea(nextAreaId: number) {
     setAreaId(nextAreaId);
     form.setFieldValue('tableId', undefined);
@@ -286,6 +325,7 @@ export default function AdminSeatsPage() {
         <AdminResourceActions
           actions={[
             { key: 'edit', label: '编辑', icon: <Edit3 size={14} />, onClick: () => openEditModal(record) },
+            { key: 'qr', label: '座位码', icon: <QrCode size={14} />, onClick: () => openSeatQrModal(record) },
             record.status === 'ACTIVE'
               ? {
                   key: 'disable',
@@ -463,6 +503,38 @@ export default function AdminSeatsPage() {
             </Form.Item>
           ) : null}
         </Form>
+      </Modal>
+      <Modal
+        title={seatQr ? `${seatQr.seatNo} 固定座位二维码` : '固定座位二维码'}
+        open={qrModalOpen}
+        footer={[
+          <Button key="close" onClick={() => setQrModalOpen(false)}>
+            关闭
+          </Button>,
+        ]}
+        onCancel={() => setQrModalOpen(false)}
+      >
+        <div className="table-qr-panel">
+          {qrLoading ? (
+            <Typography.Text type="secondary">加载中...</Typography.Text>
+          ) : seatQr ? (
+            <>
+              <div className="table-qr-code" aria-label={`${seatQr.seatNo} 固定座位二维码`}>
+                <QRCode value={checkinUrl} size={180} />
+              </div>
+              <Space direction="vertical" size={6}>
+                <Typography.Text strong>
+                  {seatQr.tableNo ?? '未绑定桌子'} · {seatQr.seatNo}
+                  {seatQr.seatLabel ? ` (${seatQr.seatLabel})` : ''}
+                </Typography.Text>
+                <Typography.Text copyable>{checkinUrl}</Typography.Text>
+                <Typography.Text type="secondary">
+                  学生扫码后输入预约签到码；若座位处于锁位状态，可用同一个座位码恢复使用。
+                </Typography.Text>
+              </Space>
+            </>
+          ) : null}
+        </div>
       </Modal>
     </div>
   );

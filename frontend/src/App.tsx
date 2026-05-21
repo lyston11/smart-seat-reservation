@@ -2,6 +2,7 @@ import { App as AntApp } from 'antd';
 import { lazy, Suspense, useEffect } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AUTH_EXPIRED_EVENT, getStoredUser } from './api/http';
+import WifiPresenceGuard from './components/WifiPresenceGuard';
 import AppLayout from './layout/AppLayout';
 import RoleRoute from './router/RoleRoute';
 
@@ -14,6 +15,7 @@ const AdminSeatsPage = lazy(() => import('./pages/AdminSeatsPage'));
 const AdminTablesPage = lazy(() => import('./pages/AdminTablesPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const MyReservationsPage = lazy(() => import('./pages/MyReservationsPage'));
+const SeatCheckinPage = lazy(() => import('./pages/SeatCheckinPage'));
 const SeatSlotsPage = lazy(() => import('./pages/SeatSlotsPage'));
 const StudentHomePage = lazy(() => import('./pages/StudentHomePage'));
 const TableCheckinPage = lazy(() => import('./pages/TableCheckinPage'));
@@ -49,6 +51,7 @@ export default function App() {
   return (
     <AntApp>
       <AuthExpiredListener />
+      <WifiPresenceGuard />
       <Suspense fallback={<div className="route-loading">加载中...</div>}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -58,6 +61,7 @@ export default function App() {
               <Route path="/student/home" element={<StudentHomePage />} />
               <Route path="/student/seats" element={<SeatSlotsPage />} />
               <Route path="/student/reservations" element={<MyReservationsPage />} />
+              <Route path="/student/seat-checkin" element={<SeatCheckinPage />} />
               <Route path="/student/table-checkin" element={<TableCheckinPage />} />
             </Route>
             <Route element={<RoleRoute allowedRoles={['ADMIN']} />}>

@@ -46,4 +46,15 @@ public interface SeatMapper extends BaseMapper<Seat> {
             WHERE area_id = #{areaId}
             """)
     int countByAreaId(@Param("areaId") Long areaId);
+
+    @Select("""
+            SELECT s.id, s.area_id, s.table_id, t.table_no,
+                   s.seat_no, s.seat_label, s.seat_side, s.seat_order, s.qr_token,
+                   s.row_no, s.column_no, s.display_order, s.status, s.created_at, s.updated_at
+            FROM seats s
+            LEFT JOIN tables t
+              ON t.id = s.table_id
+            WHERE s.id = #{seatId}
+            """)
+    Seat findByIdWithQrToken(@Param("seatId") Long seatId);
 }

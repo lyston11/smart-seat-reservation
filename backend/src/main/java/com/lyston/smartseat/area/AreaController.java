@@ -4,7 +4,9 @@ import com.lyston.smartseat.auth.CurrentUser;
 import com.lyston.smartseat.auth.RequireRole;
 import com.lyston.smartseat.common.ApiPaths;
 import com.lyston.smartseat.common.ApiResponse;
+import com.lyston.smartseat.network.ClientIpResolver;
 import com.lyston.smartseat.user.UserRole;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,9 +23,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AreaController {
 
     private final AreaService areaService;
+    private final ClientIpResolver clientIpResolver;
 
-    public AreaController(AreaService areaService) {
+    public AreaController(AreaService areaService, ClientIpResolver clientIpResolver) {
         this.areaService = areaService;
+        this.clientIpResolver = clientIpResolver;
     }
 
     @GetMapping
@@ -58,5 +62,17 @@ public class AreaController {
             CurrentUser currentUser
     ) {
         return ApiResponse.ok(areaService.updateAreaStatus(areaId, request, currentUser.id()));
+    }
+
+    @PostMapping("/checkin-ip-test")
+    @RequireRole(UserRole.ADMIN)
+    public ApiResponse<CheckinIpTestResponse> testCheckinIp(
+            @Valid @RequestBody CheckinIpTestRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        return ApiResponse.ok(areaService.testCheckinIp(
+                request.checkinIpCidrs(),
+                clientIpResolver.resolveDetailed(servletRequest)
+        ));
     }
 }

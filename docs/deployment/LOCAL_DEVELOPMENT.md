@@ -228,3 +228,40 @@ MySQL / Redis：Docker Compose
 ```
 
 正式部署时必须修改默认密码，并通过环境变量注入配置。
+
+## 9. 反向代理与签到 IP 检测
+
+签到和 WiFi 在线检测依赖“后端识别到的客户端 IP”是否命中区域配置的 `checkin_ip_cidrs`。如果后端部署在 Nginx、网关或负载均衡后面，必须正确透传真实客户端 IP，否则后端只能看到代理服务器 IP。
+
+推荐 Nginx 配置：
+
+```nginx
+location /api/ {
+    proxy_pass http://127.0.0.1:18080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+后端不会盲目信任 `X-Forwarded-For`。只有当请求来源 `remoteAddr` 命中可信代理网段时，后端才会采用转发头里的第一个有效 IP。可信代理网段通过环境变量配置：
+
+```dotenv
+TRUSTED_PROXY_CIDRS=127.0.0.1/32,::1/128,10.0.0.0/8
+```
+
+配置建议：
+
+- 本地开发保留默认 `127.0.0.1/32,::1/128`。
+- 单机 Nginx 代理到本机后端时，默认值即可让后端信任来自本机 Nginx 的转发头。
+- Docker Compose 或内网代理部署时，把 Nginx/网关所在容器网段或内网网段加入 `TRUSTED_PROXY_CIDRS`。
+- 不要把 `0.0.0.0/0` 或公网网段配置成可信代理，否则客户端可以伪造 `X-Forwarded-For` 绕过校园网 IP 检测。
+
+管理员可以在“区域管理”中维护“签到校园网 IP 网段”，多个 CIDR 用英文逗号分隔，例如：
+
+```text
+10.10.0.0/16,172.16.20.0/24
+```
+
+保存区域时后端会校验 CIDR 格式。页面中的“测试当前 IP”按钮会调用后端测试接口，返回后端当前识别到的客户端 IP、是否来自可信代理转发、以及是否命中该区域网段。部署到演示服务器后，建议先用这项功能确认校园网签到规则生效，再开放比赛演示。

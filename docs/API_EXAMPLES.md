@@ -288,6 +288,29 @@ curl "http://localhost:18080/api/seats?areaId=1" \
   -H "X-Auth-Token: 替换为管理员 token"
 ```
 
+查询座位固定签到二维码信息：
+
+```bash
+curl http://localhost:18080/api/seats/1/checkin-qr \
+  -H "X-Auth-Token: 替换为管理员 token"
+```
+
+返回示例：
+
+```json
+{
+  "seatId": 1,
+  "tableId": 1,
+  "tableNo": "T01",
+  "seatNo": "A-001",
+  "seatLabel": "1号",
+  "qrToken": "seat-1-demo-token",
+  "checkinPath": "/student/seat-checkin?token=seat-1-demo-token"
+}
+```
+
+`checkinPath` 用于生成贴在具体座位上的固定二维码。学生扫码后输入预约详情中的动态签到码；若该预约正在锁位中，同一个座位码也可用于恢复使用。
+
 新增座位资源：
 
 ```bash
@@ -435,6 +458,20 @@ curl -X POST http://localhost:18080/api/reservations/table-check-in \
 ```
 
 桌码签到会先根据 `tableQrToken` 定位活动桌子，再匹配当前学生在该桌子下的 `RESERVED` 预约，并校验动态签到码和过期时间。二维码只证明学生到达了物理桌子，签到码仍用于证明预约归属。
+
+座位固定二维码签到或锁位恢复：
+
+```bash
+curl -X POST http://localhost:18080/api/reservations/seat-check-in \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: 替换为学生 token" \
+  -d '{
+    "seatQrToken": "seat-1-demo-token",
+    "checkinCode": "替换为预约返回的签到码"
+  }'
+```
+
+座位码会先尝试匹配当前学生在该座位下的 `LOCKED` 预约，命中则恢复为 `CHECKED_IN`；否则匹配 `RESERVED` 预约并完成签到。两种情况都会校验动态签到码、签到/锁位时间边界和区域校园网 IP 网段。
 
 使用中 WiFi 在线心跳：
 

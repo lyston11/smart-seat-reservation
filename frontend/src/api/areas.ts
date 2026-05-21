@@ -25,6 +25,15 @@ export type UpdateAreaPayload = {
   checkinIpCidrs?: string;
 };
 
+export type CheckinIpTestResult = {
+  clientIp: string;
+  remoteAddr: string;
+  forwardedFor: string | null;
+  trustedProxy: boolean;
+  matched: boolean;
+  checkinIpCidrs: string;
+};
+
 export function createArea(payload: CreateAreaPayload) {
   return post<Area>(apiPaths.areas, payload);
 }
@@ -35,4 +44,8 @@ export function updateArea(areaId: number, payload: UpdateAreaPayload) {
 
 export function updateAreaStatus(areaId: number, status: AreaStatus) {
   return patch<Area>(withPath(apiPaths.areas, areaId, 'status'), { status });
+}
+
+export function testCheckinIp(checkinIpCidrs: string) {
+  return post<CheckinIpTestResult>(withPath(apiPaths.areas, 'checkin-ip-test'), { checkinIpCidrs });
 }

@@ -86,6 +86,23 @@ export default function AdminReservationRulesPage() {
         </Card>
       </div>
 
+      <Card className="rule-explain-card">
+        <div className="rule-explain-grid">
+          <div>
+            <Typography.Text strong>锁位计算</Typography.Text>
+            <Typography.Text type="secondary">
+              后端按单笔连续预约自动判断，不需要学生选择“三段”。跨 12:00 生成 1 次，跨 18:00 再生成 1 次。
+            </Typography.Text>
+          </div>
+          <div>
+            <Typography.Text strong>锁位释放</Typography.Text>
+            <Typography.Text type="secondary">
+              锁位结束、预约结束或学生主动释放时，座位会重新开放；锁位期间不会因为 WiFi 断联释放。
+            </Typography.Text>
+          </div>
+        </div>
+      </Card>
+
       <Card
         title="预约规则"
         loading={loading}
