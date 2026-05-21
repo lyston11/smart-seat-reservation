@@ -1980,3 +1980,35 @@
 - `seats.qr_token` 是固定座位码的核心字段，后续手工导入座位数据必须保证该字段唯一且非空，推荐仍通过后端创建接口生成。
 - 普通座位列表不暴露 `qrToken`，管理员打印/查看座位码必须走 `/api/seats/{seatId}/checkin-qr`。
 - 锁位恢复现在既可以通过原预约详情入口，也可以通过扫描座位固定二维码完成。
+
+## 2026-05-21
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-api-error-hardening
+- 目标: 修复学生选座页可选择管理员未发布时间段的问题，避免用户点 `17:00` 后座位全部显示“未开放”，但 `18:00-20:00` 实际可以预约。
+
+### 本次改动
+- 学生端时间下拉不再只按区域营业时间生成，而是优先根据当天当前区域真实已发布的座位时段推导可选开始/结束时间。
+- 若管理员只发布了 `18:00-20:00`，学生端会展示 `18:00`、`18:30`、`19:00`、`19:30` 等合法开始时间，并不会再出现 `17:00-20:00` 这种未发布组合。
+- 当某个已发布时段全部被占用时，前端仍保留该发布窗口用于查看占用状态，但不会退回到全天营业时间。
+- 将学生端时间选项生成逻辑抽到 `frontend/src/utils/studentTimeOptions.ts`，避免页面组件混入可测试业务函数。
+- 新增 `SeatSlotsPage.test.ts`，覆盖“按发布时段而非营业时间生成选项”和“全被占用时仍显示发布窗口”的回归场景。
+
+### 涉及文件
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/pages/SeatSlotsPage.test.ts
+- frontend/src/utils/studentTimeOptions.ts
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test -- SeatSlotsPage.test.ts`，新增测试 2 个通过。
+- 已运行 `npm run test`，前端 39 个测试通过；jsdom 仍提示不支持 QRCode canvas 和 Ant Design pseudo-element 相关能力，不影响测试结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 当前时间选项仍允许在已发布大窗口内按半小时切分，例如 `18:00-20:00` 可选 `18:00-19:00`；后端会继续校验所选时间必须落在管理员已发布的可用窗口内。
+
+### 对其他成员的影响
+- 后续学生端时间选择逻辑优先维护 `studentTimeOptions.ts`，不要再在页面里直接按区域营业时间生成预约时间。

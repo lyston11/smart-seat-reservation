@@ -27,16 +27,7 @@ import {
   normalizeReservationRules,
   type NormalizedReservationRule,
 } from '../utils/reservationRules';
-
-type TimeOption = {
-  label: string;
-  value: string;
-};
-
-type TimeOptions = {
-  startOptions: TimeOption[];
-  endOptions: TimeOption[];
-};
+import { buildStudentTimeOptions, type StudentTimeOption } from '../utils/studentTimeOptions';
 
 export default function SeatSlotsPage() {
   const [areas, setAreas] = useState<Area[]>([]);
@@ -92,14 +83,8 @@ export default function SeatSlotsPage() {
     return startTime;
   }, [earliestStartTime, selectedArea?.closeTime, startTime]);
   const timeOptions = useMemo(
-    () =>
-      buildHalfHourTimeOptions(
-        selectedArea?.openTime,
-        selectedArea?.closeTime,
-        effectiveStartTime,
-        earliestStartTime,
-      ),
-    [earliestStartTime, effectiveStartTime, selectedArea?.closeTime, selectedArea?.openTime],
+    () => buildStudentTimeOptions(slots, selectedArea, effectiveStartTime, earliestStartTime),
+    [earliestStartTime, effectiveStartTime, selectedArea, slots],
   );
   const validStartTime = useMemo(
     () => pickValidTime(startTime, timeOptions.startOptions),
@@ -381,6 +366,9 @@ export default function SeatSlotsPage() {
           连续跨上午/下午可锁位 1 次，跨上午/下午/晚上可锁位 2 次
         </span>
         <span>分开预约不累计锁位权益</span>
+        {slots.length > 0 && timeOptions.startOptions.length === 0 ? (
+          <span>当前已发布时段均已开始或无可预约座位</span>
+        ) : null}
       </div>
 
       <div className="student-seat-workspace">
@@ -420,6 +408,7 @@ export default function SeatSlotsPage() {
                       aria-label="开始时间"
                       value={validStartTime}
                       options={timeOptions.startOptions}
+                      placeholder="暂无可预约开始时间"
                       onChange={(value) => {
                         setStartTime(value);
                         setSelectedSeatId(null);
@@ -432,6 +421,7 @@ export default function SeatSlotsPage() {
                       aria-label="结束时间"
                       value={validEndTime}
                       options={timeOptions.endOptions}
+                      placeholder="暂无可预约结束时间"
                       onChange={(value) => {
                         setEndTime(value);
                         setSelectedSeatId(null);
@@ -570,7 +560,7 @@ function normalizeStudentSlotDate(
   return slotDate;
 }
 
-function pickValidTime(value: string, options: TimeOption[]) {
+function pickValidTime(value: string, options: StudentTimeOption[]) {
   if (options.some((option) => option.value === value)) {
     return value;
   }
@@ -623,34 +613,6 @@ function getReservationBlockedReason(
     return '已开始或过去的时间段不可预约';
   }
   return null;
-}
-
-function buildHalfHourTimeOptions(
-  openTime = '08:00:00',
-  closeTime = '22:00:00',
-  startTime = '08:00',
-  minStartTime = openTime,
-): TimeOptions {
-  const startBoundary = toMinutes(toHalfHourCeil(openTime.slice(0, 5)));
-  const endBoundary = toMinutes(toHalfHourFloor(closeTime.slice(0, 5)));
-  const minStartBoundary = Math.max(startBoundary, toMinutes(toHalfHourCeil(minStartTime.slice(0, 5))));
-  const selectedStart = Math.max(toMinutes(startTime), minStartBoundary);
-  const startOptions: TimeOption[] = [];
-  const endOptions: TimeOption[] = [];
-
-  for (let minutes = minStartBoundary; minutes < endBoundary; minutes += 30) {
-    const value = toTimeText(minutes);
-    startOptions.push({ label: value, value });
-  }
-
-  for (let minutes = minStartBoundary + 30; minutes <= endBoundary; minutes += 30) {
-    if (minutes > selectedStart) {
-      const value = toTimeText(minutes);
-      endOptions.push({ label: value, value });
-    }
-  }
-
-  return { startOptions, endOptions };
 }
 
 function overlaps(slot: SeatSlot, startTime: string, endTime: string) {
