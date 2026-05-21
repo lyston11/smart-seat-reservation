@@ -1810,3 +1810,34 @@
 
 ### 对其他成员的影响
 - 后续新增需要登录的接口时，只要复用 `frontend/src/api/http.ts` 的 `request/get/post/put/patch/del`，就会自动获得 token 过期清理和跳转登录页能力。
+
+## 2026-05-21
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-api-error-hardening
+- 目标: 从最新 `main` 创建新分支，继续工程化加固前端公共 API 请求层，处理网关/代理返回空响应或非 JSON 401 的认证失效场景。
+
+### 本次改动
+- `frontend/src/api/http.ts` 新增安全响应解析逻辑，避免 `response.json()` 在空 body 或 HTML 响应上直接抛错导致统一错误处理失效。
+- 401 响应现在即使没有标准 JSON body，也会统一清理本地 token 和用户信息，并触发登录过期事件。
+- 对成功但响应结构不符合统一 `ApiResponse` 的情况返回“响应格式异常”，避免页面误用异常数据。
+- 新增 `frontend/src/api/http.test.ts`，覆盖成功响应、业务错误、非 JSON 401、空 401 和 malformed success。
+
+### 涉及文件
+- frontend/src/api/http.ts
+- frontend/src/api/http.test.ts
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 31 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白字符问题。
+
+### 遗留问题
+- 当前网络中断、超时这类 `fetch` 自身失败仍会直接向上抛原始错误；后续可以按页面体验需要增加统一网络错误文案。
+
+### 对其他成员的影响
+- 后续接口仍应返回统一 `ApiResponse`，否则前端会按响应格式异常处理。
+- 所有前端 API 模块继续复用公共 `request/get/post/put/patch/del`，不要绕过认证失效和响应格式校验逻辑。
