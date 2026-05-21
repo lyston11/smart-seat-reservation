@@ -5,6 +5,46 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/AmorLX-auto-slots-locked-seat-map
+- 目标: 在学生预约端新增楼栋、楼层和 A/B 连廊的室内地图式区域入口，继续为手机端响应式同一套页面做准备。
+
+### 本次改动
+- 新增 `CampusIndoorMap` 组件，按区域名称、楼层和描述推断 A 楼、B 楼、A/B 连廊三类空间分区。
+- 学生选座页在原区域下拉前增加室内导航图，点击地图区域会复用现有 `applySelectedArea` 流程加载对应区域桌椅和座位状态。
+- 地图支持楼层切换，当前选区高亮展示，区域卡片展示开放时间。
+- 新增响应式样式，桌面横向展示 A 楼、连廊、B 楼，手机端自动收为单列。
+- 新增设计文档和实施计划，明确本阶段不引入 GIS/地图引擎、不改后端签到验证逻辑，后续可演进为结构化楼栋和坐标配置。
+
+### 涉及文件
+- frontend/src/components/CampusIndoorMap.tsx
+- frontend/src/components/CampusIndoorMap.test.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/App.test.tsx
+- frontend/src/styles/main.css
+- docs/plans/2026-05-21-indoor-reservation-map-design.md
+- docs/plans/2026-05-21-indoor-reservation-map.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已运行 `npm run test -- CampusIndoorMap.test.tsx`。
+- 已运行 `npm run test -- App.test.tsx`。
+- 已运行 `npm run test`，前端 31 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle`，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn test`，后端 67 个测试通过。
+
+### 遗留问题
+- 当前 A/B 楼和连廊根据区域名称、楼层、描述推断，长期稳定运行建议后续为区域补充结构化 `buildingCode`、`areaType`、地图坐标等配置。
+- 本次只完成预约端区域导航和具体选座衔接，没有新增管理员地图编辑器。
+
+### 对其他成员的影响
+- 本次不修改签到验证、WiFi/IP 校验、签到码校验、签到时间窗和后端状态机。
+- 其他成员新增区域时，如果希望预约端地图准确归类，可在区域名称或描述中包含 `A 楼`、`B 楼`、`连廊` 等关键词。
+
+## 2026-05-21
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-auto-slots-locked-seat-map
 - 目标: 根据北京时间自动开放预约时段，并在座位图中将锁位状态独立展示。
 
 ### 本次改动

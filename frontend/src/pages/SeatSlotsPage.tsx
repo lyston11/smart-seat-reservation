@@ -12,6 +12,7 @@ import {
   createReservation,
   listUserReservations,
 } from '../api/reservations';
+import CampusIndoorMap from '../components/CampusIndoorMap';
 import SeatMap from '../components/SeatMap';
 import type { ReservationResult } from '../types/reservation';
 import type { Area, Seat, SeatSlot } from '../types/seat';
@@ -315,6 +316,8 @@ export default function SeatSlotsPage() {
   return (
     <div className="page">
       {contextHolder}
+      <CampusIndoorMap areas={activeAreas} selectedAreaId={areaId} onSelectArea={applySelectedArea} />
+
       <div className="toolbar">
         <Form layout="inline">
           <Form.Item label="区域">

@@ -1,0 +1,62 @@
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import CampusIndoorMap from './CampusIndoorMap';
+import type { Area } from '../types/seat';
+
+function makeArea(overrides: Partial<Area>): Area {
+  return {
+    id: overrides.id ?? 1,
+    name: overrides.name ?? 'A 楼自习区',
+    floor: overrides.floor ?? '1F',
+    description: overrides.description ?? null,
+    status: overrides.status ?? 'ACTIVE',
+    openTime: overrides.openTime ?? '08:00:00',
+    closeTime: overrides.closeTime ?? '22:00:00',
+    checkinIpCidrs: overrides.checkinIpCidrs ?? '127.0.0.1/32',
+  };
+}
+
+afterEach(() => {
+  cleanup();
+});
+
+describe('CampusIndoorMap', () => {
+  it('renders A/B buildings and connector areas for the selected floor', () => {
+    const onSelectArea = vi.fn();
+
+    render(
+      <CampusIndoorMap
+        areas={[
+          makeArea({ id: 1, name: 'A 楼北自习区', floor: '1F' }),
+          makeArea({ id: 2, name: 'B 楼南自习区', floor: '1F' }),
+          makeArea({ id: 3, name: 'A/B 连廊学习区', floor: '1F', description: 'connector' }),
+          makeArea({ id: 4, name: 'A 楼二层讨论区', floor: '2F' }),
+        ]}
+        selectedAreaId={2}
+        onSelectArea={onSelectArea}
+      />,
+    );
+
+    expect(screen.getByText('室内导航')).toBeTruthy();
+    expect(screen.getByRole('radio', { name: '1F' })).toHaveProperty('checked', true);
+    expect(screen.getByRole('radio', { name: '2F' })).toBeTruthy();
+    expect(screen.getByText('A 楼')).toBeTruthy();
+    expect(screen.getByText('A/B 连廊')).toBeTruthy();
+    expect(screen.getByText('B 楼')).toBeTruthy();
+
+    const buildingA = screen.getByLabelText('A 楼区域');
+    const connector = screen.getByLabelText('A/B 连廊区域');
+    const buildingB = screen.getByLabelText('B 楼区域');
+    expect(within(buildingA).getByRole('button', { name: /A 楼北自习区/ })).toBeTruthy();
+    expect(within(connector).getByRole('button', { name: /A\/B 连廊学习区/ })).toBeTruthy();
+    const selectedArea = within(buildingB).getByRole('button', { name: /B 楼南自习区/ });
+    expect(selectedArea.getAttribute('aria-pressed')).toBe('true');
+
+    fireEvent.click(within(buildingA).getByRole('button', { name: /A 楼北自习区/ }));
+    expect(onSelectArea).toHaveBeenCalledWith(expect.objectContaining({ id: 1, name: 'A 楼北自习区' }));
+
+    fireEvent.click(screen.getByRole('radio', { name: '2F' }));
+    expect(screen.getByRole('button', { name: /A 楼二层讨论区/ })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /B 楼南自习区/ })).toBeNull();
+  });
+});
