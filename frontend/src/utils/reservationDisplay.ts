@@ -67,6 +67,69 @@ export function canLockReservation(reservation: ReservationResult) {
   return reservation.status === 'CHECKED_IN' && usedCount < quota;
 }
 
+export function getRemainingSeatLockCount(reservation: ReservationResult) {
+  const quota = reservation.seatLockQuota ?? 0;
+  const usedCount = reservation.seatLockUsedCount ?? 0;
+  return Math.max(quota - usedCount, 0);
+}
+
+export function getSeatLockStatusText(reservation: ReservationResult) {
+  const quota = reservation.seatLockQuota ?? 0;
+  const usedCount = reservation.seatLockUsedCount ?? 0;
+  const remainingCount = getRemainingSeatLockCount(reservation);
+
+  if (reservation.status === 'LOCKED') {
+    return reservation.lockedUntilAt
+      ? `已锁位至 ${formatDateTime(reservation.lockedUntilAt)}`
+      : '已锁位';
+  }
+
+  if (reservation.status === 'CHECKED_IN' && remainingCount > 0) {
+    return `可锁位 ${remainingCount} 次`;
+  }
+
+  if (reservation.status === 'CHECKED_IN' && quota > 0) {
+    return '锁位次数已用完';
+  }
+
+  if (reservation.status === 'RESERVED' && quota > usedCount) {
+    return '签到后可锁位';
+  }
+
+  if ((reservation.status === 'RESERVED' || reservation.status === 'CHECKED_IN') && quota === 0) {
+    return '本次无锁位权益';
+  }
+
+  return '当前状态不可锁位';
+}
+
+export function getSeatLockHelpText(reservation: ReservationResult) {
+  const quota = reservation.seatLockQuota ?? 0;
+  const remainingCount = getRemainingSeatLockCount(reservation);
+
+  if (reservation.status === 'LOCKED') {
+    return '锁位期间暂停 WiFi 离线释放，可重新签到恢复或主动释放座位';
+  }
+
+  if (reservation.status === 'CHECKED_IN' && remainingCount > 0) {
+    return '临时离座时可锁位，锁位到期或预约结束会自动释放';
+  }
+
+  if (reservation.status === 'CHECKED_IN' && quota > 0) {
+    return '连续跨时段预约的锁位次数已经使用完';
+  }
+
+  if (reservation.status === 'RESERVED' && quota > 0) {
+    return '完成签到并进入使用中后，才可以临时锁位';
+  }
+
+  if ((reservation.status === 'RESERVED' || reservation.status === 'CHECKED_IN') && quota === 0) {
+    return '只有单笔连续预约跨过 12:00 或 18:00 才会获得锁位次数';
+  }
+
+  return '锁位只适用于待签到、使用中或已锁位的活跃预约';
+}
+
 export function canReactivateSeatLock(reservation: ReservationResult) {
   return reservation.status === 'LOCKED';
 }

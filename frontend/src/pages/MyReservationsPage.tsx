@@ -43,6 +43,8 @@ import {
   formatReservationTime,
   formatTime,
   getCheckinCountdown,
+  getSeatLockHelpText,
+  getSeatLockStatusText,
   isActiveReservation,
   reservationStatusColor,
   reservationStatusFilterOptions,
@@ -233,13 +235,19 @@ export default function MyReservationsPage() {
     { title: '签到截止', dataIndex: 'expiresAt', width: 180, render: (value) => formatDateTime(value) },
     {
       title: '锁位',
-      width: 170,
+      width: 220,
       render: (_, record) => {
         const quota = record.seatLockQuota ?? 0;
         const usedCount = record.seatLockUsedCount ?? 0;
         return (
-          <Space orientation="vertical" size={2}>
-            <Typography.Text>{usedCount}/{quota} 次</Typography.Text>
+          <Space orientation="vertical" size={4}>
+            <Space wrap size={6}>
+              <Tag color={canLockReservation(record) ? 'green' : record.status === 'LOCKED' ? 'gold' : 'default'}>
+                {getSeatLockStatusText(record)}
+              </Tag>
+              <Typography.Text>{usedCount}/{quota}</Typography.Text>
+            </Space>
+            <Typography.Text type="secondary">{getSeatLockHelpText(record)}</Typography.Text>
             {record.lockedUntilAt ? (
               <Typography.Text type="secondary">{formatDateTime(record.lockedUntilAt)}</Typography.Text>
             ) : null}
@@ -310,7 +318,7 @@ export default function MyReservationsPage() {
       <div className="student-section">
         <div className="seat-map-section-header">
           <strong>当前可操作预约</strong>
-          <span>签到 / 签退 / 取消</span>
+          <span>签到 / 签退 / 取消 / 锁位</span>
         </div>
         {activeReservations.length > 0 ? (
           <div className="student-card-grid">
@@ -336,9 +344,17 @@ export default function MyReservationsPage() {
                       已锁位至 {formatDateTime(reservation.lockedUntilAt)}，可重新签到恢复使用。
                     </Typography.Text>
                   ) : null}
-                  <Typography.Text type="secondary">
-                    锁位次数 {reservation.seatLockUsedCount ?? 0}/{reservation.seatLockQuota ?? 0}
-                  </Typography.Text>
+                  <div className="seat-lock-status-box">
+                    <Space wrap>
+                      <Tag color={canLockReservation(reservation) ? 'green' : reservation.status === 'LOCKED' ? 'gold' : 'default'}>
+                        {getSeatLockStatusText(reservation)}
+                      </Tag>
+                      <Typography.Text type="secondary">
+                        锁位次数 {reservation.seatLockUsedCount ?? 0}/{reservation.seatLockQuota ?? 0}
+                      </Typography.Text>
+                    </Space>
+                    <Typography.Text type="secondary">{getSeatLockHelpText(reservation)}</Typography.Text>
+                  </div>
                   <div className="reservation-code-field">
                     <span>签到码</span>
                     <Input
@@ -405,6 +421,22 @@ export default function MyReservationsPage() {
               <Descriptions.Item label="签到倒计时">{renderCountdown(detailReservation)}</Descriptions.Item>
               <Descriptions.Item label="锁位次数">
                 {detailReservation.seatLockUsedCount ?? 0}/{detailReservation.seatLockQuota ?? 0}
+              </Descriptions.Item>
+              <Descriptions.Item label="锁位状态">
+                <Space orientation="vertical" size={4}>
+                  <Tag
+                    color={
+                      canLockReservation(detailReservation)
+                        ? 'green'
+                        : detailReservation.status === 'LOCKED'
+                          ? 'gold'
+                          : 'default'
+                    }
+                  >
+                    {getSeatLockStatusText(detailReservation)}
+                  </Tag>
+                  <Typography.Text type="secondary">{getSeatLockHelpText(detailReservation)}</Typography.Text>
+                </Space>
               </Descriptions.Item>
               <Descriptions.Item label="锁位截止">
                 {formatDateTime(detailReservation.lockedUntilAt)}

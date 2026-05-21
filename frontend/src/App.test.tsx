@@ -609,6 +609,101 @@ describe('App', () => {
     expect(await screen.findByText('A 区 · 1F')).toBeTruthy();
   });
 
+  it('lets students lock a checked-in reservation directly from the home page', async () => {
+    storeStudentSession();
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.startsWith('/api/reservations?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              makeReservation({
+                status: 'CHECKED_IN',
+                startTime: '09:00:00',
+                endTime: '14:00:00',
+                seatLockQuota: 1,
+                seatLockUsedCount: 0,
+              }),
+            ],
+          }),
+        };
+      }
+      if (url === '/api/reservations/7/seat-lock') {
+        expect(init?.method).toBe('POST');
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: makeReservation({
+              status: 'LOCKED',
+              startTime: '09:00:00',
+              endTime: '14:00:00',
+              seatLockQuota: 1,
+              seatLockUsedCount: 1,
+              lockedUntilAt: '2026-05-18T11:00:00',
+            }),
+          }),
+        };
+      }
+      if (url === '/api/reservations/7/wifi-presence') {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: {
+              reservationId: 7,
+              status: 'CHECKED_IN',
+              lastWifiSeenAt: '2026-05-18T10:01:00',
+              offlineReleaseMinutes: 15,
+            },
+          }),
+        };
+      }
+      if (url.startsWith('/api/reservations/rules')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: makeReservationRules({ seatLockMinutes: 60 }),
+          }),
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/student/home']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('锁位权益')).toBeTruthy();
+    expect(await screen.findByText('可锁位 1 次')).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: /锁\s*位/ }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/reservations/7/seat-lock',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+  });
+
   it('sends WiFi presence heartbeats globally for checked-in student reservations', async () => {
     storeStudentSession();
 
@@ -877,6 +972,77 @@ describe('App', () => {
     expect(await screen.findByDisplayValue('18')).toBeTruthy();
     expect(await screen.findByDisplayValue('60')).toBeTruthy();
     expect(await screen.findByDisplayValue('15')).toBeTruthy();
+  });
+
+  it('lets administrators manually release expired seat locks from the dashboard', async () => {
+    storeAdminSession();
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.startsWith('/api/admin/dashboard')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: {
+              date: '2026-05-18',
+              summary: {
+                totalSlots: 10,
+                availableSlots: 4,
+                reservedSlots: 3,
+                usingSlots: 2,
+                abnormalSlots: 1,
+                activeReservations: 5,
+                checkedInReservations: 2,
+              },
+              areaUsage: [],
+            },
+          }),
+        };
+      }
+      if (url.startsWith('/api/reservations/rules')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: makeReservationRules({ seatLockMinutes: 60 }),
+          }),
+        };
+      }
+      if (url.startsWith('/api/admin/reservations/release-expired-seat-locks')) {
+        expect(init?.method).toBe('POST');
+        return {
+          ok: true,
+          json: async () => ({ success: true, code: 'OK', message: 'ok', data: 2 }),
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/admin/dashboard']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('锁位运维')).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: '释放过期锁位' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/admin/reservations/release-expired-seat-locks?limit=100',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+    expect(await screen.findByText('已释放 2 个过期锁位')).toBeTruthy();
   });
 
   it('tests admin area check-in IP ranges against the current request IP', async () => {

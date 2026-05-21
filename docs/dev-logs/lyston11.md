@@ -1889,3 +1889,42 @@
 ### 对其他成员的影响
 - 部署到 Nginx/网关后必须正确配置 `TRUSTED_PROXY_CIDRS`，否则后端会忽略转发头，只使用代理 IP 做校园网判断。
 - 区域 `checkinIpCidrs` 现在会严格校验 CIDR 格式，种子数据和手工导入数据也需要使用合法 CIDR。
+
+## 2026-05-21
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-api-error-hardening
+- 目标: 回答并修复锁位能力在学生端和管理员端“不明显、看不到”的体验问题。
+
+### 本次改动
+- 学生首页新增锁位权益展示，汇总当前活跃预约的可锁位次数和总额度。
+- 学生首页对使用中预约直接提供“锁位”入口，对已锁位预约提供“恢复使用”和“释放锁位”入口。
+- “我的预约”列表、卡片和详情弹窗补充锁位状态、次数和不可用原因，避免只显示灰色按钮。
+- 管理员占用看板新增“锁位运维”模块，可手动触发释放过期锁位，并展示锁位核心规则。
+- 管理员预约规则页补充锁位计算和释放说明，便于比赛演示讲清业务闭环。
+- 抽取前端锁位展示文案工具，统一学生首页和预约记录页的状态说明。
+
+### 涉及文件
+- frontend/src/pages/StudentHomePage.tsx
+- frontend/src/pages/MyReservationsPage.tsx
+- frontend/src/pages/AdminDashboardPage.tsx
+- frontend/src/pages/AdminReservationRulesPage.tsx
+- frontend/src/utils/reservationDisplay.ts
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test`，前端 35 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白字符问题。
+
+### 遗留问题
+- 本轮只做前端可见性和运维入口增强，没有新增后端锁位字段或状态。
+- 管理员端后续可继续增加“当前锁位中预约列表”，方便直接查看每个锁位的学生、座位和到期时间。
+
+### 对其他成员的影响
+- 锁位状态文案统一走 `reservationDisplay.ts`，后续新增锁位状态或规则说明时优先维护这里。
+- 管理员看板现在会同时请求预约规则接口，用于展示单次锁位时长。
