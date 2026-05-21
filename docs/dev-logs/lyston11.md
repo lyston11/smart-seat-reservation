@@ -2041,3 +2041,86 @@
 
 ### 对其他成员的影响
 - 学生端选座交互应优先保留用户当前上下文，只有切换区域、日期或座位真实不存在时再清空选择。
+
+## 2026-05-21
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-api-error-hardening
+- 目标: 保留开发测试阶段的预约 ID 直签入口，同时明确正式签到必须扫码，并确认直签入口不会绕过 IP 校验。
+
+### 本次改动
+- 学生首页、学生选座页和我的预约页保留原直签按钮，但统一改名为“开发测试签到”。
+- 锁位恢复直连按钮统一改名为“开发测试恢复”，正式说明改为扫描座位固定二维码恢复。
+- 学生端待签到/锁位卡片增加提示：正式流程扫描桌面/座位二维码，测试入口仍校验校园网 IP 和签到时间窗。
+- 后端 `ReservationService.checkIn` 增加开发测试直签调用日志；真正状态流转仍复用 `completeCheckIn`，继续校验动态签到码、签到时间窗和区域 `checkin_ip_cidrs`。
+- 后端签到成功和锁位恢复成功增加业务日志，便于联调时追踪 reservationId、userId、seatSlotId 和 clientIp。
+- API 示例、接口契约和架构文档同步说明：桌码/座位码是正式签到入口，预约 ID 直签和锁位直连恢复仅用于开发测试。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/reservation/ReservationService.java
+- frontend/src/pages/MyReservationsPage.tsx
+- frontend/src/pages/StudentHomePage.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/utils/reservationDisplay.ts
+- frontend/src/App.test.tsx
+- docs/API_EXAMPLES.md
+- docs/architecture/API_CONTRACT.md
+- docs/architecture/ARCHITECTURE.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 72 个测试通过。
+- 已运行 `npm run test -- App.test.tsx SeatSlotsPage.test.ts`，相关前端测试 25 个通过；jsdom 仍提示不支持 QRCode canvas 和 Ant Design pseudo-element 相关能力，不影响测试结果。
+- 已运行 `npm run test`，前端 40 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白字符问题。
+
+### 遗留问题
+- 后续正式发布前可以加环境开关，在生产环境隐藏预约 ID 直签和锁位直连恢复按钮。
+
+### 对其他成员的影响
+- 新增签到入口时不要绕过 `completeCheckIn`；IP 网段、时间窗和动态签到码校验必须保持同源。
+
+## 2026-05-21
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-api-error-hardening
+- 目标: 修复学生选座页“全天开放但结束时间只能选到 12:00”的问题。
+
+### 本次改动
+- 修复学生端时间选项生成逻辑：同一座位连续发布的可用时段会自动合并，不再被 `08:00-12:00` 这类分段窗口截断。
+- 学生选座地图判断座位是否可预约时，同样合并同一座位的连续 `AVAILABLE` 时段，避免下拉能选但座位状态显示未开放。
+- 后端预约创建新增连续发布窗口识别；当管理员按 `08:00-12:00`、`12:00-18:00`、`18:00-22:00` 分段发布时，学生提交 `10:00-22:00` 会被视为被连续可用窗口覆盖。
+- 跨多个连续发布窗口预约时，后端会创建新的精确 `seat_slots` 记录代表整笔预约，而不是错误复用第一段发布窗口。
+- 补充前端 `SeatSlotsPage.test.ts` 回归测试，覆盖连续发布时间段可以选到 `22:00`。
+- 补充后端 `ReservationServiceTest`，覆盖连续发布窗口可预约和中间有空档时拒绝预约。
+- API 示例和架构文档同步说明“分段发布但首尾相接时视为连续可预约范围”。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/reservation/ReservationService.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotMapper.java
+- backend/src/test/java/com/lyston/smartseat/reservation/ReservationServiceTest.java
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/pages/SeatSlotsPage.test.ts
+- frontend/src/utils/studentTimeOptions.ts
+- docs/API_EXAMPLES.md
+- docs/architecture/ARCHITECTURE.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test -- SeatSlotsPage.test.ts App.test.tsx`，相关前端测试 26 个通过；jsdom 仍提示不支持 QRCode canvas 和 Ant Design pseudo-element 相关能力，不影响测试结果。
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 74 个测试通过。
+- 已运行 `npm run test`，前端 41 个测试通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白字符问题。
+
+### 遗留问题
+- 当前连续窗口要求首尾时间完全相接，例如上一段 `endTime` 等于下一段 `startTime`；如果中间存在空档，仍会拒绝跨空档预约。
+
+### 对其他成员的影响
+- 管理员可以继续按上午/下午/晚上模板发布，只要时间连续，学生端可以一次选择跨段预约并按整笔预约计算锁位权益。

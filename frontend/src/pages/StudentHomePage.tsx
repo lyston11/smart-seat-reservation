@@ -128,7 +128,7 @@ export default function StudentHomePage() {
           loading={actionId === reservation.reservationId}
           onClick={() => runQuickAction(reservation, 'check-in')}
         >
-          快速签到
+          开发测试签到
         </Button>
       );
     }
@@ -160,7 +160,7 @@ export default function StudentHomePage() {
             loading={actionId === reservation.reservationId}
             onClick={() => runQuickAction(reservation, 'reactivate-lock')}
           >
-            恢复使用
+            开发测试恢复
           </Button>
           <Button
             danger
@@ -256,6 +256,11 @@ export default function StudentHomePage() {
                   <Typography.Text type="secondary">
                     签到码 {reservation.checkinCode} · 截止 {formatDateTime(reservation.expiresAt)}
                   </Typography.Text>
+                  {reservation.status === 'RESERVED' || reservation.status === 'LOCKED' ? (
+                    <Typography.Text type="secondary" className="reservation-qr-checkin-hint">
+                      正式签到请扫描桌面/座位二维码，测试按钮仍会校验校园网 IP。
+                    </Typography.Text>
+                  ) : null}
                   <div className="seat-lock-status-box">
                     <Space wrap>
                       <Tag color={canLockReservation(reservation) ? 'green' : reservation.status === 'LOCKED' ? 'gold' : 'default'}>

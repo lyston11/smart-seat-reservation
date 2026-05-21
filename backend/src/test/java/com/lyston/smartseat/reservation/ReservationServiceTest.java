@@ -315,6 +315,44 @@ class ReservationServiceTest {
     }
 
     @Test
+    void createReservationShouldCreateCustomSlotFromContinuousPublishedWindows() {
+        seatSlotMapper.reserveRows = 1;
+        seatSlotMapper.attachRows = 1;
+        seatSlotMapper.insertRows = 1;
+        seatSlotMapper.insertedSlotId = 300L;
+        seatSlotMapper.availableWindows = List.of(
+                seatSlot(futureDate(), LocalTime.of(8, 0), LocalTime.of(12, 0)),
+                seatSlot(futureDate(), LocalTime.of(12, 0), LocalTime.of(18, 0)),
+                seatSlot(futureDate(), LocalTime.of(18, 0), LocalTime.of(22, 0))
+        );
+
+        ReservationResponse response = reservationService.createReservation(
+                new CreateReservationRequest(null, 2L, futureDate(), LocalTime.of(10, 0), LocalTime.of(22, 0)),
+                10L
+        );
+
+        assertThat(response.seatSlotId()).isEqualTo(300L);
+        assertThat(seatSlotMapper.insertedSlot.getStartTime()).isEqualTo(LocalTime.of(10, 0));
+        assertThat(seatSlotMapper.insertedSlot.getEndTime()).isEqualTo(LocalTime.of(22, 0));
+        assertThat(response.seatLockQuota()).isEqualTo(2);
+    }
+
+    @Test
+    void createReservationShouldRejectWhenPublishedWindowsHaveGap() {
+        seatSlotMapper.availableWindows = List.of(
+                seatSlot(futureDate(), LocalTime.of(8, 0), LocalTime.of(12, 0)),
+                seatSlot(futureDate(), LocalTime.of(13, 0), LocalTime.of(22, 0))
+        );
+
+        assertThatThrownBy(() -> reservationService.createReservation(
+                new CreateReservationRequest(null, 2L, futureDate(), LocalTime.of(10, 0), LocalTime.of(22, 0)),
+                10L
+        ))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Reservation time is outside opening hours");
+    }
+
+    @Test
     void createReservationShouldReuseExistingExactCustomSlotWhenAvailable() {
         seatSlotMapper.reserveRows = 1;
         seatSlotMapper.attachRows = 1;
@@ -713,6 +751,7 @@ class ReservationServiceTest {
         private Long insertedSlotId;
         private SeatSlot insertedSlot;
         private SeatSlot availableWindow;
+        private List<SeatSlot> availableWindows = List.of();
         private int activeOverlapBySeatCount;
 
         SeatSlotMapper proxy() {
@@ -733,6 +772,7 @@ class ReservationServiceTest {
                 }
                 case "releaseReservedSlot" -> releaseReservedRows;
                 case "findAvailableWindowForSeat" -> availableWindow;
+                case "findAvailableWindowsForSeat" -> availableWindows;
                 case "countActiveOverlappingSlotsBySeat" -> activeOverlapBySeatCount;
                 case "findByIdWithLayout" -> slot;
                 case "insert" -> {

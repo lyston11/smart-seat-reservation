@@ -75,10 +75,12 @@
 
 ```ts
 return post<ReservationResult>(
-  withPath(apiPaths.reservations, reservationId, 'check-in'),
+  withPath(apiPaths.reservations, 'seat-check-in'),
   payload,
 );
 ```
+
+学生正式签到应优先走桌码/座位码接口，例如 `POST /api/reservations/table-check-in` 或 `POST /api/reservations/seat-check-in`。`POST /api/reservations/{reservationId}/check-in` 和 `POST /api/reservations/{reservationId}/seat-lock/reactivate` 当前仅保留给开发测试入口，仍必须经过签到码、时间窗和校园网 IP 校验。
 
 ## 5. 权限约定
 

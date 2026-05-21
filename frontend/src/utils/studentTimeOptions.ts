@@ -70,17 +70,16 @@ function buildPublishedTimeOptions(
 ): StudentTimeOptions {
   const minStartBoundary = toMinutes(toHalfHourCeil(minStartTime.slice(0, 5)));
   const sourceSlots = onlyAvailable ? slots.filter((slot) => slot.status === 'AVAILABLE') : slots;
+  const mergedWindows = mergeContinuousWindows(sourceSlots);
   const startSeatIdsByTime = new Map<string, Set<number>>();
 
-  sourceSlots.forEach((slot) => {
-    const slotStart = Math.max(toMinutes(toHalfHourCeil(slot.startTime.slice(0, 5))), minStartBoundary);
-    const slotEnd = toMinutes(toHalfHourFloor(slot.endTime.slice(0, 5)));
-    for (let minutes = slotStart; minutes < slotEnd; minutes += 30) {
+  mergedWindows.forEach((window) => {
+    const windowStart = Math.max(toMinutes(toHalfHourCeil(window.startTime.slice(0, 5))), minStartBoundary);
+    const windowEnd = toMinutes(toHalfHourFloor(window.endTime.slice(0, 5)));
+    for (let minutes = windowStart; minutes < windowEnd; minutes += 30) {
       const startValue = toTimeText(minutes);
       const seatIds = startSeatIdsByTime.get(startValue) ?? new Set<number>();
-      if (slot.status === 'AVAILABLE') {
-        seatIds.add(slot.seatId);
-      }
+      window.seatIds.forEach((seatId) => seatIds.add(seatId));
       startSeatIdsByTime.set(startValue, seatIds);
     }
   });
@@ -96,18 +95,16 @@ function buildPublishedTimeOptions(
   const selectedStartMinutes = toMinutes(selectedStart);
   const endSeatIdsByTime = new Map<string, Set<number>>();
 
-  sourceSlots.forEach((slot) => {
-    const slotStart = toMinutes(toHalfHourCeil(slot.startTime.slice(0, 5)));
-    const slotEnd = toMinutes(toHalfHourFloor(slot.endTime.slice(0, 5)));
-    if (slotStart > selectedStartMinutes || slotEnd <= selectedStartMinutes) {
+  mergedWindows.forEach((window) => {
+    const windowStart = toMinutes(toHalfHourCeil(window.startTime.slice(0, 5)));
+    const windowEnd = toMinutes(toHalfHourFloor(window.endTime.slice(0, 5)));
+    if (windowStart > selectedStartMinutes || windowEnd <= selectedStartMinutes) {
       return;
     }
-    for (let minutes = selectedStartMinutes + 30; minutes <= slotEnd; minutes += 30) {
+    for (let minutes = selectedStartMinutes + 30; minutes <= windowEnd; minutes += 30) {
       const endValue = toTimeText(minutes);
       const seatIds = endSeatIdsByTime.get(endValue) ?? new Set<number>();
-      if (slot.status === 'AVAILABLE') {
-        seatIds.add(slot.seatId);
-      }
+      window.seatIds.forEach((seatId) => seatIds.add(seatId));
       endSeatIdsByTime.set(endValue, seatIds);
     }
   });
@@ -120,6 +117,41 @@ function buildPublishedTimeOptions(
     }));
 
   return { startOptions, endOptions };
+}
+
+type ContinuousWindow = {
+  seatIds: Set<number>;
+  startTime: string;
+  endTime: string;
+};
+
+function mergeContinuousWindows(slots: SeatSlot[]): ContinuousWindow[] {
+  const slotsBySeat = new Map<number, SeatSlot[]>();
+  slots.forEach((slot) => {
+    slotsBySeat.set(slot.seatId, [...(slotsBySeat.get(slot.seatId) ?? []), slot]);
+  });
+
+  return Array.from(slotsBySeat.entries()).flatMap(([seatId, seatSlots]) => {
+    const sortedSlots = seatSlots
+      .slice()
+      .sort((left, right) => toMinutes(left.startTime) - toMinutes(right.startTime));
+    const windows: ContinuousWindow[] = [];
+
+    sortedSlots.forEach((slot) => {
+      const latest = windows[windows.length - 1];
+      if (latest && latest.endTime === slot.startTime) {
+        latest.endTime = slot.endTime;
+        return;
+      }
+      windows.push({
+        seatIds: new Set([seatId]),
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+      });
+    });
+
+    return windows;
+  });
 }
 
 function pickValidTime(value: string, options: StudentTimeOption[]) {

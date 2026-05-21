@@ -59,4 +59,20 @@ describe('SeatSlotsPage time options', () => {
     expect(options.startOptions.map((option) => option.value)).toEqual(['18:00', '18:30', '19:00', '19:30']);
     expect(options.endOptions.map((option) => option.value)).toEqual(['18:30', '19:00', '19:30', '20:00']);
   });
+
+  it('merges continuous published windows for same-seat full-day reservations', () => {
+    const options = buildStudentTimeOptions(
+      [
+        makeSlot({ id: 1, startTime: '08:00:00', endTime: '12:00:00' }),
+        makeSlot({ id: 2, startTime: '12:00:00', endTime: '18:00:00' }),
+        makeSlot({ id: 3, startTime: '18:00:00', endTime: '22:00:00' }),
+      ],
+      activeArea,
+      '10:00',
+      '08:00',
+    );
+
+    expect(options.endOptions.map((option) => option.value)).toContain('22:00');
+    expect(options.endOptions.map((option) => option.value)).not.toEqual(['10:30', '11:00', '11:30', '12:00']);
+  });
 });

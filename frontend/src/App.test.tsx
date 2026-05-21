@@ -506,6 +506,8 @@ describe('App', () => {
         expect.objectContaining({ method: 'POST' }),
       );
     });
+    expect(await screen.findByText('正式签到请扫描桌面/座位二维码；测试入口仍会校验校园网 IP 和签到时间窗。')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: /开发测试签到/ })).toBeTruthy();
   });
 
   it('keeps the selected seat visible after changing the selected time', async () => {
@@ -803,6 +805,7 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { level: 3, name: '学生首页' })).toBeTruthy();
     expect((await screen.findAllByText('A 区 · 1F · T01 · A-001 (1号)')).length).toBeGreaterThan(0);
     expect(await screen.findByText('签到码 246810 · 截止 2026-05-18 10:00')).toBeTruthy();
+    expect(await screen.findByText('正式签到请扫描桌面/座位二维码，测试按钮仍会校验校园网 IP。')).toBeTruthy();
     expect(await screen.findByText('今日预约时间线')).toBeTruthy();
     expect(await screen.findByText('最近常用区域')).toBeTruthy();
     expect(await screen.findByText('A 区 · 1F')).toBeTruthy();
@@ -969,7 +972,7 @@ describe('App', () => {
     });
   });
 
-  it('lets students check in from the reservation management page', async () => {
+  it('keeps a clearly marked development check-in entry on the reservation management page', async () => {
     storeStudentSession();
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -1012,7 +1015,10 @@ describe('App', () => {
     );
 
     expect((await screen.findAllByText('A 区 · 1F · T01 · A-001 (1号)')).length).toBeGreaterThan(0);
-    const checkinButtons = await screen.findAllByRole('button', { name: /^签\s*到$/ });
+    expect(
+      await screen.findByText('正式流程请扫描桌面/座位二维码；下方入口仅用于开发测试，仍会校验校园网 IP 和签到时间窗。'),
+    ).toBeTruthy();
+    const checkinButtons = await screen.findAllByRole('button', { name: /开发测试签到/ });
     fireEvent.click(checkinButtons[0]);
 
     await waitFor(() => {

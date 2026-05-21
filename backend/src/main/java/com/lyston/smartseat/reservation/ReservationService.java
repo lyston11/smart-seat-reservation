@@ -16,12 +16,15 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ReservationService {
 
+    private static final Logger log = LoggerFactory.getLogger(ReservationService.class);
     private static final LocalTime MORNING_AFTERNOON_BOUNDARY = LocalTime.of(12, 0);
     private static final LocalTime AFTERNOON_EVENING_BOUNDARY = LocalTime.of(18, 0);
 
@@ -95,11 +98,18 @@ public class ReservationService {
     public ReservationResponse checkIn(Long reservationId, CheckinRequest request, Long userId, String clientIp) {
         LocalDateTime now = LocalDateTime.now(clock);
         Reservation reservation = requireReservation(reservationId);
+        String effectiveIp = normalizeClientIp(clientIp);
+        log.info(
+                "Development check-in endpoint used reservationId={} userId={} clientIp={}",
+                reservationId,
+                userId,
+                effectiveIp
+        );
         return completeCheckIn(
                 reservation,
                 request.checkinCode(),
                 userId,
-                normalizeClientIp(clientIp),
+                effectiveIp,
                 now
         );
     }
@@ -196,6 +206,13 @@ public class ReservationService {
         evictSlotCache(slot);
         recordAction(reservation.getId(), userId, CheckinAction.CHECK_IN, now);
         Reservation updated = requireReservation(reservation.getId());
+        log.info(
+                "Reservation checked in reservationId={} userId={} seatSlotId={} clientIp={}",
+                reservation.getId(),
+                userId,
+                reservation.getSeatSlotId(),
+                clientIp
+        );
         return toResponse(updated);
     }
 
@@ -299,6 +316,12 @@ public class ReservationService {
 
         recordAction(reservation.getId(), userId, CheckinAction.SEAT_LOCK_REACTIVATE, now);
         Reservation updated = requireReservation(reservation.getId());
+        log.info(
+                "Seat lock reactivated reservationId={} userId={} clientIp={}",
+                reservation.getId(),
+                userId,
+                effectiveIp
+        );
         return toResponse(updated);
     }
 
@@ -506,10 +529,13 @@ public class ReservationService {
                 request.endTime()
         );
         if (availableWindow == null) {
+            availableWindow = findContinuousAvailableWindow(request);
+        }
+        if (availableWindow == null) {
             throw new BusinessException("RESERVATION_TIME_OUTSIDE_OPENING_HOURS", "Reservation time is outside opening hours");
         }
         ensureWithinAvailableWindow(request, availableWindow);
-        if (isExactAvailableWindow(request, availableWindow)) {
+        if (availableWindow.getId() != null && isExactAvailableWindow(request, availableWindow)) {
             ensureNoActiveSeatOverlap(availableWindow);
             return availableWindow;
         }
@@ -532,6 +558,58 @@ public class ReservationService {
             throw new BusinessException("SEAT_SLOT_CREATE_FAILED", "Failed to create seat slot");
         }
         return exactSlot;
+    }
+
+    private SeatSlot findContinuousAvailableWindow(CreateReservationRequest request) {
+        List<SeatSlot> windows = seatSlotMapper.findAvailableWindowsForSeat(
+                request.seatId(),
+                request.slotDate(),
+                request.startTime(),
+                request.endTime()
+        );
+        SeatSlot mergedWindow = null;
+        for (SeatSlot window : windows) {
+            if (window.getStartTime() == null || window.getEndTime() == null) {
+                continue;
+            }
+            if (window.getEndTime().isBefore(request.startTime()) || !window.getEndTime().isAfter(request.startTime())) {
+                continue;
+            }
+            if (mergedWindow == null) {
+                if (window.getStartTime().isAfter(request.startTime())) {
+                    return null;
+                }
+                mergedWindow = cloneWindow(window);
+                if (!mergedWindow.getEndTime().isBefore(request.endTime())) {
+                    return mergedWindow;
+                }
+                continue;
+            }
+            if (!mergedWindow.getEndTime().equals(window.getStartTime())) {
+                return null;
+            }
+            mergedWindow.setEndTime(window.getEndTime());
+            if (!mergedWindow.getEndTime().isBefore(request.endTime())) {
+                return mergedWindow;
+            }
+        }
+        return null;
+    }
+
+    private SeatSlot cloneWindow(SeatSlot source) {
+        SeatSlot target = new SeatSlot();
+        target.setId(null);
+        target.setSeatId(source.getSeatId());
+        target.setAreaId(source.getAreaId());
+        target.setSlotDate(source.getSlotDate());
+        target.setStartTime(source.getStartTime());
+        target.setEndTime(source.getEndTime());
+        target.setStatus(source.getStatus());
+        target.setVersion(source.getVersion());
+        target.setCreatedAt(source.getCreatedAt());
+        target.setUpdatedAt(source.getUpdatedAt());
+        copyLayoutFields(source, target);
+        return target;
     }
 
     private void validateCustomReservationRequest(CreateReservationRequest request) {

@@ -402,7 +402,7 @@ curl -X POST http://localhost:18080/api/reservations \
   }'
 ```
 
-学生自选具体座位和时间段时，也可以直接提交 `seatId`、日期和起止时间。后端会校验所选时间是否落在区域开放时间内、是否有管理员发布的可用窗口覆盖、座位是否存在重叠活跃占用，并在成功后创建一条精确 `seat_slots` 记录用于后续签到、签退和管理员释放：
+学生自选具体座位和时间段时，也可以直接提交 `seatId`、日期和起止时间。后端会校验所选时间是否落在区域开放时间内、是否有管理员发布的可用窗口覆盖、座位是否存在重叠活跃占用，并在成功后创建一条精确 `seat_slots` 记录用于后续签到、签退和管理员释放。若管理员按上午、下午、晚上分段发布同一座位的连续可用窗口，例如 `08:00-12:00`、`12:00-18:00`、`18:00-22:00`，学生端和后端都会把它识别为连续可预约范围，可一次选择 `10:00-22:00`：
 
 ```bash
 curl -X POST http://localhost:18080/api/reservations \
@@ -432,7 +432,7 @@ WHERE id = ? AND status = 'AVAILABLE';
 - 当前时间在预约开始前 `checkinLeadMinutes` 分钟到开始后 `checkinGraceMinutes` 分钟之间，默认前后各 10 分钟。
 - 请求来源 IP 命中该区域 `checkin_ip_cidrs` 配置的校园网网段。浏览器无法直接读取 WiFi 名称，系统以服务端解析到的请求 IP 或可信代理传入的 `X-Forwarded-For` / `X-Real-IP` 作为可部署校验依据。
 
-使用预约返回的 `checkinCode`：
+正式签到入口是桌面/座位固定二维码。下面的预约 ID 直签接口仅用于本地开发测试和接口排障，前端会标记为“开发测试签到”；它仍会走同一套签到码、签到时间窗和校园网 IP 网段校验，不能绕过 WiFi 检测：
 
 ```bash
 curl -X POST http://localhost:18080/api/reservations/1/check-in \
@@ -486,7 +486,7 @@ curl -X POST http://localhost:18080/api/reservations/1/wifi-presence \
 
 ## 7. 锁位、恢复和释放
 
-锁位只面向已签到使用中的预约。后端不会让前端按“上午/下午/晚上”多选，而是根据单笔连续预约是否跨过 12:00、18:00 自动计算锁位次数：只预约上午没有锁位，连续跨上午和下午有 1 次，连续跨全天有 2 次，分开的多笔预约不累计。
+锁位只面向已签到使用中的预约。后端不会让前端按“上午/下午/晚上”多选，而是根据单笔连续预约是否跨过 12:00、18:00 自动计算锁位次数：只预约上午没有锁位，连续跨上午和下午有 1 次，连续跨全天有 2 次，分开的多笔预约不累计。管理员分段发布但时间首尾相接时，仍按学生最终提交的一笔连续预约计算锁位权益。
 
 ```bash
 curl -X POST http://localhost:18080/api/reservations/1/seat-lock \
@@ -497,7 +497,7 @@ curl -X POST http://localhost:18080/api/reservations/1/seat-lock \
 
 成功后预约状态变为 `LOCKED`，返回 `lockedUntilAt`、`seatLockQuota` 和 `seatLockUsedCount`。锁位截止时间取“当前时间 + seatLockMinutes”和“预约结束时间”的较早值。
 
-重新签到恢复使用：
+锁位恢复的正式入口是扫描座位固定二维码。下面的预约 ID 恢复接口仅用于本地开发测试，仍会校验动态签到码、锁位时间边界和区域校园网 IP 网段：
 
 ```bash
 curl -X POST http://localhost:18080/api/reservations/1/seat-lock/reactivate \
@@ -604,11 +604,12 @@ curl "http://localhost:18080/api/admin/dashboard?date=2026-05-14" \
 - 学生选座页固定展示次日预约，按规则提示每日开放时间和连续跨时段锁位权益。
 - 查询我的预约。
 - 显示预约返回的签到码。
-- 使用签到码签到。
 - 扫描桌面固定二维码后进入 `/student/table-checkin?token=<tableQrToken>`，输入签到码完成桌码签到。
+- 扫描座位固定二维码后进入 `/student/seat-checkin?token=<seatQrToken>`，输入签到码完成座位码签到或锁位恢复。
+- 保留预约 ID 直签和锁位恢复开发测试入口，按钮会明确标注为开发测试，仍会校验校园网 IP。
 - 签退释放座位。
 - 取消预约释放座位。
-- 对使用中预约执行锁位、重新签到恢复和主动释放锁位。
+- 对使用中预约执行锁位、扫码恢复和主动释放锁位。
 
 当前前端管理端已经接入：
 
