@@ -508,6 +508,148 @@ describe('App', () => {
     });
   });
 
+  it('keeps the selected seat visible after changing the selected time', async () => {
+    storeStudentSession();
+    const todayText = toLocalDateText(new Date());
+    const startText = nextFutureHalfHourText();
+    const nextStartText = addMinutesToTimeText(startText, 30);
+    const endText = addMinutesToTimeText(startText, 90);
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('/api/areas')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                name: 'A 区',
+                floor: '1F',
+                description: null,
+                status: 'ACTIVE',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/seat-slots?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 8,
+                seatId: 9,
+                seatNo: 'A-001',
+                tableId: 1,
+                tableNo: 'T01',
+                tableRowNo: 1,
+                tableColumnNo: 1,
+                tableDisplayOrder: 1,
+                tablePositionX: 120,
+                tablePositionY: 80,
+                tableWidthPx: 260,
+                tableHeightPx: 96,
+                tableRotationDeg: 0,
+                seatLabel: '1号',
+                seatSide: 'NORTH',
+                seatOrder: 1,
+                rowNo: 1,
+                columnNo: 1,
+                displayOrder: 1,
+                areaId: 1,
+                slotDate: todayText,
+                startTime: `${startText}:00`,
+                endTime: `${endText}:00`,
+                status: 'AVAILABLE',
+                reservedBy: null,
+                reservationId: null,
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/seats?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 9,
+                areaId: 1,
+                tableId: 1,
+                tableNo: 'T01',
+                tableRowNo: 1,
+                tableColumnNo: 1,
+                tableDisplayOrder: 1,
+                tablePositionX: 120,
+                tablePositionY: 80,
+                tableWidthPx: 260,
+                tableHeightPx: 96,
+                tableRotationDeg: 0,
+                seatNo: 'A-001',
+                seatLabel: '1号',
+                seatSide: 'NORTH',
+                seatOrder: 1,
+                rowNo: 1,
+                columnNo: 1,
+                displayOrder: 1,
+                status: 'ACTIVE',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/reservations/rules')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: makeReservationRules({ reservationOpenHour: 0 }),
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/student/seats']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: /A-001|1号/ }));
+    expect(await screen.findByText('A-001 (1号)')).toBeTruthy();
+
+    await selectComboboxValue('开始时间', nextStartText);
+
+    expect(await screen.findByText('A-001 (1号)')).toBeTruthy();
+    expect(screen.queryByText('请先在座位地图中选择一个位置。')).toBeNull();
+  });
+
   it('shows real seats as unpublished when the area has no opened slots yet', async () => {
     storeStudentSession();
 

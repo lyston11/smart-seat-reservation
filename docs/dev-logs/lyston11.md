@@ -2012,3 +2012,32 @@
 
 ### 对其他成员的影响
 - 后续学生端时间选择逻辑优先维护 `studentTimeOptions.ts`，不要再在页面里直接按区域营业时间生成预约时间。
+
+## 2026-05-21
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-api-error-hardening
+- 目标: 修复学生选座页已选择座位后，调整开始/结束时间会导致右侧已选座位面板被清空、界面突然跳回未选择状态的问题。
+
+### 本次改动
+- 学生选座页开始时间和结束时间下拉变更时，不再主动清空 `selectedSeatId`。
+- 改时间后保留当前座位选择，由 `visibleSlots` 根据新时间重新计算该座位的可预约/未开放/已占用状态，避免用户感觉“点一下时间页面跳掉”。
+- 补充前端页面测试，覆盖选中座位后修改开始时间，右侧已选座位仍保留的场景。
+
+### 涉及文件
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/App.test.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run test -- App.test.tsx SeatSlotsPage.test.ts`，相关测试 25 个通过。
+- 已运行 `npm run test`，前端 40 个测试通过；jsdom 仍提示不支持 QRCode canvas 和 Ant Design pseudo-element 相关能力，不影响测试结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 若后续希望时间变化时自动滚动到当前座位或闪烁提示状态变化，可以在此基础上增加轻量视觉反馈。
+
+### 对其他成员的影响
+- 学生端选座交互应优先保留用户当前上下文，只有切换区域、日期或座位真实不存在时再清空选择。

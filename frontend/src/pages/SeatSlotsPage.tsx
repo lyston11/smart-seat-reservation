@@ -411,7 +411,6 @@ export default function SeatSlotsPage() {
                       placeholder="暂无可预约开始时间"
                       onChange={(value) => {
                         setStartTime(value);
-                        setSelectedSeatId(null);
                       }}
                     />
                   </label>
@@ -424,7 +423,6 @@ export default function SeatSlotsPage() {
                       placeholder="暂无可预约结束时间"
                       onChange={(value) => {
                         setEndTime(value);
-                        setSelectedSeatId(null);
                       }}
                     />
                   </label>
