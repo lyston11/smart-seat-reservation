@@ -2304,3 +2304,36 @@
 
 ### 对其他成员的影响
 - 后续新增 Flyway 迁移需要先看最新 `main` 的最大版本号，避免多个功能分支同时使用同一个版本号。
+
+## 2026-05-22
+
+### 任务
+- Issue: 暂无
+- 分支: feature/merge-amorlx-area-map-metadata
+- 目标: 为团队共享开发数据库补充一键 SSH Tunnel 连接脚本和使用说明。
+
+### 本次改动
+- 新增 `scripts/connect-remote-db.sh`，默认把本机 `127.0.0.1:13306` 转发到服务器 `127.0.0.1:3306`。
+- 脚本支持 `connect`、`status`、`stop`、`env`、`help` 动作，并提供 SSH 可达性、端口占用和已有隧道检测。
+- README 增加共享开发库快速入口。
+- 本地开发文档补充共享开发库脚本用法、端口冲突处理和 SSH 公钥提示。
+
+### 涉及文件
+- scripts/connect-remote-db.sh
+- README.md
+- docs/deployment/LOCAL_DEVELOPMENT.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `bash -n scripts/connect-remote-db.sh`，脚本语法检查通过。
+- 已运行 `bash scripts/connect-remote-db.sh help`，帮助信息输出正常。
+- 已运行 `bash scripts/connect-remote-db.sh env`，后端环境变量输出正常。
+- 已运行 `bash scripts/connect-remote-db.sh status`，能识别本机 `127.0.0.1:13306` 已有 SSH 隧道。
+- 已运行 `bash scripts/connect-remote-db.sh connect`，在已有隧道时能识别并提示后端连接环境变量。
+- 已运行 `git diff --check`，未发现空白字符问题。
+
+### 遗留问题
+- 其他成员需要先把自己的 SSH 公钥加入服务器，才能使用脚本连接共享数据库。
+
+### 对其他成员的影响
+- 后续需要共享数据调试时，不必手写 SSH Tunnel 命令，直接运行 `bash scripts/connect-remote-db.sh`。

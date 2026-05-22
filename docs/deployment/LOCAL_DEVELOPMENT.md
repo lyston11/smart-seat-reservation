@@ -203,6 +203,58 @@ docker compose up -d
 
 初期各成员本地数据库不互通是正常现象。功能验证以接口逻辑和迁移脚本为准；需要共同演示时，提前约定同一份种子数据或导入脚本。
 
+### 连接共享开发数据库
+
+如果需要让学生端、管理员端和不同成员本地后端使用同一份开发数据，可以通过 SSH Tunnel 连接服务器共享开发库。数据库端口不直接暴露公网，本机只连接 `127.0.0.1:13306`：
+
+推荐使用项目脚本：
+
+```bash
+bash scripts/connect-remote-db.sh
+```
+
+查看连接状态：
+
+```bash
+bash scripts/connect-remote-db.sh status
+```
+
+停止由脚本创建的隧道：
+
+```bash
+bash scripts/connect-remote-db.sh stop
+```
+
+如果本机 `13306` 已经被占用，可以临时指定其他本地端口：
+
+```bash
+REMOTE_DB_LOCAL_PORT=13307 bash scripts/connect-remote-db.sh
+```
+
+脚本内部执行的核心 SSH Tunnel 形式如下：
+
+```bash
+ssh -f -N -L 13306:127.0.0.1:3306 \
+  -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=60 \
+  -o ServerAliveCountMax=3 \
+  root@64.23.134.124
+```
+
+后端环境变量：
+
+```dotenv
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=13306
+MYSQL_DATABASE=smart_seat
+MYSQL_USER=smart_seat
+MYSQL_PASSWORD=smart_seat_dev
+```
+
+注意：如果后续服务器密码已改强密码，以服务器 `/srv/projects/smart-seat-db/.env` 为准。不要把生产级密码写入 Git。
+
+如果脚本提示 SSH 无法连接，通常说明当前电脑的 SSH 公钥还没有加入服务器 `authorized_keys`，需要先找服务器维护者添加公钥。
+
 ## 8. 部署路线
 
 ### 开发阶段
