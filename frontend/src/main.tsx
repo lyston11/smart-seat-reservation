@@ -8,7 +8,10 @@ import './styles/main.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ConfigProvider locale={zhCN}>
+    <ConfigProvider
+      locale={zhCN}
+      getPopupContainer={(triggerNode) => triggerNode?.parentElement ?? document.body}
+    >
       <BrowserRouter>
         <App />
       </BrowserRouter>
