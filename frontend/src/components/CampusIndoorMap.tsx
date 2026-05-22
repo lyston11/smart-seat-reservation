@@ -10,6 +10,12 @@ type CampusIndoorMapProps = {
 
 type BuildingZone = 'A' | 'CONNECTOR' | 'B' | 'C' | 'CONNECTOR_CD' | 'D';
 
+type CampusMapRow = {
+  ariaLabel: string;
+  key: string;
+  zones: BuildingZone[];
+};
+
 const zoneLabels: Record<BuildingZone, string> = {
   A: 'A 楼',
   CONNECTOR: 'A/B 连廊',
@@ -29,6 +35,10 @@ const zoneAriaLabels: Record<BuildingZone, string> = {
 };
 
 const zones: BuildingZone[] = ['A', 'CONNECTOR', 'B', 'C', 'CONNECTOR_CD', 'D'];
+const zoneRows: CampusMapRow[] = [
+  { ariaLabel: 'A/B 教学楼组', key: 'ab', zones: ['A', 'CONNECTOR', 'B'] },
+  { ariaLabel: 'C/D 教学楼组', key: 'cd', zones: ['C', 'CONNECTOR_CD', 'D'] },
+];
 const connectorZones: BuildingZone[] = ['CONNECTOR', 'CONNECTOR_CD'];
 const connectorFloorNumbers = new Set([2, 3]);
 
@@ -161,32 +171,9 @@ export default function CampusIndoorMap({ areas, selectedAreaId, onSelectArea }:
     () => floorAreas.filter((area) => showConnectors || !isConnectorZone(inferAreaZone(area))),
     [floorAreas, showConnectors],
   );
-  const hasCdBuildingData = useMemo(
-    () => activeAreas.some((area) => {
-      const zone = inferAreaZone(area);
-      return zone === 'C' || zone === 'D';
-    }),
-    [activeAreas],
-  );
-  const selectedFloorHasCdConnector = useMemo(
-    () => floorAreas.some((area) => inferAreaZone(area) === 'CONNECTOR_CD'),
-    [floorAreas],
-  );
   const visibleZones = useMemo(
-    () =>
-      zones.filter((zone) => {
-        if (isConnectorZone(zone) && !showConnectors) {
-          return false;
-        }
-        if ((zone === 'C' || zone === 'D') && !hasCdBuildingData) {
-          return false;
-        }
-        if (zone === 'CONNECTOR_CD' && !hasCdBuildingData && !selectedFloorHasCdConnector) {
-          return false;
-        }
-        return true;
-      }),
-    [hasCdBuildingData, selectedFloorHasCdConnector, showConnectors],
+    () => zones.filter((zone) => showConnectors || !isConnectorZone(zone)),
+    [showConnectors],
   );
   const groupedAreas = useMemo(
     () =>
@@ -198,6 +185,35 @@ export default function CampusIndoorMap({ areas, selectedAreaId, onSelectArea }:
         { A: [], CONNECTOR: [], B: [], C: [], CONNECTOR_CD: [], D: [] },
       ),
     [visibleFloorAreas, visibleZones],
+  );
+  const visibleZoneSet = useMemo(() => new Set(visibleZones), [visibleZones]);
+
+  const renderZone = (zone: BuildingZone) => (
+    <section className={`campus-map-zone campus-map-zone-${getZoneClassName(zone)}`} key={zone} aria-label={zoneAriaLabels[zone]}>
+      <div className="campus-map-zone-title">
+        <strong>{zoneLabels[zone]}</strong>
+        <Tag>{groupedAreas[zone].length} 个区域</Tag>
+      </div>
+      <div className="campus-map-area-list">
+        {groupedAreas[zone].length > 0 ? (
+          groupedAreas[zone].map((area) => (
+            <Button
+              className={`campus-map-area ${area.id === selectedAreaId ? 'campus-map-area-selected' : ''}`}
+              key={area.id}
+              aria-pressed={area.id === selectedAreaId}
+              onClick={() => onSelectArea(area)}
+            >
+              <span>{area.name}</span>
+              <small>
+                {normalizeAreaFloor(area)} · {area.openTime.slice(0, 5)}-{area.closeTime.slice(0, 5)}
+              </small>
+            </Button>
+          ))
+        ) : (
+          <span className="campus-map-empty-zone">暂无开放区域</span>
+        )}
+      </div>
+    </section>
   );
 
   return (
@@ -216,32 +232,10 @@ export default function CampusIndoorMap({ areas, selectedAreaId, onSelectArea }:
 
       {visibleFloorAreas.length > 0 ? (
         <div className="campus-map-stage">
-          {visibleZones.map((zone) => (
-            <section className={`campus-map-zone campus-map-zone-${getZoneClassName(zone)}`} key={zone} aria-label={zoneAriaLabels[zone]}>
-              <div className="campus-map-zone-title">
-                <strong>{zoneLabels[zone]}</strong>
-                <Tag>{groupedAreas[zone].length} 个区域</Tag>
-              </div>
-              <div className="campus-map-area-list">
-                {groupedAreas[zone].length > 0 ? (
-                  groupedAreas[zone].map((area) => (
-                    <Button
-                      className={`campus-map-area ${area.id === selectedAreaId ? 'campus-map-area-selected' : ''}`}
-                      key={area.id}
-                      aria-pressed={area.id === selectedAreaId}
-                      onClick={() => onSelectArea(area)}
-                    >
-                      <span>{area.name}</span>
-                      <small>
-                        {normalizeAreaFloor(area)} · {area.openTime.slice(0, 5)}-{area.closeTime.slice(0, 5)}
-                      </small>
-                    </Button>
-                  ))
-                ) : (
-                  <span className="campus-map-empty-zone">暂无开放区域</span>
-                )}
-              </div>
-            </section>
+          {zoneRows.map((row) => (
+            <div className={`campus-map-row campus-map-row-${row.key}`} key={row.key} aria-label={row.ariaLabel}>
+              {row.zones.filter((zone) => visibleZoneSet.has(zone)).map(renderZone)}
+            </div>
           ))}
         </div>
       ) : (

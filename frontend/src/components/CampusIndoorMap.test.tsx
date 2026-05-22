@@ -108,6 +108,42 @@ describe('CampusIndoorMap', () => {
     expect(screen.getByRole('button', { name: /A 楼四层自习区/ })).toBeTruthy();
   });
 
+  it('keeps C and D buildings visible as a separate campus pair even before C/D rooms are configured', () => {
+    render(
+      <CampusIndoorMap
+        areas={[
+          makeArea({ id: 1, name: 'A 楼一层自习区', floor: '1F', buildingCode: 'A' }),
+          makeArea({ id: 2, name: 'B 楼一层自习区', floor: '1F', buildingCode: 'B' }),
+          makeArea({ id: 3, name: 'A/B 连廊二层学习区', floor: '2F', buildingCode: 'CONNECTOR' }),
+          makeArea({ id: 4, name: 'C/D 连廊二层学习区', floor: '2F', buildingCode: 'CONNECTOR_CD' }),
+        ]}
+        selectedAreaId={1}
+        onSelectArea={vi.fn()}
+      />,
+    );
+
+    const firstFloorAbPair = screen.getByLabelText('A/B 教学楼组');
+    const firstFloorCdPair = screen.getByLabelText('C/D 教学楼组');
+
+    expect(within(firstFloorAbPair).getByLabelText('A 楼区域')).toBeTruthy();
+    expect(within(firstFloorAbPair).getByLabelText('B 楼区域')).toBeTruthy();
+    expect(within(firstFloorCdPair).getByLabelText('C 楼区域')).toBeTruthy();
+    expect(within(firstFloorCdPair).getByLabelText('D 楼区域')).toBeTruthy();
+    expect(within(firstFloorCdPair).queryByLabelText('A/B 连廊区域')).toBeNull();
+    expect(screen.queryByLabelText('C/D 连廊区域')).toBeNull();
+
+    fireEvent.click(screen.getByRole('radio', { name: '2F' }));
+
+    const secondFloorAbPair = screen.getByLabelText('A/B 教学楼组');
+    const secondFloorCdPair = screen.getByLabelText('C/D 教学楼组');
+    expect(within(secondFloorAbPair).getByLabelText('A/B 连廊区域')).toBeTruthy();
+    expect(within(secondFloorCdPair).getByLabelText('C/D 连廊区域')).toBeTruthy();
+    expect(within(secondFloorCdPair).getByLabelText('C 楼区域')).toBeTruthy();
+    expect(within(secondFloorCdPair).getByLabelText('D 楼区域')).toBeTruthy();
+    expect(within(secondFloorCdPair).getByRole('button', { name: /C\/D 连廊二层学习区/ })).toBeTruthy();
+    expect(within(secondFloorCdPair).queryByLabelText('B 楼区域')).toBeNull();
+  });
+
   it('uses structured building and floor metadata before name inference', () => {
     render(
       <CampusIndoorMap

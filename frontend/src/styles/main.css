@@ -954,6 +954,13 @@ body {
 
 .campus-map-stage {
   display: grid;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.campus-map-row {
+  min-width: 0;
+  display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   align-items: stretch;
@@ -1625,6 +1632,7 @@ body {
   .student-seat-time-grid,
   .student-area-list,
   .campus-map-stage,
+  .campus-map-row,
   .usage-row,
   .rule-form-grid,
   .admin-resource-summary-grid,
@@ -1640,7 +1648,8 @@ body {
   }
 
   .campus-map-zone,
-  .campus-map-zone-connector {
+  .campus-map-zone-connector,
+  .campus-map-zone-connector-cd {
     min-height: 0;
   }
 

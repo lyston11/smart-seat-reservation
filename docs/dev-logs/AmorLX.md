@@ -5,6 +5,42 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/AmorLX-reservation-ui-polish
+- 目标: 修正室内地图 C/D 楼显示，明确 A/B 与 C/D 是两组独立楼栋，B/C 之间不相连。
+
+### 本次改动
+- 学生端室内地图改为两组楼栋渲染：`A 楼 - A/B 连廊 - B 楼` 与 `C 楼 - C/D 连廊 - D 楼`。
+- A、B、C、D 四栋楼在有开放区域的楼层中保持常驻占位，即使 C/D 楼暂未配置具体自习区，也会显示为空楼栋区域。
+- 连廊仍只在 2F 和 3F 显示；1F 不显示 A/B 或 C/D 连廊，避免误导。
+- 补充回归测试，覆盖 C/D 楼无具体房间时仍显示楼栋，并确认 C/D 连廊不会和 B 楼混在同一组。
+- 更新连廊楼层可见性实施记录。
+
+### 涉及文件
+- frontend/src/components/CampusIndoorMap.tsx
+- frontend/src/components/CampusIndoorMap.test.tsx
+- frontend/src/styles/main.css
+- docs/plans/2026-05-22-connector-floor-visibility.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- CampusIndoorMap.test.tsx`，确认新增 C/D 楼常驻和楼栋组测试失败于旧实现缺少 `A/B 教学楼组`、`C/D 教学楼组`。
+- 已运行 `npm run test -- CampusIndoorMap.test.tsx`，4 个组件测试通过。
+- 已运行 `npm run test`，前端 55 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已用浏览器打开 `http://127.0.0.1:5173/student/seats` 验证：1F 显示 A/B 教学楼组和 C/D 教学楼组，C 楼、D 楼为空楼栋占位且无连廊；切换 2F 后 A/B 连廊位于 A/B 组内，C/D 连廊位于 C/D 组内，C/D 组不包含 B 楼。
+
+### 遗留问题
+- 当前只修正楼栋结构展示，真实 C/D 楼自习区、桌子和座位仍需要后续通过管理员配置或演示数据补齐。
+
+### 对其他成员的影响
+- 本次只改预约端地图展示，不修改签到验证、开放时段发布、后端预约状态机和数据库结构。
+
+## 2026-05-22
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-reservation-ui-polish
 - 目标: 修正室内地图连廊显示规则，确保 A/B 与 C/D 连廊只在 2F-3F 出现，1F 不显示连廊避免误导。
 
 ### 本次改动
