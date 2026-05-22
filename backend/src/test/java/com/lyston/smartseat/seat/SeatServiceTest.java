@@ -177,6 +177,28 @@ class SeatServiceTest {
     }
 
     @Test
+    void getSeatCheckinQrShouldBackfillMissingSeatQrToken() {
+        Seat seat = new Seat();
+        seat.setId(7L);
+        seat.setAreaId(1L);
+        seat.setTableId(10L);
+        seat.setTableNo("T10");
+        seat.setSeatNo("A-01");
+        seat.setSeatLabel("1");
+        seat.setQrToken(null);
+        seat.setStatus(SeatStatus.ACTIVE);
+        seatMapper.qrSeat = seat;
+        seatMapper.updateMissingQrTokenRows = 1;
+
+        SeatQrResponse response = seatService.getSeatCheckinQr(7L);
+
+        assertThat(response.qrToken()).isNotBlank();
+        assertThat(response.checkinPath()).startsWith("/student/seat-checkin?token=");
+        assertThat(seatMapper.updatedQrSeatId).isEqualTo(7L);
+        assertThat(seatMapper.updatedQrToken).isEqualTo(response.qrToken());
+    }
+
+    @Test
     void getSeatCheckinQrShouldRejectInactiveSeat() {
         Seat seat = new Seat();
         seat.setId(7L);
@@ -223,6 +245,9 @@ class SeatServiceTest {
     private static final class SeatMapperFake {
         private Seat insertedSeat;
         private Seat qrSeat;
+        private int updateMissingQrTokenRows;
+        private Long updatedQrSeatId;
+        private String updatedQrToken;
 
         SeatMapper proxy() {
             return SeatServiceTest.proxy(SeatMapper.class, (unused, method, args) -> switch (method.getName()) {
@@ -232,6 +257,11 @@ class SeatServiceTest {
                     yield 1;
                 }
                 case "findByIdWithQrToken" -> qrSeat;
+                case "updateMissingQrToken" -> {
+                    updatedQrSeatId = (Long) args[0];
+                    updatedQrToken = (String) args[1];
+                    yield updateMissingQrTokenRows;
+                }
                 case "countByAreaId" -> 4;
                 case "countDuplicateSeatNo" -> 0;
                 default -> defaultValue(method.getReturnType());

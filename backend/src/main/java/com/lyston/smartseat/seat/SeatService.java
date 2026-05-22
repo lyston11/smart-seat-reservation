@@ -126,7 +126,12 @@ public class SeatService {
             throw new BusinessException("SEAT_NOT_ACTIVE", "Seat is not active");
         }
         if (seat.getQrToken() == null || seat.getQrToken().isBlank()) {
-            throw new BusinessException("SEAT_QR_NOT_CONFIGURED", "Seat check-in QR token is not configured");
+            String qrToken = generateSeatQrToken();
+            int rows = seatMapper.updateMissingQrToken(seatId, qrToken, LocalDateTime.now());
+            if (rows != 1) {
+                throw new BusinessException("SEAT_QR_NOT_CONFIGURED", "Seat check-in QR token is not configured");
+            }
+            seat.setQrToken(qrToken);
         }
         return SeatQrResponse.from(seat);
     }
