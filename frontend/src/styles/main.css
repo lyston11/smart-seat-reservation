@@ -88,6 +88,10 @@ body {
   max-width: 1180px;
 }
 
+.student-seat-page {
+  max-width: none;
+}
+
 .empty-panel {
   padding: 48px 16px;
   background: #ffffff;
@@ -603,6 +607,10 @@ body {
   width: 420px;
 }
 
+.student-seat-side-panel .reservation-code {
+  width: 100%;
+}
+
 .reservation-filter-select {
   width: 160px;
 }
@@ -628,7 +636,9 @@ body {
 }
 
 .reservation-code-field .ant-input {
+  min-width: 0;
   border-radius: 0 6px 6px 0;
+  text-overflow: ellipsis;
 }
 
 .reservation-qr-checkin-hint {
@@ -958,25 +968,37 @@ body {
 }
 
 .seat-map {
+  min-width: 0;
   display: grid;
   gap: 16px;
 }
 
 .student-seat-workspace {
+  min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
   gap: 16px;
   align-items: start;
 }
 
 .student-seat-side-panel {
+  min-width: 0;
   position: sticky;
   top: 16px;
   display: grid;
   gap: 16px;
 }
 
+.student-seat-side-panel .ant-card {
+  min-width: 0;
+}
+
+.student-seat-side-panel .ant-card-body {
+  min-width: 0;
+}
+
 .student-seat-panel-stack {
+  min-width: 0;
   width: 100%;
 }
 
@@ -994,6 +1016,7 @@ body {
 }
 
 .seat-map-section {
+  min-width: 0;
   padding: 16px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
@@ -1020,7 +1043,8 @@ body {
 
 .seat-room-layout {
   position: relative;
-  padding: 36px 16px 42px;
+  max-width: 100%;
+  padding: 28px 12px 32px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(244, 244, 245, 0.78)),
     linear-gradient(90deg, rgba(229, 231, 235, 0.55) 1px, transparent 1px),
@@ -1034,7 +1058,7 @@ body {
 }
 
 .seat-room-layout-coordinate {
-  padding: 38px 18px 44px;
+  padding: 30px 14px 34px;
 }
 
 .seat-room-feature {
@@ -1068,8 +1092,8 @@ body {
 
 .seat-map-grid {
   display: grid;
-  grid-template-columns: repeat(var(--table-grid-columns, auto-fill), minmax(180px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(var(--table-grid-columns, auto-fill), minmax(132px, 1fr));
+  gap: 14px;
   align-items: start;
 }
 
@@ -1080,34 +1104,34 @@ body {
 
 .seat-table {
   min-width: 0;
-  min-height: 174px;
+  min-height: 136px;
   display: grid;
   grid-template:
-    "north north north" 48px
-    "west table east" minmax(64px, auto)
-    "south south south" 48px
-    "single single single" auto / minmax(54px, 1fr) minmax(78px, 1.1fr) minmax(54px, 1fr);
-  gap: 7px;
+    "north north north" 38px
+    "west table east" minmax(50px, auto)
+    "south south south" 38px
+    "single single single" auto / minmax(42px, 1fr) minmax(58px, 1.1fr) minmax(42px, 1fr);
+  gap: 6px;
   align-items: center;
 }
 
 .seat-table-positioned {
   position: absolute;
-  width: calc(var(--table-width, 132px) + 132px);
-  min-height: 146px;
+  width: calc(var(--table-width, 114px) + 100px);
+  min-height: 112px;
   grid-template:
-    ". north ." 40px
-    "west table east" var(--table-height, 58px)
-    ". south ." 40px
-    ". single ." auto / 66px var(--table-width, 132px) 66px;
+    ". north ." 32px
+    "west table east" var(--table-height, 50px)
+    ". south ." 32px
+    ". single ." auto / 50px var(--table-width, 114px) 50px;
   transform-origin: center center;
 }
 
 .seat-table-surface {
   grid-area: table;
   min-width: 0;
-  height: 64px;
-  padding: 8px;
+  height: 50px;
+  padding: 6px;
   display: grid;
   place-items: center;
   border: 2px solid #78716c;
@@ -1149,8 +1173,8 @@ body {
 .seat-map-cell.ant-btn {
   width: 100%;
   min-width: 0;
-  height: 48px;
-  padding: 6px;
+  height: 38px;
+  padding: 4px;
   display: grid;
   justify-items: center;
   align-content: center;
@@ -1171,45 +1195,45 @@ body {
 
 .seat-map-cell .ant-tag {
   margin: 0;
-  font-size: 11px;
-  line-height: 18px;
+  font-size: 10px;
+  line-height: 16px;
 }
 
 .seat-table-side {
   min-width: 0;
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
 .seat-table-side-north {
   grid-area: north;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(54px, 1fr);
+  grid-auto-columns: minmax(42px, 1fr);
   align-self: end;
 }
 
 .seat-table-side-west {
   grid-area: west;
   grid-auto-flow: row;
-  grid-auto-rows: minmax(48px, auto);
+  grid-auto-rows: minmax(38px, auto);
 }
 
 .seat-table-side-east {
   grid-area: east;
   grid-auto-flow: row;
-  grid-auto-rows: minmax(48px, auto);
+  grid-auto-rows: minmax(38px, auto);
 }
 
 .seat-table-side-south {
   grid-area: south;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(54px, 1fr);
+  grid-auto-columns: minmax(42px, 1fr);
   align-self: start;
 }
 
 .seat-table-side-single {
   grid-area: single;
-  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
 }
 
 .seat-map-cell-available.ant-btn {

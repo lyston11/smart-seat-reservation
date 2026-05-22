@@ -2304,3 +2304,34 @@
 
 ### 对其他成员的影响
 - 后续新增 Flyway 迁移需要先看最新 `main` 的最大版本号，避免多个功能分支同时使用同一个版本号。
+
+## 2026-05-22
+
+### 任务
+- Issue: 暂无
+- 分支: fix/student-seat-layout-overflow
+- 目标: 修复学生选座页座位地图和右侧预约面板过宽，导致主内容显示不全的问题。
+
+### 本次改动
+- 学生选座页增加 `student-seat-page` 样式，允许该页面使用完整主内容宽度。
+- 座位地图、地图卡片、右侧侧栏补充 `min-width: 0`，避免 grid 子项把页面横向撑开。
+- 缩小桌子、座位按钮、坐标布局间距和坐标缩放比例，让桌椅在同一屏内显示更紧凑。
+- 右侧“签到码”输入框在学生选座侧栏内改为自适应宽度，避免长 token 撑爆侧栏。
+
+### 涉及文件
+- frontend/src/components/SeatMap.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白字符问题。
+- 已在 Chrome 打开 `http://127.0.0.1:5173/student/seats` 验证：座位地图和右侧预约面板完整显示，点选座位后侧栏不再横向溢出。
+
+### 遗留问题
+- 当前坐标布局仍保留地图内部空白，后续可以进一步按实际房间比例和桌子数量做自适应缩放。
+
+### 对其他成员的影响
+- 学生端座位地图整体更紧凑；管理员侧桌位预览暂不受本次页面容器宽度改动影响。

@@ -299,7 +299,7 @@ export default function SeatSlotsPage() {
   }
 
   return (
-    <div className="page">
+    <div className="page student-seat-page">
       {contextHolder}
       <CampusIndoorMap areas={activeAreas} selectedAreaId={areaId} onSelectArea={applySelectedArea} />
 
