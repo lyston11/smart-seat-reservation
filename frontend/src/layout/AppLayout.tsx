@@ -112,7 +112,7 @@ export default function AppLayout() {
         </div>
         <Menu mode="inline" selectedKeys={[selectedKey]} items={menuItems} />
       </Sider>
-      <Layout>
+      <Layout className="app-main">
         <Header className="app-header">
           <Typography.Title level={3} className="page-title">
             {pageTitles[selectedKey]}

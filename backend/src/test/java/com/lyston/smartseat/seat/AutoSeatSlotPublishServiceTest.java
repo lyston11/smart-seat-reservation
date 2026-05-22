@@ -119,6 +119,29 @@ class AutoSeatSlotPublishServiceTest {
         assertThat(seatSlotService.requests.getFirst().areaId()).isEqualTo(2L);
     }
 
+    @Test
+    void publishTomorrowSlotsShouldSkipAreaWithPublishException() {
+        Clock openClock = Clock.fixed(Instant.parse("2026-05-21T10:00:00Z"), BEIJING_ZONE);
+        AutoSeatSlotPublishService service = new AutoSeatSlotPublishService(
+                areaMapper.proxy(),
+                seatMapper.proxy(),
+                seatSlotService,
+                openClock,
+                new AutoSeatSlotPublishProperties()
+        );
+
+        areaMapper.areas = List.of(activeArea(1L, LocalTime.of(8, 0), LocalTime.of(22, 0)));
+        seatMapper.seatsByArea.put(1L, List.of(activeSeat(10L)));
+        seatSlotService.exceptionAreaIds.add(1L);
+
+        AutoSeatSlotPublishResult result = service.publishTomorrowSlots();
+
+        assertThat(result.areaCount()).isZero();
+        assertThat(result.createdCount()).isZero();
+        assertThat(seatSlotService.requests).isEmpty();
+    }
+
+
     private Area activeArea(Long areaId, LocalTime openTime, LocalTime closeTime) {
         Area area = new Area();
         area.setId(areaId);
@@ -160,10 +183,11 @@ class AutoSeatSlotPublishServiceTest {
 
     private static final class SeatSlotServiceFake extends SeatSlotService {
         private final List<PublishSeatSlotsRequest> requests = new ArrayList<>();
+        private final List<Long> exceptionAreaIds = new ArrayList<>();
         private List<PublishSeatSlotsResponse> responses = List.of();
 
         SeatSlotServiceFake() {
-            super(null, null, null, null, null, Clock.systemUTC());
+            super(null, null, null, null, null, null, Clock.systemUTC());
         }
 
         @Override
@@ -173,6 +197,16 @@ class AutoSeatSlotPublishServiceTest {
                 return responses.get(requests.size() - 1);
             }
             return new PublishSeatSlotsResponse(0, request.seatIds().size(), List.of());
+        }
+
+        @Override
+        public AutoSeatSlotPublishResult publishPlannedSlots(LocalDate slotDate) {
+            return new AutoSeatSlotPublishResult(0, 0, 0, 0);
+        }
+
+        @Override
+        public boolean hasPublishException(Long areaId, LocalDate slotDate) {
+            return exceptionAreaIds.contains(areaId);
         }
     }
 
