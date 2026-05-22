@@ -241,6 +241,17 @@ curl http://localhost:18080/api/areas \
   -H "X-Auth-Token: 替换为学生或管理员 token"
 ```
 
+区域响应包含预约端室内地图元数据：
+
+```text
+buildingCode: A / B / CONNECTOR
+floorCode: 地图展示楼层，例如 1F、2F、3F
+areaType: STUDY_ROOM / HALL / CORRIDOR / CONNECTOR
+mapX / mapY: 0-100 的可选地图坐标，用于稳定排序和后续可视化扩展
+```
+
+学生端室内导航图会优先使用这些结构化字段；旧数据未填写时，仍按区域名称、楼层和描述兼容推断。
+
 新增区域：
 
 ```bash
@@ -250,6 +261,11 @@ curl -X POST http://localhost:18080/api/areas \
   -d '{
     "name": "图书馆二楼 C 区",
     "floor": "2F",
+    "buildingCode": "A",
+    "floorCode": "2F",
+    "areaType": "STUDY_ROOM",
+    "mapX": 24,
+    "mapY": 40,
     "description": "安静学习区",
     "openTime": "08:00:00",
     "closeTime": "22:00:00"
@@ -265,6 +281,11 @@ curl -X PUT http://localhost:18080/api/areas/1 \
   -d '{
     "name": "Library Area A",
     "floor": "1F",
+    "buildingCode": "A",
+    "floorCode": "1F",
+    "areaType": "STUDY_ROOM",
+    "mapX": 20,
+    "mapY": 35,
     "description": "Demo public study area",
     "status": "ACTIVE",
     "openTime": "08:00:00",

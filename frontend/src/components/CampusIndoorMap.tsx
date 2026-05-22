@@ -28,11 +28,21 @@ function normalizeFloor(floor: string | null) {
   return floor?.trim() || '未标注楼层';
 }
 
+function normalizeAreaFloor(area: Area) {
+  const structuredFloor = area.floorCode?.trim();
+  return normalizeFloor(structuredFloor || area.floor);
+}
+
 function getAreaSearchText(area: Area) {
   return `${area.name} ${area.floor ?? ''} ${area.description ?? ''}`.toLowerCase();
 }
 
 function inferAreaZone(area: Area): BuildingZone {
+  const structuredZone = area.buildingCode?.trim().toUpperCase();
+  if (structuredZone === 'A' || structuredZone === 'B' || structuredZone === 'CONNECTOR') {
+    return structuredZone;
+  }
+
   const text = getAreaSearchText(area);
   if (
     text.includes('连廊') ||
@@ -65,17 +75,33 @@ function byAreaName(left: Area, right: Area) {
   return left.name.localeCompare(right.name);
 }
 
+function byMapPositionThenName(left: Area, right: Area) {
+  const leftY = left.mapY ?? Number.MAX_SAFE_INTEGER;
+  const rightY = right.mapY ?? Number.MAX_SAFE_INTEGER;
+  if (leftY !== rightY) {
+    return leftY - rightY;
+  }
+
+  const leftX = left.mapX ?? Number.MAX_SAFE_INTEGER;
+  const rightX = right.mapX ?? Number.MAX_SAFE_INTEGER;
+  if (leftX !== rightX) {
+    return leftX - rightX;
+  }
+
+  return byAreaName(left, right);
+}
+
 export default function CampusIndoorMap({ areas, selectedAreaId, onSelectArea }: CampusIndoorMapProps) {
   const activeAreas = useMemo(() => areas.filter((area) => area.status === 'ACTIVE'), [areas]);
   const floors = useMemo(
-    () => Array.from(new Set(activeAreas.map((area) => normalizeFloor(area.floor)))).sort(sortFloors),
+    () => Array.from(new Set(activeAreas.map(normalizeAreaFloor))).sort(sortFloors),
     [activeAreas],
   );
   const selectedArea = useMemo(
     () => activeAreas.find((area) => area.id === selectedAreaId),
     [activeAreas, selectedAreaId],
   );
-  const selectedAreaFloor = selectedArea ? normalizeFloor(selectedArea.floor) : null;
+  const selectedAreaFloor = selectedArea ? normalizeAreaFloor(selectedArea) : null;
   const [manualFloor, setManualFloor] = useState<string | null>(null);
   const selectedFloor = manualFloor && floors.includes(manualFloor)
     ? manualFloor
@@ -84,7 +110,7 @@ export default function CampusIndoorMap({ areas, selectedAreaId, onSelectArea }:
       : floors[0] ?? '未标注楼层';
 
   const floorAreas = useMemo(
-    () => activeAreas.filter((area) => normalizeFloor(area.floor) === selectedFloor),
+    () => activeAreas.filter((area) => normalizeAreaFloor(area) === selectedFloor),
     [activeAreas, selectedFloor],
   );
   const groupedAreas = useMemo(
@@ -92,7 +118,7 @@ export default function CampusIndoorMap({ areas, selectedAreaId, onSelectArea }:
       zones.reduce<Record<BuildingZone, Area[]>>(
         (nextGroups, zone) => ({
           ...nextGroups,
-          [zone]: floorAreas.filter((area) => inferAreaZone(area) === zone).sort(byAreaName),
+          [zone]: floorAreas.filter((area) => inferAreaZone(area) === zone).sort(byMapPositionThenName),
         }),
         { A: [], CONNECTOR: [], B: [] },
       ),
@@ -132,7 +158,7 @@ export default function CampusIndoorMap({ areas, selectedAreaId, onSelectArea }:
                     >
                       <span>{area.name}</span>
                       <small>
-                        {normalizeFloor(area.floor)} · {area.openTime.slice(0, 5)}-{area.closeTime.slice(0, 5)}
+                        {normalizeAreaFloor(area)} · {area.openTime.slice(0, 5)}-{area.closeTime.slice(0, 5)}
                       </small>
                     </Button>
                   ))

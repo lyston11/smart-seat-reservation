@@ -1,5 +1,53 @@
 # AmorLX 开发日志
 
+## 2026-05-22
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-area-map-metadata
+- 目标: 为预约端室内地图新增长期稳定的区域地图元数据，避免继续依赖区域名称推断 A/B 楼和连廊。
+
+### 本次改动
+- 新增 `areas` 地图元数据字段：`buildingCode`、`floorCode`、`areaType`、`mapX`、`mapY`，并通过 Flyway V16 为演示区域回填基础配置。
+- 后端 Area API 支持创建、编辑和返回地图元数据，服务层统一做大小写规范化、楼层兜底和坐标范围校验。
+- 预约端 `CampusIndoorMap` 优先使用结构化楼栋和楼层字段，旧数据继续保留名称/描述推断兜底。
+- 管理员区域管理页新增楼栋分区、地图楼层、区域类型和地图坐标维护入口，并在表格中紧凑展示地图配置。
+- 更新 API 契约、API 手测示例、设计文档和实施计划。
+
+### 涉及文件
+- backend/src/main/resources/db/migration/V16__add_area_map_metadata.sql
+- backend/src/main/java/com/lyston/smartseat/area/
+- backend/src/test/java/com/lyston/smartseat/area/AreaServiceTest.java
+- frontend/src/types/seat.ts
+- frontend/src/api/areas.ts
+- frontend/src/components/CampusIndoorMap.tsx
+- frontend/src/components/CampusIndoorMap.test.tsx
+- frontend/src/pages/AdminAreasPage.tsx
+- frontend/src/App.test.tsx
+- docs/architecture/API_CONTRACT.md
+- docs/API_EXAMPLES.md
+- docs/plans/2026-05-22-area-map-metadata-design.md
+- docs/plans/2026-05-22-area-map-metadata.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已运行 `mvn -Dtest=AreaServiceTest test`。
+- 已运行 `npm run test -- CampusIndoorMap.test.tsx App.test.tsx`。
+- 已运行 `mvn test`，后端 84 个测试通过。
+- 已运行 `npm run test`，前端 48 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+
+### 遗留问题
+- 本次只新增结构化字段和维护入口，没有实现完整地图拖拽编辑器。
+- `mapX/mapY` 当前用于稳定排序和后续扩展，室内地图仍保持三段式 A 楼、A/B 连廊、B 楼响应式布局。
+
+### 对其他成员的影响
+- 区域接口新增可选字段，旧数据和旧 mock 不填写也能继续工作。
+- 本次不修改签到验证、WiFi/IP 校验、签到码校验、锁位恢复和后端签到状态机。
+- 后续新增区域时建议在区域管理页填写地图元数据，学生端地图会优先按结构化字段归类。
+
 ## 2026-05-21
 
 ### 任务

@@ -10,6 +10,8 @@ import com.lyston.smartseat.seat.SeatSlotMapper;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +21,8 @@ public class AreaService {
     private static final LocalTime DEFAULT_OPEN_TIME = LocalTime.of(8, 0);
     private static final LocalTime DEFAULT_CLOSE_TIME = LocalTime.of(22, 0);
     private static final String DEFAULT_CHECKIN_IP_CIDRS = "127.0.0.1/32,::1/128";
+    private static final Set<String> ALLOWED_BUILDING_CODES = Set.of("A", "B", "CONNECTOR");
+    private static final Set<String> ALLOWED_AREA_TYPES = Set.of("STUDY_ROOM", "HALL", "CORRIDOR", "CONNECTOR");
 
     private final AreaMapper areaMapper;
     private final SeatMapper seatMapper;
@@ -56,6 +60,11 @@ public class AreaService {
         Area area = new Area();
         area.setName(name);
         area.setFloor(normalizeNullable(request.floor()));
+        area.setBuildingCode(normalizeBuildingCode(request.buildingCode()));
+        area.setFloorCode(resolveFloorCode(request.floorCode(), area.getFloor()));
+        area.setAreaType(normalizeAreaType(request.areaType()));
+        area.setMapX(normalizeMapCoordinate(request.mapX()));
+        area.setMapY(normalizeMapCoordinate(request.mapY()));
         area.setDescription(normalizeNullable(request.description()));
         area.setStatus(AreaStatus.ACTIVE);
         area.setOpenTime(resolveOpenTime(request.openTime()));
@@ -80,6 +89,11 @@ public class AreaService {
 
         area.setName(name);
         area.setFloor(normalizeNullable(request.floor()));
+        area.setBuildingCode(normalizeBuildingCode(request.buildingCode()));
+        area.setFloorCode(resolveFloorCode(request.floorCode(), area.getFloor()));
+        area.setAreaType(normalizeAreaType(request.areaType()));
+        area.setMapX(normalizeMapCoordinate(request.mapX()));
+        area.setMapY(normalizeMapCoordinate(request.mapY()));
         area.setDescription(normalizeNullable(request.description()));
         area.setStatus(status);
         area.setOpenTime(resolveOpenTime(request.openTime()));
@@ -127,6 +141,48 @@ public class AreaService {
             return null;
         }
         return value.trim();
+    }
+
+    private String normalizeBuildingCode(String value) {
+        String normalized = normalizeUpperNullable(value);
+        if (normalized == null) {
+            return null;
+        }
+        if (!ALLOWED_BUILDING_CODES.contains(normalized)) {
+            throw new BusinessException("INVALID_AREA_BUILDING_CODE", "Area building code is invalid");
+        }
+        return normalized;
+    }
+
+    private String normalizeAreaType(String value) {
+        String normalized = normalizeUpperNullable(value);
+        if (normalized == null) {
+            return null;
+        }
+        if (!ALLOWED_AREA_TYPES.contains(normalized)) {
+            throw new BusinessException("INVALID_AREA_TYPE", "Area type is invalid");
+        }
+        return normalized;
+    }
+
+    private String normalizeUpperNullable(String value) {
+        String normalized = normalizeNullable(value);
+        return normalized == null ? null : normalized.toUpperCase(Locale.ROOT);
+    }
+
+    private String resolveFloorCode(String floorCode, String floor) {
+        String normalized = normalizeNullable(floorCode);
+        return normalized == null ? floor : normalized;
+    }
+
+    private Integer normalizeMapCoordinate(Integer value) {
+        if (value == null) {
+            return null;
+        }
+        if (value < 0 || value > 100) {
+            throw new BusinessException("INVALID_AREA_MAP_COORDINATE", "Area map coordinate must be between 0 and 100");
+        }
+        return value;
     }
 
     private String normalizeStatus(String status) {
