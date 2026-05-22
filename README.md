@@ -28,6 +28,14 @@ docker compose up -d
 
 项目初期默认每位成员在自己电脑上运行一套本地 MySQL / Redis。`docker-compose.yml` 默认只绑定 `127.0.0.1`，不会把数据库端口暴露到局域网。
 
+如果需要连接团队共享开发数据库，先确认自己的 SSH 公钥已加入服务器，然后运行：
+
+```bash
+bash scripts/connect-remote-db.sh
+```
+
+脚本会尝试把本机 `127.0.0.1:13306` 转发到服务器 MySQL。连接成功后，后端设置 `MYSQL_PORT=13306` 即可使用共享数据。
+
 启动后端：
 
 ```bash

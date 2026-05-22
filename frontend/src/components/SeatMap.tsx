@@ -55,9 +55,10 @@ const sideClass: Record<SeatSide, string> = {
 };
 
 const tableSeatSides: SeatSide[] = ['NORTH', 'WEST', 'EAST', 'SOUTH', 'SINGLE'];
-const TABLE_DISPLAY_SCALE = 0.6;
-const TABLE_SIDE_OFFSET = 66;
-const TABLE_VERTICAL_OFFSET = 44;
+const TABLE_DISPLAY_SCALE = 0.52;
+const TABLE_POSITION_SCALE = 0.72;
+const TABLE_SIDE_OFFSET = 50;
+const TABLE_VERTICAL_OFFSET = 34;
 const MIN_ZOOM = 0.7;
 const MAX_ZOOM = 1.4;
 const ZOOM_STEP = 0.1;
@@ -186,14 +187,17 @@ function normalizeCoordinateTables(tables: TableGroup[]) {
     let positionY = table.positionY;
 
     if (positionX === null || positionY === null || isLegacyCoordinateFallback(table)) {
-      positionX = 80 + (fallbackIndex % 3) * 320;
-      positionY = 260 + Math.floor(fallbackIndex / 3) * 220;
+      positionX = 64 + (fallbackIndex % 3) * 220;
+      positionY = 184 + Math.floor(fallbackIndex / 3) * 154;
       fallbackIndex += 1;
+    } else {
+      positionX = Math.round(positionX * TABLE_POSITION_SCALE);
+      positionY = Math.round(positionY * TABLE_POSITION_SCALE);
     }
 
     let key = `${positionX}:${positionY}`;
     while (occupied.has(key)) {
-      positionY += height + 170;
+      positionY += height + 110;
       key = `${positionX}:${positionY}`;
     }
     occupied.add(key);

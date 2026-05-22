@@ -5,6 +5,54 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/AmorLX-reservation-ui-polish
+- 目标: 修正室内地图连廊显示规则，确保 A/B 与 C/D 连廊只在 2F-3F 出现，1F 不显示连廊避免误导。
+
+### 本次改动
+- 将预约端室内地图分区扩展为 A 楼、A/B 连廊、B 楼、C 楼、C/D 连廊、D 楼。
+- A/B 与 C/D 连廊只在 2F、3F 渲染，1F 和其他楼层即使有误配连廊区域也不会显示连廊栏。
+- 兼容旧 `CONNECTOR` 元数据为 A/B 连廊，同时新增 `CONNECTOR_AB`、`CONNECTOR_CD`、`C`、`D` 楼栋编码支持。
+- 管理员区域管理页新增 C 楼、D 楼、A/B 连廊、C/D 连廊选项，方便后续长期维护公共区域地图。
+- 合并远端最新 `main`，保留同事对桌椅布局溢出的缩放修复，并保留本分支座位图缩放控件。
+- 新增实施记录 `docs/plans/2026-05-22-connector-floor-visibility.md`。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/area/AreaService.java
+- backend/src/test/java/com/lyston/smartseat/area/AreaServiceTest.java
+- frontend/src/components/CampusIndoorMap.tsx
+- frontend/src/components/CampusIndoorMap.test.tsx
+- frontend/src/pages/AdminAreasPage.tsx
+- frontend/src/types/seat.ts
+- frontend/src/styles/main.css
+- docs/architecture/API_CONTRACT.md
+- docs/API_EXAMPLES.md
+- docs/plans/2026-05-22-connector-floor-visibility.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- CampusIndoorMap.test.tsx`，确认新增连廊楼层规则测试失败于 1F 仍显示 A/B 连廊。
+- 已先运行 `mvn -Dtest=AreaServiceTest test`，确认新增 `CONNECTOR_CD` 测试失败于后端拒绝楼栋编码。
+- 已运行 `npm run test -- CampusIndoorMap.test.tsx`，3 个组件测试通过。
+- 已运行 `mvn -Dtest=AreaServiceTest test`，6 个后端区域测试通过。
+- 已运行 `mvn test`，后端 92 个测试通过。
+- 已运行 `npm run test`，前端 54 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已重启本地前端和后端；后端使用临时演示库 `smart_seat_pr21` 跑通最新 Flyway 迁移，避免本机旧分支 V15 迁移记录影响演示。
+- 已用浏览器打开 `http://127.0.0.1:5173/student/seats` 验证：1F 不显示 A/B 或 C/D 连廊，误配到 1F 的连廊区域不会展示；切换 2F 后显示 A/B 连廊和 C/D 连廊；切换 3F 后显示 C/D 连廊。
+
+### 遗留问题
+- 本次只修正连廊楼层可见性和 C/D 元数据支持，后续如果需要真实 C/D 桌椅座位演示，还需要继续补 C/D 区域的桌子和座位数据。
+
+### 对其他成员的影响
+- 区域 `buildingCode` 允许值扩展，不影响旧的 `CONNECTOR` 数据。
+- 本次不修改签到验证、WiFi/IP 校验、签到码校验和后端预约状态机。
+
+## 2026-05-22
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-reservation-ui-polish
 - 目标: 继续完善学生预约端 UI，让楼层、区域、时间和具体座位选择更连贯，并修正桌内座位编号展示，增强多方向桌椅和缩放查看体验。
 
 ### 本次改动
@@ -56,14 +104,14 @@
 - 目标: 为预约端室内地图新增长期稳定的区域地图元数据，避免继续依赖区域名称推断 A/B 楼和连廊。
 
 ### 本次改动
-- 新增 `areas` 地图元数据字段：`buildingCode`、`floorCode`、`areaType`、`mapX`、`mapY`，并通过 Flyway V15 为演示区域回填基础配置。
+- 新增 `areas` 地图元数据字段：`buildingCode`、`floorCode`、`areaType`、`mapX`、`mapY`，并通过 Flyway V16 为演示区域回填基础配置。
 - 后端 Area API 支持创建、编辑和返回地图元数据，服务层统一做大小写规范化、楼层兜底和坐标范围校验。
 - 预约端 `CampusIndoorMap` 优先使用结构化楼栋和楼层字段，旧数据继续保留名称/描述推断兜底。
 - 管理员区域管理页新增楼栋分区、地图楼层、区域类型和地图坐标维护入口，并在表格中紧凑展示地图配置。
 - 更新 API 契约、API 手测示例、设计文档和实施计划。
 
 ### 涉及文件
-- backend/src/main/resources/db/migration/V15__add_area_map_metadata.sql
+- backend/src/main/resources/db/migration/V16__add_area_map_metadata.sql
 - backend/src/main/java/com/lyston/smartseat/area/
 - backend/src/test/java/com/lyston/smartseat/area/AreaServiceTest.java
 - frontend/src/types/seat.ts

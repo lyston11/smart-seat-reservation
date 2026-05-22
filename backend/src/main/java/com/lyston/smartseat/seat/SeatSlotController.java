@@ -43,6 +43,54 @@ public class SeatSlotController {
         return ApiResponse.ok(seatSlotService.publishSeatSlots(request));
     }
 
+    @PostMapping("/publish-batch")
+    @RequireRole(UserRole.ADMIN)
+    public ApiResponse<PublishSeatSlotsBatchResponse> publishSeatSlotsBatch(
+            @Valid @RequestBody PublishSeatSlotsBatchRequest request
+    ) {
+        return ApiResponse.ok(seatSlotService.publishSeatSlotsBatch(request));
+    }
+
+    @GetMapping("/publish-plans")
+    @RequireRole(UserRole.ADMIN)
+    public ApiResponse<List<SeatSlotPublishPlanResponse>> listPublishPlans(@RequestParam Long areaId) {
+        return ApiResponse.ok(seatSlotService.listPublishPlans(areaId));
+    }
+
+    @PostMapping("/publish-plans")
+    @RequireRole(UserRole.ADMIN)
+    public ApiResponse<SeatSlotPublishPlanResponse> createPublishPlan(
+            @Valid @RequestBody CreateSeatSlotPublishPlanRequest request
+    ) {
+        return ApiResponse.ok(seatSlotService.createPublishPlan(request));
+    }
+
+    @PostMapping("/publish-plans/{planId}/stop")
+    @RequireRole(UserRole.ADMIN)
+    public ApiResponse<StopSeatSlotPublishPlanResponse> stopPublishPlan(
+            @PathVariable Long planId,
+            @Valid @RequestBody StopSeatSlotPublishPlanRequest request
+    ) {
+        return ApiResponse.ok(seatSlotService.stopPublishPlan(planId, request));
+    }
+
+    @PostMapping("/cancel-batch")
+    @RequireRole(UserRole.ADMIN)
+    public ApiResponse<CancelSeatSlotsBatchResponse> cancelSeatSlotsBatch(
+            @Valid @RequestBody CancelSeatSlotsBatchRequest request
+    ) {
+        return ApiResponse.ok(seatSlotService.cancelSeatSlotsBatch(request));
+    }
+
+    @DeleteMapping
+    @RequireRole(UserRole.ADMIN)
+    public ApiResponse<CancelSeatSlotsByDateResponse> cancelSeatSlotsByDate(
+            @RequestParam Long areaId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        return ApiResponse.ok(seatSlotService.cancelSeatSlotsByDate(areaId, date));
+    }
+
     @DeleteMapping("/{seatSlotId}")
     @RequireRole(UserRole.ADMIN)
     public ApiResponse<SeatSlotResponse> cancelSeatSlot(@PathVariable Long seatSlotId) {

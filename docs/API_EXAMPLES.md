@@ -85,7 +85,53 @@ curl -X POST http://localhost:18080/api/seat-slots/publish \
 
 重复发布相同座位、日期和时间段时不会报错，会返回 `skippedCount` 说明跳过数量。
 
-系统也会按北京时间自动开放预约时段。默认配置为 `AUTO_SEAT_SLOTS_ENABLED=true`、`AUTO_SEAT_SLOTS_ZONE_ID=Asia/Shanghai`、`AUTO_SEAT_SLOTS_OPEN_HOUR=18`、`AUTO_SEAT_SLOTS_DELAY_MS=300000`：达到开放小时后，定时任务会为启用区域的启用座位发布次日 `openTime-closeTime` 完整窗口，重复执行会跳过已存在的窗口。
+管理员按选中日期批量发布开放时段，`slotDates` 支持连续日期或不连续日期：
+
+```bash
+curl -X POST http://localhost:18080/api/seat-slots/publish-batch \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: 替换为管理员 token" \
+  -d '{
+    "areaId": 1,
+    "slotDates": ["2026-05-15", "2026-05-16", "2026-05-18"],
+    "periods": [
+      { "startTime": "08:00:00", "endTime": "12:00:00" },
+      { "startTime": "14:00:00", "endTime": "18:00:00" }
+    ],
+    "seatIds": [1, 2, 3, 4]
+  }'
+```
+
+服务端会对 `slotDates` 去重、排序，只发布选中的日期。为了防止误操作造成超大批量写入，服务端保留总座位时段数量安全上限；前端不再显示固定天数模式限制。
+
+管理员创建持续开放计划：
+
+```bash
+curl -X POST http://localhost:18080/api/seat-slots/publish-plans \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: 替换为管理员 token" \
+  -d '{
+    "areaId": 1,
+    "startDate": "2026-05-15",
+    "endDate": null,
+    "periods": [
+      { "startTime": "08:00:00", "endTime": "12:00:00" },
+      { "startTime": "14:00:00", "endTime": "18:00:00" }
+    ],
+    "seatIds": [1, 2, 3, 4]
+  }'
+```
+
+持续开放不会一次性把无限未来写入 `seat_slots`，而是保存计划，由定时任务滚动生成后续日期的实际开放时段。
+
+查询区域持续开放计划：
+
+```bash
+curl "http://localhost:18080/api/seat-slots/publish-plans?areaId=1" \
+  -H "X-Auth-Token: 替换为管理员 token"
+```
+
+系统也会按北京时间自动开放预约时段。默认配置为 `AUTO_SEAT_SLOTS_ENABLED=true`、`AUTO_SEAT_SLOTS_ZONE_ID=Asia/Shanghai`、`AUTO_SEAT_SLOTS_OPEN_HOUR=18`、`AUTO_SEAT_SLOTS_DELAY_MS=300000`：达到开放小时后，定时任务会为启用区域的启用座位发布次日 `openTime-closeTime` 完整窗口，并会执行管理员配置的持续开放计划。重复执行会跳过已存在的窗口。
 
 撤销未被预约的开放时段：
 
@@ -95,6 +141,41 @@ curl -X DELETE http://localhost:18080/api/seat-slots/1 \
 ```
 
 只有 `AVAILABLE` 且没有绑定预约的时段可以撤销。
+
+按区域和日期撤销当天所有未被预约的空闲开放时段：
+
+```bash
+curl -X DELETE "http://localhost:18080/api/seat-slots?areaId=1&date=2026-05-15" \
+  -H "X-Auth-Token: 替换为管理员 token"
+```
+
+接口只删除 `AVAILABLE` 且未绑定预约的时段；已预约、使用中、锁位派生展示或异常占用的时段会保留，并通过 `blockedCount` 返回数量。
+
+批量撤销选中日期或日期范围，并可阻止持续开放计划重新生成这些日期：
+
+```bash
+curl -X POST http://localhost:18080/api/seat-slots/cancel-batch \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: 替换为管理员 token" \
+  -d '{
+    "areaId": 1,
+    "slotDates": ["2026-05-15", "2026-05-17"],
+    "blockAutoPublish": true,
+    "reason": "临时闭馆"
+  }'
+```
+
+停止某个持续开放计划，并撤销停止日期之后已经生成的空闲时段：
+
+```bash
+curl -X POST http://localhost:18080/api/seat-slots/publish-plans/1/stop \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Token: 替换为管理员 token" \
+  -d '{
+    "stopFromDate": "2026-06-01",
+    "cancelGeneratedSlots": true
+  }'
+```
 
 管理员标记空闲时段为异常占用：
 
@@ -163,7 +244,7 @@ curl http://localhost:18080/api/areas \
 区域响应包含预约端室内地图元数据：
 
 ```text
-buildingCode: A / B / CONNECTOR
+buildingCode: A / B / C / D / CONNECTOR / CONNECTOR_AB / CONNECTOR_CD
 floorCode: 地图展示楼层，例如 1F、2F、3F
 areaType: STUDY_ROOM / HALL / CORRIDOR / CONNECTOR
 mapX / mapY: 0-100 的可选地图坐标，用于稳定排序和后续可视化扩展

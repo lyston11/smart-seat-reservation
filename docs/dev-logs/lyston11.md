@@ -1,5 +1,92 @@
 # lyston11 开发日志
 
+## 2026-05-22
+
+### 任务
+- Issue: 暂无
+- 分支: fix/popup-container-layering
+- 目标: 修复管理员开放时段页面下拉框、日期选择弹层和表单区域不在同一视觉层的问题。
+
+### 本次改动
+- 前端全局 `ConfigProvider` 增加 `getPopupContainer`，让 Ant Design 的 Select、DatePicker、Popover 等弹层优先挂载到触发元素父级，避免默认挂到 `body` 后脱离页面滚动容器。
+- 管理员开放时段自定义多日期 `Popover` 显式挂载到触发按钮父级，保证日期面板和普通下拉框使用一致的定位层。
+- 整理自定义日期弹层的 `getPopupContainer` 写法，保持代码格式和可读性。
+
+### 涉及文件
+- frontend/src/main.tsx
+- frontend/src/pages/AdminSeatSlotsPage.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式问题。
+
+### 遗留问题
+- 该修复统一了解决弹层挂载层级问题；如果后续新增特殊滚动容器中的弹层组件，需要继续确认弹层挂载点是否和触发控件处于同一定位层。
+
+### 对其他成员的影响
+- 新增 Ant Design 弹层类组件时优先沿用全局 `ConfigProvider` 行为；如果组件位于独立滚动或固定区域内，再在组件级补充更精确的挂载容器。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-multi-day-seat-slots
+- 目标: 优化管理员开放时段发布体验，移除“单日/多日”显式模式和固定 180 天限制，改为直接选择日期并支持滑动选择、滑动取消、隔日选择和按日撤销开放。
+
+### 本次改动
+- 后端新增 `POST /api/seat-slots/publish-batch`，支持管理员按 `slotDates` 批量发布连续或不连续日期的开放时段。
+- 后端新增 `DELETE /api/seat-slots?areaId=&date=`，支持撤销指定区域某天未被预约的空闲开放时段，并返回不可撤销数量。
+- 后端新增持续开放计划表和接口：`GET/POST /api/seat-slots/publish-plans`、`POST /api/seat-slots/publish-plans/{planId}/stop`。
+- 后端新增 `POST /api/seat-slots/cancel-batch`，支持撤销选中日期、日期范围，并可写入开放例外，避免自动开放任务重新生成这些日期。
+- 自动开放任务接入持续开放计划和开放例外：持续开放只保存计划，定时滚动生成实际时段，不把无限未来直接写入 `seat_slots`。
+- 管理员开放时段页面移除单日/多日切换和固定天数限制，改为内嵌多日期日历。
+- 根据页面交互反馈，将多日期日历收回到日期输入框弹层中，保留原先下拉日期框的外观和点击展开方式。
+- 多日期日历支持点击选择、拖动连续选择、拖动取消、隔日选择，以及取消已选区间中间日期。
+- 日期批量发布会根据选中日期数量自动选择单日发布或批量发布接口。
+- 管理员页面新增“一直开放”入口和“撤销开放”弹窗，支持撤销当前已选日期、撤销日期范围、从某天起停止持续开放计划。
+- 前端补充多日期批量发布测试，接口文档同步新增批量发布、持续开放、批量撤销和停止计划示例。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotController.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotService.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotMapper.java
+- backend/src/main/java/com/lyston/smartseat/seat/PublishSeatSlotsBatchRequest.java
+- backend/src/main/java/com/lyston/smartseat/seat/PublishSeatSlotsBatchResponse.java
+- backend/src/main/java/com/lyston/smartseat/seat/CancelSeatSlotsByDateResponse.java
+- backend/src/main/java/com/lyston/smartseat/seat/CancelSeatSlotsBatchRequest.java
+- backend/src/main/java/com/lyston/smartseat/seat/CancelSeatSlotsBatchResponse.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotPublishPlan*.java
+- backend/src/main/resources/db/migration/V15__add_seat_slot_publish_plans.sql
+- backend/src/test/java/com/lyston/smartseat/seat/SeatSlotServiceTest.java
+- backend/src/test/java/com/lyston/smartseat/seat/AutoSeatSlotPublishServiceTest.java
+- frontend/src/pages/AdminSeatSlotsPage.tsx
+- frontend/src/api/seatSlots.ts
+- frontend/src/types/seat.ts
+- frontend/src/App.test.tsx
+- frontend/src/styles/main.css
+- docs/API_EXAMPLES.md
+- docs/architecture/API_CONTRACT.md
+- docs/architecture/ARCHITECTURE.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository -Dtest=SeatSlotServiceTest,AutoSeatSlotPublishServiceTest test`，后端座位时段和自动开放 12 个测试通过。
+- 已运行 `npm run test -- App.test.tsx`，前端目标测试 24 个通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式问题。
+
+### 遗留问题
+- 当前多日期日历是管理员发布页内置控件，后续如果其他页面也需要类似交互，可以再抽成公共组件。
+- 服务端保留总座位时段数量安全上限，避免一次误选过多日期、座位和时间段造成超大批量写入。
+- 当前持续开放计划按固定座位集合和固定时间段滚动生成，后续如需按星期几开放、节假日规则或计划名称，可以在计划表上继续扩展字段。
+
+### 对其他成员的影响
+- 管理员发布未来多日开放时段应优先使用 `POST /api/seat-slots/publish-batch`，不要再新增平行的日期范围接口。
+- 前端开放时段发布不再区分“单日模式/多日模式”，页面只维护选中的日期集合。
+- 撤销某天开放应使用 `DELETE /api/seat-slots?areaId=&date=`，该接口只删除空闲且未绑定预约的时段。
+- 涉及开放策略时优先复用持续开放计划和开放例外，不要把“无限未来开放”直接批量写入 `seat_slots`。
+
 ## 2026-05-20
 
 ### 任务
@@ -2154,3 +2241,156 @@
 
 ### 对其他成员的影响
 - 旧数据库里已有座位无需手动补 `qr_token`，启动后会自动修复；新建座位仍在创建时生成 token。
+
+## 2026-05-22
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-multi-day-seat-slots
+- 目标: 优化后台/学生端主布局滚动行为，让左侧菜单与右侧内容区分隔，避免菜单随主内容滚动。
+
+### 本次改动
+- `AppLayout` 的右侧布局增加 `app-main` 样式类，明确主内容容器边界。
+- 桌面端将整体应用壳固定为视口高度，左侧导航保持独立，右侧 `app-content` 单独滚动。
+- 右侧内容区增加左边界线，强化菜单区与业务内容区的视觉分隔。
+- 移动端恢复自然文档流，避免小屏下 `body` 被锁定后页面内容无法完整滚动。
+
+### 涉及文件
+- frontend/src/layout/AppLayout.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `npm run test -- App.test.tsx`，App 级路由测试 24 个通过；jsdom 仍提示不支持 Ant Design 伪元素和 QRCode canvas，属于现有测试环境限制。
+- 已运行 `git diff --check`，未发现空白字符问题。
+
+### 遗留问题
+- 暂无。
+
+### 对其他成员的影响
+- 后续新增页面默认进入右侧独立滚动区域；如果页面内部还需要固定工具栏，应基于 `app-content` 内部布局处理，不要重新打开全局页面滚动。
+
+## 2026-05-22
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-multi-day-seat-slots
+- 目标: 修复管理员开放时段页面进入后 `GET /api/seat-slots/publish-plans?areaId=1` 返回 500 的问题。
+
+### 本次改动
+- 确认本地数据库原先只执行到 Flyway V14，重启当前分支后端后已执行 V15，新增持续开放计划相关表。
+- 修复 `SeatSlotMapper` 动态 SQL 中 `<script>` 片段的 `<=` XML 转义问题，避免 MyBatis 启动解析失败。
+- 补充 `SeatSlotServiceTest` 覆盖持续开放计划查询明细和停止计划时的作用域撤销逻辑。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotMapper.java
+- backend/src/test/java/com/lyston/smartseat/seat/SeatSlotServiceTest.java
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository -Dtest=SeatSlotServiceTest test`，10 个测试通过。
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository -DskipTests compile`，后端编译通过。
+- 已重启本地后端，Flyway 显示当前数据库版本为 V15，服务成功监听 18080。
+- 已用管理员账号登录后请求 `GET /api/seat-slots/publish-plans?areaId=1`，接口返回 200 和空数组。
+
+### 遗留问题
+- 如果其他成员本地也出现该 500，需要重启当前分支后端，让 Flyway 执行 V15 迁移。
+
+### 对其他成员的影响
+- 后续在 MyBatis 注解 SQL 中使用 `<script>` 动态标签时，比较符需要写成 `&lt;` / `&lt;=` / `&gt;` / `&gt;=`，不能直接写裸 `<`。
+
+## 2026-05-22
+
+### 任务
+- Issue: 暂无
+- 分支: feature/merge-amorlx-area-map-metadata
+- 目标: 将 `feature/AmorLX-area-map-metadata` 合入最新 `main`，解决冲突并准备通过 PR 合并。
+
+### 本次改动
+- 合并 AmorLX 区域地图元数据分支，保留区域接口新增的 `buildingCode`、`floorCode`、`areaType`、`mapX`、`mapY` 能力。
+- 解决 `docs/architecture/API_CONTRACT.md` 冲突，同时保留开放时段持续计划接口说明和区域地图元数据接口说明。
+- 发现 `main` 已有 `V15__add_seat_slot_publish_plans.sql`，将 AmorLX 新增的区域地图元数据迁移顺延为 `V16__add_area_map_metadata.sql`，避免 Flyway 版本冲突。
+- 同步修正 AmorLX 日志和计划文档中的迁移版本号。
+
+### 涉及文件
+- docs/architecture/API_CONTRACT.md
+- backend/src/main/resources/db/migration/V16__add_area_map_metadata.sql
+- docs/dev-logs/AmorLX.md
+- docs/dev-logs/lyston11.md
+- docs/plans/2026-05-22-area-map-metadata-design.md
+- docs/plans/2026-05-22-area-map-metadata.md
+
+### 验证方式
+- 待运行合并后的后端测试、前端测试、lint、build 和 `git diff --check`。
+
+### 遗留问题
+- 按项目规范不直接 push 到 `main`，本次会推送合并分支后通过 PR 合并。
+
+### 对其他成员的影响
+- 后续新增 Flyway 迁移需要先看最新 `main` 的最大版本号，避免多个功能分支同时使用同一个版本号。
+
+## 2026-05-22
+
+### 任务
+- Issue: 暂无
+- 分支: feature/merge-amorlx-area-map-metadata
+- 目标: 为团队共享开发数据库补充一键 SSH Tunnel 连接脚本和使用说明。
+
+### 本次改动
+- 新增 `scripts/connect-remote-db.sh`，默认把本机 `127.0.0.1:13306` 转发到服务器 `127.0.0.1:3306`。
+- 脚本支持 `connect`、`status`、`stop`、`env`、`help` 动作，并提供 SSH 可达性、端口占用和已有隧道检测。
+- README 增加共享开发库快速入口。
+- 本地开发文档补充共享开发库脚本用法、端口冲突处理和 SSH 公钥提示。
+
+### 涉及文件
+- scripts/connect-remote-db.sh
+- README.md
+- docs/deployment/LOCAL_DEVELOPMENT.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `bash -n scripts/connect-remote-db.sh`，脚本语法检查通过。
+- 已运行 `bash scripts/connect-remote-db.sh help`，帮助信息输出正常。
+- 已运行 `bash scripts/connect-remote-db.sh env`，后端环境变量输出正常。
+- 已运行 `bash scripts/connect-remote-db.sh status`，能识别本机 `127.0.0.1:13306` 已有 SSH 隧道。
+- 已运行 `bash scripts/connect-remote-db.sh connect`，在已有隧道时能识别并提示后端连接环境变量。
+- 已运行 `git diff --check`，未发现空白字符问题。
+
+### 遗留问题
+- 其他成员需要先把自己的 SSH 公钥加入服务器，才能使用脚本连接共享数据库。
+
+### 对其他成员的影响
+- 后续需要共享数据调试时，不必手写 SSH Tunnel 命令，直接运行 `bash scripts/connect-remote-db.sh`。
+
+## 2026-05-22
+
+### 任务
+- Issue: 暂无
+- 分支: fix/student-seat-layout-overflow
+- 目标: 修复学生选座页座位地图和右侧预约面板过宽，导致主内容显示不全的问题。
+
+### 本次改动
+- 学生选座页增加 `student-seat-page` 样式，允许该页面使用完整主内容宽度。
+- 座位地图、地图卡片、右侧侧栏补充 `min-width: 0`，避免 grid 子项把页面横向撑开。
+- 缩小桌子、座位按钮、坐标布局间距和坐标缩放比例，让桌椅在同一屏内显示更紧凑。
+- 右侧“签到码”输入框在学生选座侧栏内改为自适应宽度，避免长 token 撑爆侧栏。
+
+### 涉及文件
+- frontend/src/components/SeatMap.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白字符问题。
+- 已在 Chrome 打开 `http://127.0.0.1:5173/student/seats` 验证：座位地图和右侧预约面板完整显示，点选座位后侧栏不再横向溢出。
+
+### 遗留问题
+- 当前坐标布局仍保留地图内部空白，后续可以进一步按实际房间比例和桌子数量做自适应缩放。
+
+### 对其他成员的影响
+- 学生端座位地图整体更紧凑；管理员侧桌位预览暂不受本次页面容器宽度改动影响。

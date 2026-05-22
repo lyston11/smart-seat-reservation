@@ -42,7 +42,11 @@
 - 资源 CRUD 保持清晰名词路径，不把复杂业务动作塞进资源列表接口。
 - 新增 Controller 时优先复用 `ApiPaths`，不要直接硬编码完整 `/api/...` 字符串。
 - `GET /api/seat-slots` 返回的 `status` 允许包含展示态 `LOCKED`。该值从关联 `reservations.status` 派生，表示座位正在锁位中；持久化的 `seat_slots.status` 仍保持原有库存状态机。
-- `GET/POST/PUT /api/areas` 的区域对象包含预约端室内地图元数据：`buildingCode` 可选 `A`、`B`、`CONNECTOR`，`areaType` 可选 `STUDY_ROOM`、`HALL`、`CORRIDOR`、`CONNECTOR`，`floorCode` 用于地图楼层展示，`mapX/mapY` 是 `0-100` 的可选地图坐标。未配置地图元数据的旧区域仍由前端按名称、楼层和描述兼容推断。
+- `POST /api/seat-slots/publish` 用于单日发布；`POST /api/seat-slots/publish-batch` 用于管理员按选中日期批量发布，`slotDates` 可连续也可不连续。
+- `GET/POST /api/seat-slots/publish-plans` 用于查询和创建持续开放计划；`POST /api/seat-slots/publish-plans/{planId}/stop` 用于从某天起停止计划。
+- `DELETE /api/seat-slots/{seatSlotId}` 用于撤销单个空闲时段；`DELETE /api/seat-slots?areaId=&date=` 用于撤销指定区域某天所有未被预约的空闲时段，并返回已保留的不可撤销数量。
+- `POST /api/seat-slots/cancel-batch` 用于撤销选中日期或日期范围，可同时写入开放例外，避免持续开放计划或自动发布任务重新生成这些日期。
+- `GET/POST/PUT /api/areas` 的区域对象包含预约端室内地图元数据：`buildingCode` 可选 `A`、`B`、`C`、`D`、`CONNECTOR`、`CONNECTOR_AB`、`CONNECTOR_CD`，其中 `CONNECTOR` 兼容表示 A/B 连廊；`areaType` 可选 `STUDY_ROOM`、`HALL`、`CORRIDOR`、`CONNECTOR`，`floorCode` 用于地图楼层展示，`mapX/mapY` 是 `0-100` 的可选地图坐标。预约端地图仅在 `2F`、`3F` 渲染 A/B 与 C/D 连廊，未配置地图元数据的旧区域仍由前端按名称、楼层和描述兼容推断。
 
 ## 3. 前端 API 模块边界
 

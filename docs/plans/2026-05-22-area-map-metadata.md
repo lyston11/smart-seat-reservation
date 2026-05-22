@@ -51,7 +51,7 @@ Expected: PASS.
 ### Task 2: Database Migration and Mapper
 
 **Files:**
-- Create: `backend/src/main/resources/db/migration/V15__add_area_map_metadata.sql`
+- Create: `backend/src/main/resources/db/migration/V16__add_area_map_metadata.sql`
 - Modify: `backend/src/main/java/com/lyston/smartseat/area/AreaMapper.java`
 
 **Step 1: Add migration**

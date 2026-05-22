@@ -216,6 +216,141 @@ public interface SeatSlotMapper extends BaseMapper<SeatSlot> {
             """)
     int deleteAvailableSlot(@Param("seatSlotId") Long seatSlotId);
 
+    @Select("""
+            SELECT COUNT(*)
+            FROM seat_slots
+            WHERE area_id = #{areaId}
+              AND slot_date = #{slotDate}
+              AND NOT (
+                  status = 'AVAILABLE'
+                  AND reserved_by IS NULL
+                  AND reservation_id IS NULL
+              )
+            """)
+    int countNonCancelableSlotsByAreaAndDate(
+            @Param("areaId") Long areaId,
+            @Param("slotDate") LocalDate slotDate
+    );
+
+    @Update("""
+            DELETE FROM seat_slots
+            WHERE area_id = #{areaId}
+              AND slot_date = #{slotDate}
+              AND status = 'AVAILABLE'
+              AND reserved_by IS NULL
+              AND reservation_id IS NULL
+            """)
+    int deleteAvailableSlotsByAreaAndDate(
+            @Param("areaId") Long areaId,
+            @Param("slotDate") LocalDate slotDate
+    );
+
+    @Select("""
+            SELECT COUNT(*)
+            FROM seat_slots
+            WHERE area_id = #{areaId}
+              AND slot_date >= #{startDate}
+              AND (#{endDate} IS NULL OR slot_date &lt;= #{endDate})
+              AND NOT (
+                  status = 'AVAILABLE'
+                  AND reserved_by IS NULL
+                  AND reservation_id IS NULL
+              )
+            """)
+    int countNonCancelableSlotsByAreaAndDateRange(
+            @Param("areaId") Long areaId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    @Update("""
+            DELETE FROM seat_slots
+            WHERE area_id = #{areaId}
+              AND slot_date >= #{startDate}
+              AND (#{endDate} IS NULL OR slot_date &lt;= #{endDate})
+              AND status = 'AVAILABLE'
+              AND reserved_by IS NULL
+              AND reservation_id IS NULL
+            """)
+    int deleteAvailableSlotsByAreaAndDateRange(
+            @Param("areaId") Long areaId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    @Select("""
+            SELECT DISTINCT slot_date
+            FROM seat_slots
+            WHERE area_id = #{areaId}
+              AND slot_date >= #{startDate}
+              AND (#{endDate} IS NULL OR slot_date &lt;= #{endDate})
+            ORDER BY slot_date
+            """)
+    List<LocalDate> findSlotDatesByAreaAndDateRange(
+            @Param("areaId") Long areaId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    @Select("""
+            <script>
+            SELECT COUNT(*)
+            FROM seat_slots
+            WHERE area_id = #{areaId}
+              AND slot_date >= #{startDate}
+              AND (#{endDate} IS NULL OR slot_date &lt;= #{endDate})
+              AND seat_id IN
+              <foreach collection="seatIds" item="seatId" open="(" separator="," close=")">
+                  #{seatId}
+              </foreach>
+              AND (
+              <foreach collection="periods" item="period" separator=" OR ">
+                  (start_time = #{period.startTime} AND end_time = #{period.endTime})
+              </foreach>
+              )
+              AND NOT (
+                  status = 'AVAILABLE'
+                  AND reserved_by IS NULL
+                  AND reservation_id IS NULL
+              )
+            </script>
+            """)
+    int countNonCancelableSlotsByScope(
+            @Param("areaId") Long areaId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("seatIds") List<Long> seatIds,
+            @Param("periods") List<PublishSeatSlotPeriod> periods
+    );
+
+    @Update("""
+            <script>
+            DELETE FROM seat_slots
+            WHERE area_id = #{areaId}
+              AND slot_date >= #{startDate}
+              AND (#{endDate} IS NULL OR slot_date &lt;= #{endDate})
+              AND seat_id IN
+              <foreach collection="seatIds" item="seatId" open="(" separator="," close=")">
+                  #{seatId}
+              </foreach>
+              AND (
+              <foreach collection="periods" item="period" separator=" OR ">
+                  (start_time = #{period.startTime} AND end_time = #{period.endTime})
+              </foreach>
+              )
+              AND status = 'AVAILABLE'
+              AND reserved_by IS NULL
+              AND reservation_id IS NULL
+            </script>
+            """)
+    int deleteAvailableSlotsByScope(
+            @Param("areaId") Long areaId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("seatIds") List<Long> seatIds,
+            @Param("periods") List<PublishSeatSlotPeriod> periods
+    );
+
     @Update("""
             UPDATE seat_slots
             SET status = 'AVAILABLE',

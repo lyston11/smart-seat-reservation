@@ -2299,6 +2299,7 @@ describe('App', () => {
   it('publishes admin seat slots with table batch selection and time templates', async () => {
     storeAdminSession();
     const todayText = toLocalDateText(new Date());
+    const tomorrowText = toLocalDateText(new Date(Date.now() + 24 * 60 * 60 * 1000));
     const startText = nextFutureHalfHourText();
     const endText = addMinutesToTimeText(startText, 60);
 
@@ -2406,10 +2407,10 @@ describe('App', () => {
         };
       }
 
-      if (url === '/api/seat-slots/publish' && init?.method === 'POST') {
+      if (url === '/api/seat-slots/publish-batch' && init?.method === 'POST') {
         expect(JSON.parse(String(init.body))).toEqual({
           areaId: 1,
-          slotDate: todayText,
+          slotDates: [todayText, tomorrowText],
           periods: [
             { startTime: `${startText}:00`, endTime: `${endText}:00` },
           ],
@@ -2421,7 +2422,7 @@ describe('App', () => {
             success: true,
             code: 'OK',
             message: 'ok',
-            data: { createdCount: 2, skippedCount: 0, createdSlots: [] },
+            data: { dateCount: 2, createdCount: 4, skippedCount: 0 },
           }),
         };
       }
@@ -2441,12 +2442,14 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { level: 3, name: '开放时段' })).toBeTruthy();
     fireEvent.click(await screen.findByRole('button', { name: 'T01 0/2' }));
-    expect(await screen.findByText('预计发布 2 个座位时段')).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: /选择开放日期/ }));
+    fireEvent.pointerDown(await screen.findByRole('button', { name: `${tomorrowText} 未选择` }));
+    expect(await screen.findByText('预计发布 4 个座位时段')).toBeTruthy();
     fireEvent.click(await screen.findByRole('button', { name: /发布\s*时段/ }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/seat-slots/publish',
+        '/api/seat-slots/publish-batch',
         expect.objectContaining({ method: 'POST' }),
       );
     });

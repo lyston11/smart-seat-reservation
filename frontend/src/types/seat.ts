@@ -16,7 +16,7 @@ export type Area = {
 
 export type AreaStatus = 'ACTIVE' | 'INACTIVE';
 
-export type AreaBuildingCode = 'A' | 'B' | 'CONNECTOR';
+export type AreaBuildingCode = 'A' | 'B' | 'C' | 'D' | 'CONNECTOR' | 'CONNECTOR_AB' | 'CONNECTOR_CD';
 
 export type AreaMapType = 'STUDY_ROOM' | 'HALL' | 'CORRIDOR' | 'CONNECTOR';
 
@@ -115,6 +115,43 @@ export type PublishSeatSlotsResult = {
   createdCount: number;
   skippedCount: number;
   createdSlots: SeatSlot[];
+};
+
+export type PublishSeatSlotsBatchResult = {
+  dateCount: number;
+  createdCount: number;
+  skippedCount: number;
+};
+
+export type SeatSlotPublishPlan = {
+  id: number;
+  areaId: number;
+  startDate: string;
+  endDate: string | null;
+  status: 'ACTIVE' | 'PAUSED';
+  periods: PublishSeatSlotPeriod[];
+  seatIds: number[];
+};
+
+export type CancelSeatSlotsByDateResult = {
+  areaId: number;
+  slotDate: string;
+  cancelledCount: number;
+  blockedCount: number;
+};
+
+export type CancelSeatSlotsBatchResult = {
+  areaId: number;
+  dateCount: number;
+  cancelledCount: number;
+  blockedCount: number;
+  blockedAutoPublishDateCount: number;
+};
+
+export type StopSeatSlotPublishPlanResult = {
+  planId: number;
+  cancelledCount: number;
+  blockedCount: number;
 };
 
 export type PublishSeatSlotPeriod = {

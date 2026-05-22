@@ -12,18 +12,25 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow: hidden;
 }
 
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
-.app-shell > .ant-layout {
+.app-main {
   min-width: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .app-sider {
+  height: 100vh;
+  overflow: hidden;
   border-right: 1px solid #e5e7eb;
+  background: #ffffff !important;
 }
 
 .brand {
@@ -62,8 +69,11 @@ body {
 
 .app-content {
   min-width: 0;
+  height: calc(100vh - 72px);
+  overflow: auto;
   padding: 24px;
   background: #f5f5f4;
+  border-left: 1px solid #eef2f7;
 }
 
 .route-loading {
@@ -76,6 +86,10 @@ body {
 
 .page {
   max-width: 1180px;
+}
+
+.student-seat-page {
+  max-width: none;
 }
 
 .empty-panel {
@@ -135,13 +149,102 @@ body {
 
 .slot-base-fields {
   display: grid;
-  grid-template-columns: minmax(180px, 260px) minmax(160px, 200px);
+  grid-template-columns: minmax(180px, 260px) minmax(220px, 280px);
   gap: 12px;
   align-items: start;
 }
 
 .slot-base-fields .ant-picker {
   width: 100%;
+}
+
+.multi-date-picker {
+  width: 320px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.multi-date-picker-trigger {
+  width: 100%;
+  min-height: 42px;
+  padding: 4px 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.multi-date-picker-trigger-value,
+.multi-date-picker-trigger-placeholder {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multi-date-picker-trigger-placeholder {
+  color: #9ca3af;
+}
+
+.multi-date-picker-header,
+.multi-date-picker-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.multi-date-picker-weekdays,
+.multi-date-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.multi-date-picker-weekdays {
+  margin-top: 10px;
+  color: #6b7280;
+  font-size: 12px;
+  text-align: center;
+}
+
+.multi-date-picker-grid {
+  margin-top: 6px;
+  touch-action: none;
+}
+
+.multi-date-picker-cell {
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #111827;
+  cursor: pointer;
+}
+
+.multi-date-picker-cell:hover {
+  border-color: #1677ff;
+}
+
+.multi-date-picker-cell-selected {
+  background: #1677ff;
+  color: #fff;
+}
+
+.multi-date-picker-cell-muted {
+  color: #9ca3af;
+}
+
+.multi-date-picker-cell-disabled {
+  background: #f3f4f6;
+  color: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.multi-date-picker-footer {
+  margin-top: 10px;
 }
 
 .slot-section-title,
@@ -190,6 +293,26 @@ body {
   padding-top: 14px;
   margin-top: 12px;
   border-top: 1px solid #e5e7eb;
+}
+
+.slot-plan-panel {
+  margin-top: 12px;
+}
+
+.cancel-openings-form {
+  width: 100%;
+}
+
+.cancel-openings-form .ant-select,
+.cancel-openings-form input[type="date"] {
+  min-width: 220px;
+}
+
+.checkbox-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #374151;
 }
 
 .seat-form {
@@ -505,6 +628,10 @@ body {
   width: 420px;
 }
 
+.student-seat-side-panel .reservation-code {
+  width: 100%;
+}
+
 .reservation-filter-select {
   width: 160px;
 }
@@ -530,7 +657,9 @@ body {
 }
 
 .reservation-code-field .ant-input {
+  min-width: 0;
   border-radius: 0 6px 6px 0;
+  text-overflow: ellipsis;
 }
 
 .reservation-qr-checkin-hint {
@@ -825,7 +954,7 @@ body {
 
 .campus-map-stage {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(140px, 0.58fr) minmax(220px, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   align-items: stretch;
 }
@@ -847,7 +976,8 @@ body {
   background-size: auto, 32px 32px, 32px 32px, auto;
 }
 
-.campus-map-zone-connector {
+.campus-map-zone-connector,
+.campus-map-zone-connector-cd {
   min-height: 150px;
   align-self: center;
   border-style: dashed;
@@ -930,20 +1060,31 @@ body {
 }
 
 .student-seat-workspace {
+  min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
   gap: 16px;
   align-items: start;
 }
 
 .student-seat-side-panel {
+  min-width: 0;
   position: sticky;
   top: 16px;
   display: grid;
   gap: 16px;
 }
 
+.student-seat-side-panel .ant-card {
+  min-width: 0;
+}
+
+.student-seat-side-panel .ant-card-body {
+  min-width: 0;
+}
+
 .student-seat-panel-stack {
+  min-width: 0;
   width: 100%;
 }
 
@@ -1027,7 +1168,7 @@ body {
   position: relative;
   min-width: 0;
   max-width: 100%;
-  padding: 36px 16px 42px;
+  padding: 28px 12px 32px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(244, 244, 245, 0.78)),
     linear-gradient(90deg, rgba(229, 231, 235, 0.55) 1px, transparent 1px),
@@ -1041,7 +1182,7 @@ body {
 }
 
 .seat-room-layout-coordinate {
-  padding: 38px 18px 44px;
+  padding: 30px 14px 34px;
 }
 
 .seat-room-feature {
@@ -1075,8 +1216,8 @@ body {
 
 .seat-map-grid {
   display: grid;
-  grid-template-columns: repeat(var(--table-grid-columns, auto-fill), minmax(180px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(var(--table-grid-columns, auto-fill), minmax(132px, 1fr));
+  gap: 14px;
   align-items: start;
 }
 
@@ -1100,26 +1241,26 @@ body {
 
 .seat-table {
   min-width: 0;
-  min-height: 174px;
+  min-height: 136px;
   display: grid;
   grid-template:
-    "north north north" 48px
-    "west table east" minmax(64px, auto)
-    "south south south" 48px
-    "single single single" auto / minmax(54px, 1fr) minmax(78px, 1.1fr) minmax(54px, 1fr);
-  gap: 7px;
+    "north north north" 38px
+    "west table east" minmax(50px, auto)
+    "south south south" 38px
+    "single single single" auto / minmax(42px, 1fr) minmax(58px, 1.1fr) minmax(42px, 1fr);
+  gap: 6px;
   align-items: center;
 }
 
 .seat-table-positioned {
   position: absolute;
-  width: calc(var(--table-width, 132px) + 132px);
-  min-height: 146px;
+  width: calc(var(--table-width, 114px) + 100px);
+  min-height: 112px;
   grid-template:
-    ". north ." 40px
-    "west table east" var(--table-height, 58px)
-    ". south ." 40px
-    ". single ." auto / 66px var(--table-width, 132px) 66px;
+    ". north ." 32px
+    "west table east" var(--table-height, 50px)
+    ". south ." 32px
+    ". single ." auto / 50px var(--table-width, 114px) 50px;
   transform-origin: center center;
   transition:
     left 180ms ease,
@@ -1130,8 +1271,8 @@ body {
 .seat-table-surface {
   grid-area: table;
   min-width: 0;
-  height: 64px;
-  padding: 8px;
+  height: 50px;
+  padding: 6px;
   display: grid;
   place-items: center;
   border: 2px solid #78716c;
@@ -1192,8 +1333,8 @@ body {
 .seat-map-cell.ant-btn {
   width: 100%;
   min-width: 0;
-  height: 48px;
-  padding: 6px;
+  height: 38px;
+  padding: 4px;
   display: grid;
   justify-items: center;
   align-content: center;
@@ -1214,45 +1355,45 @@ body {
 
 .seat-map-cell .ant-tag {
   margin: 0;
-  font-size: 11px;
-  line-height: 18px;
+  font-size: 10px;
+  line-height: 16px;
 }
 
 .seat-table-side {
   min-width: 0;
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
 .seat-table-side-north {
   grid-area: north;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(54px, 1fr);
+  grid-auto-columns: minmax(42px, 1fr);
   align-self: end;
 }
 
 .seat-table-side-west {
   grid-area: west;
   grid-auto-flow: row;
-  grid-auto-rows: minmax(48px, auto);
+  grid-auto-rows: minmax(38px, auto);
 }
 
 .seat-table-side-east {
   grid-area: east;
   grid-auto-flow: row;
-  grid-auto-rows: minmax(48px, auto);
+  grid-auto-rows: minmax(38px, auto);
 }
 
 .seat-table-side-south {
   grid-area: south;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(54px, 1fr);
+  grid-auto-columns: minmax(42px, 1fr);
   align-self: start;
 }
 
 .seat-table-side-single {
   grid-area: single;
-  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
 }
 
 .seat-map-cell-available.ant-btn {
@@ -1376,17 +1517,28 @@ body {
 }
 
 @media (max-width: 860px) {
+  body {
+    overflow: auto;
+  }
+
   .app-shell,
   .app-shell.ant-layout-has-sider {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
     flex-direction: column;
   }
 
   .app-shell.ant-layout-has-sider > .ant-layout {
+    height: auto;
+    overflow: visible;
     width: 100% !important;
     flex: none !important;
   }
 
   .app-sider {
+    height: auto;
+    overflow: visible;
     width: 100% !important;
     max-width: none !important;
     min-width: 0 !important;
@@ -1408,7 +1560,10 @@ body {
   }
 
   .app-content {
+    height: auto;
+    overflow: visible;
     padding: 16px;
+    border-left: 0;
   }
 
   .page {
@@ -1439,6 +1594,10 @@ body {
   .reservation-filter-select,
   .area-select,
   .seat-select {
+    width: 100%;
+  }
+
+  .multi-date-picker {
     width: 100%;
   }
 

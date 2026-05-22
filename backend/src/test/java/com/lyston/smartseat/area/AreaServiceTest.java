@@ -105,6 +105,29 @@ class AreaServiceTest {
     }
 
     @Test
+    void createAreaShouldAcceptExpandedBuildingCodes() {
+        AreaResponse response = areaService.createArea(
+                new CreateAreaRequest(
+                        " C-D Connector ",
+                        " 2F ",
+                        " C/D connector area ",
+                        LocalTime.of(8, 0),
+                        LocalTime.of(22, 0),
+                        "127.0.0.1/32",
+                        " connector_cd ",
+                        "2F",
+                        " connector ",
+                        50,
+                        20
+                ),
+                2L
+        );
+
+        assertThat(response.buildingCode()).isEqualTo("CONNECTOR_CD");
+        assertThat(areaMapper.insertedArea.getBuildingCode()).isEqualTo("CONNECTOR_CD");
+    }
+
+    @Test
     void createAreaShouldRejectInvalidBuildingCode() {
         assertThatThrownBy(() -> areaService.createArea(
                 new CreateAreaRequest(
@@ -114,7 +137,7 @@ class AreaServiceTest {
                         null,
                         null,
                         null,
-                        "C",
+                        "X",
                         "1F",
                         "STUDY_ROOM",
                         null,
