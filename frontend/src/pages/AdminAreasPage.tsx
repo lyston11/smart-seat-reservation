@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Form, Input, message, Modal, Popconfirm, Select, Space, Table, Tag } from 'antd';
+import { Button, Form, Input, InputNumber, message, Modal, Popconfirm, Select, Space, Table, Tag } from 'antd';
 import type { TableColumnsType } from 'antd';
 import { createArea, listAreas, testCheckinIp, updateArea, updateAreaStatus } from '../api/areas';
-import type { Area, AreaStatus } from '../types/seat';
+import type { Area, AreaBuildingCode, AreaMapType, AreaStatus } from '../types/seat';
 
 type AreaFormValues = {
   name: string;
   floor?: string;
+  buildingCode?: AreaBuildingCode;
+  floorCode?: string;
+  areaType?: AreaMapType;
+  mapX?: number;
+  mapY?: number;
   description?: string;
   status: AreaStatus;
   openTime?: string;
@@ -22,6 +27,32 @@ const statusLabels: Record<AreaStatus, string> = {
 const statusColors: Record<AreaStatus, string> = {
   ACTIVE: 'green',
   INACTIVE: 'default',
+};
+
+const buildingOptions: { label: string; value: AreaBuildingCode }[] = [
+  { label: 'A 楼', value: 'A' },
+  { label: 'B 楼', value: 'B' },
+  { label: 'A/B 连廊', value: 'CONNECTOR' },
+];
+
+const areaTypeOptions: { label: string; value: AreaMapType }[] = [
+  { label: '自习室', value: 'STUDY_ROOM' },
+  { label: '大厅', value: 'HALL' },
+  { label: '走廊', value: 'CORRIDOR' },
+  { label: '连廊', value: 'CONNECTOR' },
+];
+
+const buildingLabels: Record<AreaBuildingCode, string> = {
+  A: 'A 楼',
+  B: 'B 楼',
+  CONNECTOR: 'A/B 连廊',
+};
+
+const areaTypeLabels: Record<AreaMapType, string> = {
+  STUDY_ROOM: '自习室',
+  HALL: '大厅',
+  CORRIDOR: '走廊',
+  CONNECTOR: '连廊',
 };
 
 export default function AdminAreasPage() {
@@ -50,6 +81,11 @@ export default function AdminAreasPage() {
     form.setFieldsValue({
       name: '',
       floor: '',
+      buildingCode: undefined,
+      floorCode: '',
+      areaType: undefined,
+      mapX: undefined,
+      mapY: undefined,
       description: '',
       status: 'ACTIVE',
       openTime: '08:00',
@@ -64,6 +100,11 @@ export default function AdminAreasPage() {
     form.setFieldsValue({
       name: area.name,
       floor: area.floor ?? '',
+      buildingCode: area.buildingCode ?? undefined,
+      floorCode: area.floorCode ?? '',
+      areaType: area.areaType ?? undefined,
+      mapX: area.mapX ?? undefined,
+      mapY: area.mapY ?? undefined,
       description: area.description ?? '',
       status: area.status,
       openTime: area.openTime?.slice(0, 5) ?? '08:00',
@@ -76,14 +117,22 @@ export default function AdminAreasPage() {
   async function saveArea() {
     const values = await form.validateFields();
     const payload = {
-      ...values,
+      name: values.name,
+      floor: normalizeOptionalString(values.floor),
+      buildingCode: values.buildingCode,
+      floorCode: normalizeOptionalString(values.floorCode),
+      areaType: values.areaType,
+      mapX: values.mapX,
+      mapY: values.mapY,
+      description: normalizeOptionalString(values.description),
       openTime: normalizeFormTime(values.openTime),
       closeTime: normalizeFormTime(values.closeTime),
+      checkinIpCidrs: normalizeOptionalString(values.checkinIpCidrs),
     };
     setSaving(true);
     try {
       if (editingArea) {
-        await updateArea(editingArea.id, payload);
+        await updateArea(editingArea.id, { ...payload, status: values.status });
         messageApi.success('区域已更新');
       } else {
         await createArea(payload);
@@ -142,6 +191,11 @@ export default function AdminAreasPage() {
     { title: '区域 ID', dataIndex: 'id', width: 120 },
     { title: '区域名称', dataIndex: 'name', width: 180 },
     { title: '楼层', dataIndex: 'floor', width: 120, render: (value) => value ?? '-' },
+    {
+      title: '地图配置',
+      width: 220,
+      render: (_, record) => renderAreaMapMeta(record),
+    },
     {
       title: '开放时段',
       width: 160,
@@ -228,6 +282,23 @@ export default function AdminAreasPage() {
           <Form.Item label="楼层" name="floor" rules={[{ max: 32, message: '楼层不能超过 32 个字符' }]}>
             <Input placeholder="例如 1F" />
           </Form.Item>
+          <div className="resource-layout-fields area-map-fields">
+            <Form.Item label="楼栋分区" name="buildingCode">
+              <Select allowClear options={buildingOptions} placeholder="选择地图分区" />
+            </Form.Item>
+            <Form.Item label="地图楼层" name="floorCode" rules={[{ max: 32, message: '地图楼层不能超过 32 个字符' }]}>
+              <Input placeholder="默认同楼层" />
+            </Form.Item>
+            <Form.Item label="区域类型" name="areaType">
+              <Select allowClear options={areaTypeOptions} placeholder="选择区域类型" />
+            </Form.Item>
+            <Form.Item label="地图 X %" name="mapX" rules={[{ type: 'number', min: 0, max: 100, message: 'X 坐标范围为 0-100' }]}>
+              <InputNumber min={0} max={100} placeholder="0-100" />
+            </Form.Item>
+            <Form.Item label="地图 Y %" name="mapY" rules={[{ type: 'number', min: 0, max: 100, message: 'Y 坐标范围为 0-100' }]}>
+              <InputNumber min={0} max={100} placeholder="0-100" />
+            </Form.Item>
+          </div>
           <Form.Item
             label="说明"
             name="description"
@@ -302,6 +373,34 @@ function normalizeFormTime(value?: string) {
     return undefined;
   }
   return value.length === 5 ? `${value}:00` : value;
+}
+
+function normalizeOptionalString(value?: string) {
+  if (!value || !value.trim()) {
+    return undefined;
+  }
+  return value.trim();
+}
+
+function renderAreaMapMeta(area: Area) {
+  const tags = [
+    area.buildingCode ? buildingLabels[area.buildingCode] : null,
+    area.floorCode ?? null,
+    area.areaType ? areaTypeLabels[area.areaType] : null,
+    area.mapX != null && area.mapY != null ? `${area.mapX}, ${area.mapY}` : null,
+  ].filter(Boolean);
+
+  if (tags.length === 0) {
+    return '-';
+  }
+
+  return (
+    <Space size={[4, 4]} wrap>
+      {tags.map((tag) => (
+        <Tag key={tag}>{tag}</Tag>
+      ))}
+    </Space>
+  );
 }
 
 function validateCidrList(value?: string) {

@@ -1449,6 +1449,90 @@ describe('App', () => {
     expect(await screen.findByText(/当前 IP 10\.10\.1\.20 命中该网段/)).toBeTruthy();
   });
 
+  it('submits admin area map metadata when creating an area', async () => {
+    storeAdminSession();
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === '/api/areas' && init?.method === 'POST') {
+        expect(JSON.parse(String(init.body))).toEqual({
+          name: '三楼连廊学习区',
+          floor: '3F',
+          description: 'A/B 连廊公共座位',
+          openTime: '08:00:00',
+          closeTime: '22:00:00',
+          checkinIpCidrs: '127.0.0.1/32,::1/128',
+          buildingCode: 'CONNECTOR',
+          floorCode: '3F',
+          areaType: 'CONNECTOR',
+          mapX: 50,
+          mapY: 20,
+        });
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: {
+              id: 2,
+              name: '三楼连廊学习区',
+              floor: '3F',
+              buildingCode: 'CONNECTOR',
+              floorCode: '3F',
+              areaType: 'CONNECTOR',
+              mapX: 50,
+              mapY: 20,
+              description: 'A/B 连廊公共座位',
+              status: 'ACTIVE',
+              openTime: '08:00:00',
+              closeTime: '22:00:00',
+              checkinIpCidrs: '127.0.0.1/32,::1/128',
+            },
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/areas')) {
+        return {
+          ok: true,
+          json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/admin/areas']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 3, name: '区域管理' })).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: '新增区域' }));
+    fireEvent.change(await screen.findByLabelText('区域名称'), { target: { value: '三楼连廊学习区' } });
+    fireEvent.change(await screen.findByLabelText('楼层'), { target: { value: '3F' } });
+    fireEvent.change(await screen.findByLabelText('说明'), { target: { value: 'A/B 连廊公共座位' } });
+    await selectComboboxValue('楼栋分区', 'A/B 连廊');
+    fireEvent.change(await screen.findByLabelText('地图楼层'), { target: { value: '3F' } });
+    await selectComboboxValue('区域类型', '连廊');
+    fireEvent.change(await screen.findByLabelText('地图 X %'), { target: { value: '50' } });
+    fireEvent.change(await screen.findByLabelText('地图 Y %'), { target: { value: '20' } });
+    fireEvent.click(await screen.findByRole('button', { name: /保\s*存/ }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/areas',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+  });
+
   it('shows a fixed seat QR code in admin seat management', async () => {
     storeAdminSession();
 

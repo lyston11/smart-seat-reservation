@@ -1,6 +1,6 @@
 import { apiPaths, withPath } from './endpoints';
 import { get, patch, post, put } from './http';
-import type { Area, AreaStatus } from '../types/seat';
+import type { Area, AreaBuildingCode, AreaMapType, AreaStatus } from '../types/seat';
 
 export function listAreas() {
   return get<Area[]>(apiPaths.areas);
@@ -9,6 +9,11 @@ export function listAreas() {
 export type CreateAreaPayload = {
   name: string;
   floor?: string;
+  buildingCode?: AreaBuildingCode;
+  floorCode?: string;
+  areaType?: AreaMapType;
+  mapX?: number;
+  mapY?: number;
   description?: string;
   openTime?: string;
   closeTime?: string;
@@ -18,6 +23,11 @@ export type CreateAreaPayload = {
 export type UpdateAreaPayload = {
   name: string;
   floor?: string;
+  buildingCode?: AreaBuildingCode;
+  floorCode?: string;
+  areaType?: AreaMapType;
+  mapX?: number;
+  mapY?: number;
   description?: string;
   status: AreaStatus;
   openTime?: string;

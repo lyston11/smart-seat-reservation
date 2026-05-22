@@ -12,6 +12,11 @@ public class Area {
     private Long id;
     private String name;
     private String floor;
+    private String buildingCode;
+    private String floorCode;
+    private String areaType;
+    private Integer mapX;
+    private Integer mapY;
     private String description;
     private String status;
     private LocalTime openTime;
@@ -42,6 +47,46 @@ public class Area {
 
     public void setFloor(String floor) {
         this.floor = floor;
+    }
+
+    public String getBuildingCode() {
+        return buildingCode;
+    }
+
+    public void setBuildingCode(String buildingCode) {
+        this.buildingCode = buildingCode;
+    }
+
+    public String getFloorCode() {
+        return floorCode;
+    }
+
+    public void setFloorCode(String floorCode) {
+        this.floorCode = floorCode;
+    }
+
+    public String getAreaType() {
+        return areaType;
+    }
+
+    public void setAreaType(String areaType) {
+        this.areaType = areaType;
+    }
+
+    public Integer getMapX() {
+        return mapX;
+    }
+
+    public void setMapX(Integer mapX) {
+        this.mapX = mapX;
+    }
+
+    public Integer getMapY() {
+        return mapY;
+    }
+
+    public void setMapY(Integer mapY) {
+        this.mapY = mapY;
     }
 
     public String getDescription() {
