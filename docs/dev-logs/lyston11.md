@@ -1,5 +1,66 @@
 # lyston11 开发日志
 
+## 2026-05-22
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-multi-day-seat-slots
+- 目标: 优化管理员开放时段发布体验，移除“单日/多日”显式模式和固定 180 天限制，改为直接选择日期并支持滑动选择、滑动取消、隔日选择和按日撤销开放。
+
+### 本次改动
+- 后端新增 `POST /api/seat-slots/publish-batch`，支持管理员按 `slotDates` 批量发布连续或不连续日期的开放时段。
+- 后端新增 `DELETE /api/seat-slots?areaId=&date=`，支持撤销指定区域某天未被预约的空闲开放时段，并返回不可撤销数量。
+- 后端新增持续开放计划表和接口：`GET/POST /api/seat-slots/publish-plans`、`POST /api/seat-slots/publish-plans/{planId}/stop`。
+- 后端新增 `POST /api/seat-slots/cancel-batch`，支持撤销选中日期、日期范围，并可写入开放例外，避免自动开放任务重新生成这些日期。
+- 自动开放任务接入持续开放计划和开放例外：持续开放只保存计划，定时滚动生成实际时段，不把无限未来直接写入 `seat_slots`。
+- 管理员开放时段页面移除单日/多日切换和固定天数限制，改为内嵌多日期日历。
+- 根据页面交互反馈，将多日期日历收回到日期输入框弹层中，保留原先下拉日期框的外观和点击展开方式。
+- 多日期日历支持点击选择、拖动连续选择、拖动取消、隔日选择，以及取消已选区间中间日期。
+- 日期批量发布会根据选中日期数量自动选择单日发布或批量发布接口。
+- 管理员页面新增“一直开放”入口和“撤销开放”弹窗，支持撤销当前已选日期、撤销日期范围、从某天起停止持续开放计划。
+- 前端补充多日期批量发布测试，接口文档同步新增批量发布、持续开放、批量撤销和停止计划示例。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotController.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotService.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotMapper.java
+- backend/src/main/java/com/lyston/smartseat/seat/PublishSeatSlotsBatchRequest.java
+- backend/src/main/java/com/lyston/smartseat/seat/PublishSeatSlotsBatchResponse.java
+- backend/src/main/java/com/lyston/smartseat/seat/CancelSeatSlotsByDateResponse.java
+- backend/src/main/java/com/lyston/smartseat/seat/CancelSeatSlotsBatchRequest.java
+- backend/src/main/java/com/lyston/smartseat/seat/CancelSeatSlotsBatchResponse.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotPublishPlan*.java
+- backend/src/main/resources/db/migration/V15__add_seat_slot_publish_plans.sql
+- backend/src/test/java/com/lyston/smartseat/seat/SeatSlotServiceTest.java
+- backend/src/test/java/com/lyston/smartseat/seat/AutoSeatSlotPublishServiceTest.java
+- frontend/src/pages/AdminSeatSlotsPage.tsx
+- frontend/src/api/seatSlots.ts
+- frontend/src/types/seat.ts
+- frontend/src/App.test.tsx
+- frontend/src/styles/main.css
+- docs/API_EXAMPLES.md
+- docs/architecture/API_CONTRACT.md
+- docs/architecture/ARCHITECTURE.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository -Dtest=SeatSlotServiceTest,AutoSeatSlotPublishServiceTest test`，后端座位时段和自动开放 12 个测试通过。
+- 已运行 `npm run test -- App.test.tsx`，前端目标测试 24 个通过。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式问题。
+
+### 遗留问题
+- 当前多日期日历是管理员发布页内置控件，后续如果其他页面也需要类似交互，可以再抽成公共组件。
+- 服务端保留总座位时段数量安全上限，避免一次误选过多日期、座位和时间段造成超大批量写入。
+- 当前持续开放计划按固定座位集合和固定时间段滚动生成，后续如需按星期几开放、节假日规则或计划名称，可以在计划表上继续扩展字段。
+
+### 对其他成员的影响
+- 管理员发布未来多日开放时段应优先使用 `POST /api/seat-slots/publish-batch`，不要再新增平行的日期范围接口。
+- 前端开放时段发布不再区分“单日模式/多日模式”，页面只维护选中的日期集合。
+- 撤销某天开放应使用 `DELETE /api/seat-slots?areaId=&date=`，该接口只删除空闲且未绑定预约的时段。
+- 涉及开放策略时优先复用持续开放计划和开放例外，不要把“无限未来开放”直接批量写入 `seat_slots`。
+
 ## 2026-05-20
 
 ### 任务
@@ -2154,3 +2215,62 @@
 
 ### 对其他成员的影响
 - 旧数据库里已有座位无需手动补 `qr_token`，启动后会自动修复；新建座位仍在创建时生成 token。
+
+## 2026-05-22
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-multi-day-seat-slots
+- 目标: 优化后台/学生端主布局滚动行为，让左侧菜单与右侧内容区分隔，避免菜单随主内容滚动。
+
+### 本次改动
+- `AppLayout` 的右侧布局增加 `app-main` 样式类，明确主内容容器边界。
+- 桌面端将整体应用壳固定为视口高度，左侧导航保持独立，右侧 `app-content` 单独滚动。
+- 右侧内容区增加左边界线，强化菜单区与业务内容区的视觉分隔。
+- 移动端恢复自然文档流，避免小屏下 `body` 被锁定后页面内容无法完整滚动。
+
+### 涉及文件
+- frontend/src/layout/AppLayout.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `npm run test -- App.test.tsx`，App 级路由测试 24 个通过；jsdom 仍提示不支持 Ant Design 伪元素和 QRCode canvas，属于现有测试环境限制。
+- 已运行 `git diff --check`，未发现空白字符问题。
+
+### 遗留问题
+- 暂无。
+
+### 对其他成员的影响
+- 后续新增页面默认进入右侧独立滚动区域；如果页面内部还需要固定工具栏，应基于 `app-content` 内部布局处理，不要重新打开全局页面滚动。
+
+## 2026-05-22
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-multi-day-seat-slots
+- 目标: 修复管理员开放时段页面进入后 `GET /api/seat-slots/publish-plans?areaId=1` 返回 500 的问题。
+
+### 本次改动
+- 确认本地数据库原先只执行到 Flyway V14，重启当前分支后端后已执行 V15，新增持续开放计划相关表。
+- 修复 `SeatSlotMapper` 动态 SQL 中 `<script>` 片段的 `<=` XML 转义问题，避免 MyBatis 启动解析失败。
+- 补充 `SeatSlotServiceTest` 覆盖持续开放计划查询明细和停止计划时的作用域撤销逻辑。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/seat/SeatSlotMapper.java
+- backend/src/test/java/com/lyston/smartseat/seat/SeatSlotServiceTest.java
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository -Dtest=SeatSlotServiceTest test`，10 个测试通过。
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository -DskipTests compile`，后端编译通过。
+- 已重启本地后端，Flyway 显示当前数据库版本为 V15，服务成功监听 18080。
+- 已用管理员账号登录后请求 `GET /api/seat-slots/publish-plans?areaId=1`，接口返回 200 和空数组。
+
+### 遗留问题
+- 如果其他成员本地也出现该 500，需要重启当前分支后端，让 Flyway 执行 V15 迁移。
+
+### 对其他成员的影响
+- 后续在 MyBatis 注解 SQL 中使用 `<script>` 动态标签时，比较符需要写成 `&lt;` / `&lt;=` / `&gt;` / `&gt;=`，不能直接写裸 `<`。

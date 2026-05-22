@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { PointerEvent } from 'react';
 import {
   Button,
-  DatePicker,
   Form,
   Input,
   Modal,
+  Popover,
+  Radio,
   Select,
   Space,
   message,
@@ -14,7 +16,7 @@ import {
 } from 'antd';
 import type { TableColumnsType } from 'antd';
 import dayjs from 'dayjs';
-import { CheckSquare, Clock3, Eraser, Plus, Trash2 } from 'lucide-react';
+import { CalendarDays, CheckSquare, Clock3, Eraser, Plus, Trash2 } from 'lucide-react';
 import { listAreas } from '../api/areas';
 import {
   adminMarkSeatSlotAbnormal,
@@ -22,21 +24,28 @@ import {
   adminRestoreSeatSlot,
 } from '../api/adminSeatSlots';
 import {
+  cancelSeatSlotsBatch,
   cancelSeatSlot,
+  createSeatSlotPublishPlan,
   listSeatSlots,
+  listSeatSlotPublishPlans,
+  publishSeatSlotsBatch,
   publishSeatSlots,
+  stopSeatSlotPublishPlan,
 } from '../api/seatSlots';
 import { listSeats } from '../api/seats';
 import AdminSeatSlotActions from '../components/AdminSeatSlotActions';
 import type { AdminSeatSlotActionType } from '../components/AdminSeatSlotActions';
-import type { Area, Seat, SeatSlot, SeatSlotStatus } from '../types/seat';
+import type { Area, Seat, SeatSlot, SeatSlotPublishPlan, SeatSlotStatus } from '../types/seat';
 
 type PublishFormValues = {
   areaId: number;
-  slotDate: dayjs.Dayjs;
+  slotDates: dayjs.Dayjs[];
   timeRanges: TimeRangeValue[];
   seatIds: number[];
 };
+
+type CancelMode = 'selectedDates' | 'dateRange' | 'stopPlan';
 
 type TimeRangeValue = {
   startTime: string;
@@ -183,6 +192,39 @@ function getDefaultFutureRange(slotDate: dayjs.Dayjs, now: dayjs.Dayjs): TimeRan
   };
 }
 
+function normalizeSelectedDates(dates: dayjs.Dayjs[]) {
+  return Array.from(
+    new Map(
+      dates
+        .filter((date) => date.isValid())
+        .map((date) => [date.format('YYYY-MM-DD'), date.startOf('day')]),
+    ).values(),
+  ).sort((left, right) => left.valueOf() - right.valueOf());
+}
+
+function buildDatesBetween(startDate: dayjs.Dayjs, endDate: dayjs.Dayjs) {
+  const start = startDate.isBefore(endDate, 'day') ? startDate.startOf('day') : endDate.startOf('day');
+  const end = startDate.isBefore(endDate, 'day') ? endDate.startOf('day') : startDate.startOf('day');
+  const dates: dayjs.Dayjs[] = [];
+  let cursor = start;
+  while (!cursor.isAfter(end, 'day')) {
+    dates.push(cursor);
+    cursor = cursor.add(1, 'day');
+  }
+  return dates;
+}
+
+function getCalendarCells(month: dayjs.Dayjs) {
+  const start = month.startOf('month').startOf('week');
+  return Array.from({ length: 42 }, (_, index) => start.add(index, 'day'));
+}
+
+function formatPlanPeriods(plan: SeatSlotPublishPlan) {
+  return plan.periods
+    .map((period) => `${period.startTime.slice(0, 5)}-${period.endTime.slice(0, 5)}`)
+    .join('、');
+}
+
 export default function AdminSeatSlotsPage() {
   const [form] = Form.useForm<PublishFormValues>();
   const [areas, setAreas] = useState<Area[]>([]);
@@ -193,19 +235,57 @@ export default function AdminSeatSlotsPage() {
   const [slotDate, setSlotDate] = useState(dayjs());
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [publishPlanLoading, setPublishPlanLoading] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelMode, setCancelMode] = useState<CancelMode>('selectedDates');
+  const [cancelRange, setCancelRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>(() => [dayjs(), dayjs()]);
+  const [cancelBlockAutoPublish, setCancelBlockAutoPublish] = useState(true);
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
+  const [cancelGeneratedSlots, setCancelGeneratedSlots] = useState(true);
+  const [cancellingOpenings, setCancellingOpenings] = useState(false);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
   const [reason, setReason] = useState('');
+  const [publishPlans, setPublishPlans] = useState<SeatSlotPublishPlan[]>([]);
   const [reasonAction, setReasonAction] = useState<{
     type: AdminSeatSlotActionType;
     slotId: number;
   } | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(() => dayjs().startOf('month'));
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [dragSelection, setDragSelection] = useState<{
+    startDate: dayjs.Dayjs;
+    mode: 'add' | 'remove';
+  } | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
   const watchedSeatIds = Form.useWatch('seatIds', form);
   const watchedTimeRanges = Form.useWatch('timeRanges', form);
+  const watchedSlotDates = Form.useWatch('slotDates', form);
 
   const dateText = useMemo(() => slotDate.format('YYYY-MM-DD'), [slotDate]);
   const selectedSeatIds = useMemo(() => watchedSeatIds ?? [], [watchedSeatIds]);
+  const selectedSlotDates = useMemo(() => normalizeSelectedDates(watchedSlotDates ?? [slotDate]), [slotDate, watchedSlotDates]);
+  const selectedSlotDateKeys = useMemo(
+    () => new Set(selectedSlotDates.map((date) => date.format('YYYY-MM-DD'))),
+    [selectedSlotDates],
+  );
+  const selectedDateSummary = useMemo(() => {
+    if (selectedSlotDates.length === 0) {
+      return '';
+    }
+    if (selectedSlotDates.length === 1) {
+      return selectedSlotDates[0].format('YYYY-MM-DD');
+    }
+    if (selectedSlotDates.length <= 3) {
+      return selectedSlotDates.map((date) => date.format('YYYY-MM-DD')).join('、');
+    }
+    return `${selectedSlotDates[0].format('YYYY-MM-DD')} 等 ${selectedSlotDates.length} 天`;
+  }, [selectedSlotDates]);
+  const publishDateCount = selectedSlotDates.length;
+  const activePublishPlans = useMemo(
+    () => publishPlans.filter((plan) => plan.status === 'ACTIVE'),
+    [publishPlans],
+  );
   const activeSeats = useMemo(
     () => seats.filter(isVisibleSeat).sort(compareSeats),
     [seats],
@@ -221,6 +301,7 @@ export default function AdminSeatSlotsPage() {
     () => getDefaultFutureRange(slotDate, now),
     [now, slotDate],
   );
+  const calendarCells = useMemo(() => getCalendarCells(calendarMonth), [calendarMonth]);
   const seatGroups = useMemo<SeatGroup[]>(() => {
     const groups = new Map<string, SeatGroup>();
     activeSeats.forEach((seat) => {
@@ -246,7 +327,7 @@ export default function AdminSeatSlotsPage() {
     () => (watchedTimeRanges ?? []).filter((range) => range?.startTime && range?.endTime).length,
     [watchedTimeRanges],
   );
-  const publishEstimateCount = selectedSeatIds.length * validPeriodCount;
+  const publishEstimateCount = selectedSeatIds.length * validPeriodCount * publishDateCount;
   const hasFuturePublishTime = startTimeOptions.length > 0;
   const watchedTimeRangeKeys = useMemo(
     () => (watchedTimeRanges ?? []).map((range) => `${range?.startTime ?? ''}-${range?.endTime ?? ''}`).join('|'),
@@ -292,33 +373,154 @@ export default function AdminSeatSlotsPage() {
     }
   }, [areaId, dateText, messageApi]);
 
+  const loadPublishPlans = useCallback(async (nextAreaId = areaId) => {
+    try {
+      const plans = await listSeatSlotPublishPlans(nextAreaId);
+      setPublishPlans(plans);
+      const firstActivePlan = plans.find((plan) => plan.status === 'ACTIVE');
+      setSelectedPlanId((currentPlanId) => {
+        if (currentPlanId && plans.some((plan) => plan.id === currentPlanId && plan.status === 'ACTIVE')) {
+          return currentPlanId;
+        }
+        return firstActivePlan?.id ?? null;
+      });
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '加载持续开放计划失败');
+    }
+  }, [areaId, messageApi]);
+
   async function publishSlots() {
     const values = await form.validateFields();
     const timeRanges = values.timeRanges.filter((range) => range?.startTime && range?.endTime);
-    const invalidPeriod = timeRanges.find((range) => isPastOrStartedPeriod(values.slotDate, range.startTime, now));
-    if (invalidPeriod) {
-      messageApi.warning(`${values.slotDate.format('YYYY-MM-DD')} ${invalidPeriod.startTime} 已开始或已过去，不能发布`);
+    const publishDates = normalizeSelectedDates(values.slotDates ?? []);
+    if (publishDates.length === 0) {
+      messageApi.warning('请选择开放日期');
       return;
     }
+    const firstPublishDate = publishDates[0];
+    const invalidPeriod = timeRanges.find((range) => isPastOrStartedPeriod(firstPublishDate, range.startTime, now));
+    if (invalidPeriod) {
+      messageApi.warning(`${firstPublishDate.format('YYYY-MM-DD')} ${invalidPeriod.startTime} 已开始或已过去，不能发布`);
+      return;
+    }
+    const periods = timeRanges.map((range) => ({
+      startTime: `${range.startTime}:00`,
+      endTime: `${range.endTime}:00`,
+    }));
     setPublishing(true);
     try {
-      const result = await publishSeatSlots({
-        areaId: values.areaId,
-        slotDate: values.slotDate.format('YYYY-MM-DD'),
-        periods: timeRanges.map((range) => ({
-          startTime: `${range.startTime}:00`,
-          endTime: `${range.endTime}:00`,
-        })),
-        seatIds: values.seatIds,
-      });
-      messageApi.success(`已发布 ${result.createdCount} 个时段，跳过 ${result.skippedCount} 个重复时段`);
+      if (publishDates.length > 1) {
+        const result = await publishSeatSlotsBatch({
+          areaId: values.areaId,
+          slotDates: publishDates.map((date) => date.format('YYYY-MM-DD')),
+          periods,
+          seatIds: values.seatIds,
+        });
+        messageApi.success(
+          `已开放 ${result.dateCount} 天，共发布 ${result.createdCount} 个时段，跳过 ${result.skippedCount} 个重复时段`,
+        );
+      } else {
+        const result = await publishSeatSlots({
+          areaId: values.areaId,
+          slotDate: firstPublishDate.format('YYYY-MM-DD'),
+          periods,
+          seatIds: values.seatIds,
+        });
+        messageApi.success(`已发布 ${result.createdCount} 个时段，跳过 ${result.skippedCount} 个重复时段`);
+      }
       setAreaId(values.areaId);
-      setSlotDate(values.slotDate);
-      await loadSlots(values.areaId, values.slotDate.format('YYYY-MM-DD'));
+      setSlotDate(firstPublishDate);
+      await loadSlots(values.areaId, firstPublishDate.format('YYYY-MM-DD'));
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '发布失败');
     } finally {
       setPublishing(false);
+    }
+  }
+
+  async function createContinuousPublishPlan() {
+    const values = await form.validateFields();
+    const publishDates = normalizeSelectedDates(values.slotDates ?? []);
+    if (publishDates.length === 0) {
+      messageApi.warning('请选择持续开放开始日期');
+      return;
+    }
+    const periods = values.timeRanges
+      .filter((range) => range?.startTime && range?.endTime)
+      .map((range) => ({
+        startTime: `${range.startTime}:00`,
+        endTime: `${range.endTime}:00`,
+      }));
+    setPublishPlanLoading(true);
+    try {
+      const plan = await createSeatSlotPublishPlan({
+        areaId: values.areaId,
+        startDate: publishDates[0].format('YYYY-MM-DD'),
+        endDate: null,
+        periods,
+        seatIds: values.seatIds,
+      });
+      messageApi.success(`已创建持续开放计划 #${plan.id}，系统会滚动生成后续开放时段`);
+      setAreaId(values.areaId);
+      await loadPublishPlans(values.areaId);
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '创建持续开放计划失败');
+    } finally {
+      setPublishPlanLoading(false);
+    }
+  }
+
+  async function runCancelOpenings() {
+    setCancellingOpenings(true);
+    try {
+      if (cancelMode === 'stopPlan') {
+        if (!selectedPlanId) {
+          messageApi.warning('请选择要停止的持续开放计划');
+          return;
+        }
+        const result = await stopSeatSlotPublishPlan(selectedPlanId, {
+          stopFromDate: cancelRange[0].format('YYYY-MM-DD'),
+          cancelGeneratedSlots,
+        });
+        const blockedText = result.blockedCount > 0
+          ? `，${result.blockedCount} 个已预约/占用时段已保留`
+          : '';
+        messageApi.success(`已停止持续开放计划，撤销 ${result.cancelledCount} 个空闲时段${blockedText}`);
+        setCancelModalOpen(false);
+        await loadPublishPlans();
+        await loadSlots();
+        return;
+      }
+
+      const result = await cancelSeatSlotsBatch(
+        cancelMode === 'selectedDates'
+          ? {
+              areaId,
+              slotDates: selectedSlotDates.map((date) => date.format('YYYY-MM-DD')),
+              blockAutoPublish: cancelBlockAutoPublish,
+              reason: '管理员撤销开放',
+            }
+          : {
+              areaId,
+              startDate: cancelRange[0].format('YYYY-MM-DD'),
+              endDate: cancelRange[1].format('YYYY-MM-DD'),
+              blockAutoPublish: cancelBlockAutoPublish,
+              reason: '管理员撤销开放',
+            },
+      );
+      const blockedText = result.blockedCount > 0
+        ? `，${result.blockedCount} 个已预约/占用时段已保留`
+        : '';
+      const autoPublishText = result.blockedAutoPublishDateCount > 0
+        ? `，并阻止 ${result.blockedAutoPublishDateCount} 天被持续计划重新开放`
+        : '';
+      messageApi.success(`已撤销 ${result.dateCount} 天内 ${result.cancelledCount} 个空闲时段${blockedText}${autoPublishText}`);
+      setCancelModalOpen(false);
+      await loadSlots();
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '撤销开放失败');
+    } finally {
+      setCancellingOpenings(false);
     }
   }
 
@@ -411,11 +613,83 @@ export default function AdminSeatSlotsPage() {
     form.setFieldValue('timeRanges', nextRanges);
   }
 
+  function setSelectedDates(nextDates: dayjs.Dayjs[]) {
+    const normalizedDates = normalizeSelectedDates(nextDates);
+    form.setFieldValue('slotDates', normalizedDates);
+    if (normalizedDates.length > 0) {
+      setSlotDate(normalizedDates[0]);
+    }
+  }
+
+  function applyCalendarDateSelection(targetDate: dayjs.Dayjs, mode: 'add' | 'remove') {
+    if (targetDate.isBefore(now, 'day')) {
+      return;
+    }
+    const nextDateKeys = new Set(selectedSlotDateKeys);
+    const rangeDates = dragSelection
+      ? buildDatesBetween(dragSelection.startDate, targetDate)
+      : [targetDate.startOf('day')];
+    rangeDates.forEach((date) => {
+      if (date.isBefore(now, 'day')) {
+        return;
+      }
+      const key = date.format('YYYY-MM-DD');
+      if (mode === 'add') {
+        nextDateKeys.add(key);
+      } else {
+        nextDateKeys.delete(key);
+      }
+    });
+    setSelectedDates(Array.from(nextDateKeys).map((key) => dayjs(key)));
+  }
+
+  function startCalendarDrag(targetDate: dayjs.Dayjs, event: PointerEvent<HTMLButtonElement>) {
+    if (targetDate.isBefore(now, 'day')) {
+      return;
+    }
+    if (event.currentTarget.setPointerCapture) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    const key = targetDate.format('YYYY-MM-DD');
+    const mode = selectedSlotDateKeys.has(key) ? 'remove' : 'add';
+    setDragSelection({ startDate: targetDate.startOf('day'), mode });
+    applyCalendarDateSelection(targetDate, mode);
+  }
+
+  function applyCalendarPointerMove(event: PointerEvent<HTMLElement>) {
+    if (!dragSelection) {
+      return;
+    }
+    const target = document
+      .elementFromPoint(event.clientX, event.clientY)
+      ?.closest<HTMLButtonElement>('[data-slot-date]');
+    const dateText = target?.dataset.slotDate;
+    if (!dateText) {
+      return;
+    }
+    applyCalendarDateSelection(dayjs(dateText), dragSelection.mode);
+  }
+
+  function clearSelectedDates() {
+    setSelectedDates([]);
+  }
+
+  function selectRestOfCurrentMonth() {
+    const monthEnd = calendarMonth.endOf('month');
+    const startDate = now.isAfter(calendarMonth.startOf('month'), 'day') ? now.startOf('day') : calendarMonth.startOf('month');
+    setSelectedDates([...selectedSlotDates, ...buildDatesBetween(startDate, monthEnd)]);
+  }
+
+  function selectNextThirtyDays() {
+    setSelectedDates([...selectedSlotDates, ...buildDatesBetween(now.startOf('day'), now.add(29, 'day').startOf('day'))]);
+  }
+
   useEffect(() => {
     const existingRanges = form.getFieldValue('timeRanges');
+    const existingDates = form.getFieldValue('slotDates');
     form.setFieldsValue({
       areaId,
-      slotDate,
+      slotDates: Array.isArray(existingDates) ? existingDates : [slotDate],
       seatIds: form.getFieldValue('seatIds') ?? [],
       timeRanges: existingRanges?.length
         ? existingRanges
@@ -430,14 +704,30 @@ export default function AdminSeatSlotsPage() {
       void loadAreas();
       void loadSeats();
       void loadSlots();
+      void loadPublishPlans();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadAreas, loadSeats, loadSlots]);
+  }, [loadAreas, loadPublishPlans, loadSeats, loadSlots]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(dayjs()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!dragSelection) {
+      return;
+    }
+    const stopDrag = () => setDragSelection(null);
+    window.addEventListener('mouseup', stopDrag);
+    window.addEventListener('pointerup', stopDrag);
+    window.addEventListener('pointercancel', stopDrag);
+    return () => {
+      window.removeEventListener('mouseup', stopDrag);
+      window.removeEventListener('pointerup', stopDrag);
+      window.removeEventListener('pointercancel', stopDrag);
+    };
+  }, [dragSelection]);
 
   useEffect(() => {
     const ranges = (form.getFieldValue('timeRanges') ?? []) as TimeRangeValue[];
@@ -527,18 +817,120 @@ export default function AdminSeatSlotsPage() {
                     onChange={(value) => {
                       setAreaId(value);
                       form.setFieldValue('seatIds', []);
+                      void loadPublishPlans(value);
                     }}
                   />
                 </Form.Item>
                 <Form.Item
-                  label="日期"
-                  name="slotDate"
-                  rules={[{ required: true, message: '请选择开放日期' }]}
+                  label="开放日期"
+                  name="slotDates"
+                  rules={[
+                    {
+                      validator: async (_, value?: dayjs.Dayjs[]) => {
+                        if (!value || value.length === 0) {
+                          throw new Error('请选择开放日期');
+                        }
+                      },
+                    },
+                  ]}
                 >
-                  <DatePicker
-                    disabledDate={(current) => Boolean(current && current.isBefore(now, 'day'))}
-                    onChange={(value) => setSlotDate(value ?? dayjs())}
-                  />
+                  <Popover
+                    arrow={false}
+                    content={(
+                      <div className="multi-date-picker">
+                        <div className="multi-date-picker-header">
+                          <Button
+                            aria-label="上个月"
+                            size="small"
+                            onClick={() => setCalendarMonth(calendarMonth.subtract(1, 'month'))}
+                          >
+                            ‹
+                          </Button>
+                          <Typography.Text strong>{calendarMonth.format('YYYY年 M月')}</Typography.Text>
+                          <Button
+                            aria-label="下个月"
+                            size="small"
+                            onClick={() => setCalendarMonth(calendarMonth.add(1, 'month'))}
+                          >
+                            ›
+                          </Button>
+                        </div>
+                        <div className="multi-date-picker-weekdays">
+                          {['日', '一', '二', '三', '四', '五', '六'].map((weekday) => (
+                            <span key={weekday}>{weekday}</span>
+                          ))}
+                        </div>
+                        <div
+                          className="multi-date-picker-grid"
+                          onMouseLeave={() => setDragSelection(null)}
+                          onPointerMove={applyCalendarPointerMove}
+                        >
+                          {calendarCells.map((date) => {
+                            const key = date.format('YYYY-MM-DD');
+                            const selected = selectedSlotDateKeys.has(key);
+                            const disabled = date.isBefore(now, 'day');
+                            return (
+                              <button
+                                key={key}
+                                type="button"
+                                className={[
+                                  'multi-date-picker-cell',
+                                  selected ? 'multi-date-picker-cell-selected' : '',
+                                  !date.isSame(calendarMonth, 'month') ? 'multi-date-picker-cell-muted' : '',
+                                  disabled ? 'multi-date-picker-cell-disabled' : '',
+                                ].filter(Boolean).join(' ')}
+                                aria-label={`${key}${selected ? ' 已选择' : ' 未选择'}`}
+                                aria-pressed={selected}
+                                data-slot-date={key}
+                                disabled={disabled}
+                                onPointerDown={(event) => startCalendarDrag(date, event)}
+                                onPointerEnter={() => {
+                                  if (dragSelection) {
+                                    applyCalendarDateSelection(date, dragSelection.mode);
+                                  }
+                                }}
+                              >
+                                {date.date()}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="multi-date-picker-footer">
+                          <Typography.Text type="secondary">已选 {publishDateCount} 天</Typography.Text>
+                          <Space wrap>
+                            <Button size="small" onClick={selectRestOfCurrentMonth}>
+                              选本月剩余
+                            </Button>
+                            <Button size="small" onClick={selectNextThirtyDays}>
+                              选未来 30 天
+                            </Button>
+                            <Button size="small" onClick={clearSelectedDates}>
+                              清空日期
+                            </Button>
+                          </Space>
+                        </div>
+                      </div>
+                    )}
+                    onOpenChange={setDatePickerOpen}
+                    open={datePickerOpen}
+                    placement="bottomLeft"
+                    trigger="click"
+                  >
+                    <button
+                      aria-label={`选择开放日期 ${selectedDateSummary || '未选择'}`}
+                      className="ant-picker multi-date-picker-trigger"
+                      type="button"
+                    >
+                      <span
+                        className={selectedDateSummary
+                          ? 'multi-date-picker-trigger-value'
+                          : 'multi-date-picker-trigger-placeholder'}
+                      >
+                        {selectedDateSummary || '请选择开放日期'}
+                      </span>
+                      <CalendarDays size={16} />
+                    </button>
+                  </Popover>
                 </Form.Item>
               </div>
             </div>
@@ -700,22 +1092,132 @@ export default function AdminSeatSlotsPage() {
                 预计发布 {publishEstimateCount} 个座位时段
               </Tag>
               <Typography.Text type="secondary">
-                {selectedSeatIds.length} 个座位 x {validPeriodCount} 个时间段
+                {publishDateCount} 天 x {selectedSeatIds.length} 个座位 x {validPeriodCount} 个时间段
               </Typography.Text>
+              {activePublishPlans.length > 0 ? (
+                <Tag color="blue">持续开放计划 {activePublishPlans.length} 个</Tag>
+              ) : null}
             </Space>
             <Space wrap>
               <Button type="primary" loading={publishing} disabled={!hasFuturePublishTime} onClick={publishSlots}>
                 发布时段
               </Button>
+              <Button loading={publishPlanLoading} onClick={createContinuousPublishPlan}>
+                一直开放
+              </Button>
               <Button loading={loading} onClick={() => loadSlots()}>
                 查询时段
+              </Button>
+              <Button danger loading={cancellingOpenings} onClick={() => setCancelModalOpen(true)}>
+                撤销开放
               </Button>
             </Space>
           </div>
         </Form>
       </div>
 
+      {activePublishPlans.length > 0 ? (
+        <div className="toolbar slot-plan-panel">
+          <Space align="center" size={8} wrap>
+            <Typography.Text strong>持续开放计划</Typography.Text>
+            {activePublishPlans.map((plan) => (
+              <Tag key={plan.id} color="blue">
+                #{plan.id} 自 {plan.startDate} 起 · {plan.seatIds.length} 座位 · {formatPlanPeriods(plan)}
+              </Tag>
+            ))}
+          </Space>
+        </div>
+      ) : null}
+
       <Table rowKey="id" loading={loading} dataSource={slots} columns={columns} pagination={false} />
+      <Modal
+        title="撤销开放"
+        open={cancelModalOpen}
+        okText="确认撤销"
+        cancelText="取消"
+        confirmLoading={cancellingOpenings}
+        onOk={runCancelOpenings}
+        onCancel={() => setCancelModalOpen(false)}
+      >
+        <Space direction="vertical" className="cancel-openings-form" size={14}>
+          <Radio.Group
+            value={cancelMode}
+            onChange={(event) => setCancelMode(event.target.value as CancelMode)}
+          >
+            <Space direction="vertical">
+              <Radio value="selectedDates">撤销当前已选日期</Radio>
+              <Radio value="dateRange">撤销一个日期范围</Radio>
+              <Radio value="stopPlan" disabled={activePublishPlans.length === 0}>
+                停止持续开放计划
+              </Radio>
+            </Space>
+          </Radio.Group>
+
+          {cancelMode === 'selectedDates' ? (
+            <Typography.Text type="secondary">
+              将撤销当前已选 {publishDateCount} 天内未被预约的空闲时段。
+            </Typography.Text>
+          ) : null}
+
+          {cancelMode === 'dateRange' ? (
+            <Space wrap>
+              <Input
+                type="date"
+                value={cancelRange[0].format('YYYY-MM-DD')}
+                onChange={(event) => setCancelRange([dayjs(event.target.value), cancelRange[1]])}
+              />
+              <Input
+                type="date"
+                value={cancelRange[1].format('YYYY-MM-DD')}
+                onChange={(event) => setCancelRange([cancelRange[0], dayjs(event.target.value)])}
+              />
+            </Space>
+          ) : null}
+
+          {cancelMode === 'stopPlan' ? (
+            <Space direction="vertical" className="cancel-openings-form" size={10}>
+              <Select
+                value={selectedPlanId ?? undefined}
+                placeholder="选择持续开放计划"
+                options={activePublishPlans.map((plan) => ({
+                  label: `#${plan.id} 自 ${plan.startDate} 起 · ${plan.seatIds.length} 座位`,
+                  value: plan.id,
+                }))}
+                onChange={setSelectedPlanId}
+              />
+              <Input
+                type="date"
+                value={cancelRange[0].format('YYYY-MM-DD')}
+                onChange={(event) => setCancelRange([dayjs(event.target.value), cancelRange[1]])}
+              />
+              <label className="checkbox-line">
+                <input
+                  checked={cancelGeneratedSlots}
+                  type="checkbox"
+                  onChange={(event) => setCancelGeneratedSlots(event.target.checked)}
+                />
+                同时撤销停止日期之后已经生成的空闲时段
+              </label>
+            </Space>
+          ) : null}
+
+          {cancelMode !== 'stopPlan' ? (
+            <label className="checkbox-line">
+              <input
+                checked={cancelBlockAutoPublish}
+                type="checkbox"
+                onChange={(event) => setCancelBlockAutoPublish(event.target.checked)}
+              />
+              阻止持续开放计划在这些日期重新生成开放时段
+            </label>
+          ) : null}
+
+          <Typography.Text type="secondary">
+            已预约、使用中、锁位或异常占用的时段会被保留，只撤销空闲时段。
+          </Typography.Text>
+        </Space>
+      </Modal>
+
       <Modal
         title={
           reasonAction?.type === 'release'

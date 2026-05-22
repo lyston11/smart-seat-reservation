@@ -108,6 +108,43 @@ export type PublishSeatSlotsResult = {
   createdSlots: SeatSlot[];
 };
 
+export type PublishSeatSlotsBatchResult = {
+  dateCount: number;
+  createdCount: number;
+  skippedCount: number;
+};
+
+export type SeatSlotPublishPlan = {
+  id: number;
+  areaId: number;
+  startDate: string;
+  endDate: string | null;
+  status: 'ACTIVE' | 'PAUSED';
+  periods: PublishSeatSlotPeriod[];
+  seatIds: number[];
+};
+
+export type CancelSeatSlotsByDateResult = {
+  areaId: number;
+  slotDate: string;
+  cancelledCount: number;
+  blockedCount: number;
+};
+
+export type CancelSeatSlotsBatchResult = {
+  areaId: number;
+  dateCount: number;
+  cancelledCount: number;
+  blockedCount: number;
+  blockedAutoPublishDateCount: number;
+};
+
+export type StopSeatSlotPublishPlanResult = {
+  planId: number;
+  cancelledCount: number;
+  blockedCount: number;
+};
+
 export type PublishSeatSlotPeriod = {
   startTime: string;
   endTime: string;

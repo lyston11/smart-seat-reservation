@@ -49,8 +49,16 @@ public class AutoSeatSlotPublishService {
         int seatCount = 0;
         int createdCount = 0;
         int skippedCount = 0;
+        AutoSeatSlotPublishResult plannedResult = seatSlotService.publishPlannedSlots(slotDate);
+        areaCount += plannedResult.areaCount();
+        seatCount += plannedResult.seatCount();
+        createdCount += plannedResult.createdCount();
+        skippedCount += plannedResult.skippedCount();
 
         for (Area area : areaMapper.findActiveAreasForAutoPublish()) {
+            if (seatSlotService.hasPublishException(area.getId(), slotDate)) {
+                continue;
+            }
             if (!canAutoPublish(area)) {
                 continue;
             }
