@@ -24,6 +24,7 @@ export default function AdminSeatSlotActions({
   const canRelease =
     slot.status === 'RESERVED'
     || slot.status === 'USING'
+    || slot.status === 'LOCKED'
     || (slot.status === 'ABNORMAL' && Boolean(slot.reservationId));
 
   return (

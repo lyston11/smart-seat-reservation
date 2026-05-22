@@ -586,6 +586,8 @@ class ReservationServiceTest {
         assertThat(response.seatLockUsedCount()).isEqualTo(1);
         assertThat(response.lockedUntilAt()).isEqualTo(LocalDateTime.of(TODAY, LocalTime.of(19, 0)));
         assertThat(checkinRecordMapper.insertedRecord.getAction()).isEqualTo("SEAT_LOCK");
+        assertThat(seatSlotCacheService.evictedAreaId).isEqualTo(1L);
+        assertThat(seatSlotCacheService.evictedDate).isEqualTo(TODAY);
     }
 
     @Test
@@ -618,6 +620,8 @@ class ReservationServiceTest {
         assertThat(response.lockedUntilAt()).isNull();
         assertThat(reservationMapper.markLockReactivatedIp).isEqualTo("10.10.1.20");
         assertThat(checkinRecordMapper.insertedRecord.getAction()).isEqualTo("SEAT_LOCK_REACTIVATE");
+        assertThat(seatSlotCacheService.evictedAreaId).isEqualTo(1L);
+        assertThat(seatSlotCacheService.evictedDate).isEqualTo(TODAY);
     }
 
     @Test

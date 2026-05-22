@@ -748,6 +748,127 @@ describe('App', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/seats?areaId=1', expect.any(Object));
   });
 
+  it('switches reservation area from the indoor map and loads that area seats', async () => {
+    storeStudentSession();
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('/api/areas')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                name: 'A 楼北自习区',
+                floor: '1F',
+                description: null,
+                status: 'ACTIVE',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
+              },
+              {
+                id: 2,
+                name: 'B 楼南自习区',
+                floor: '1F',
+                description: null,
+                status: 'ACTIVE',
+                openTime: '09:00:00',
+                closeTime: '21:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
+              },
+              {
+                id: 3,
+                name: 'A/B 连廊学习区',
+                floor: '1F',
+                description: 'connector',
+                status: 'ACTIVE',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/seats?')) {
+        const areaId = new URL(url, 'http://localhost').searchParams.get('areaId');
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data:
+              areaId === '2'
+                ? [
+                    {
+                      id: 20,
+                      areaId: 2,
+                      tableId: 20,
+                      tableNo: 'B01',
+                      tableRowNo: 1,
+                      tableColumnNo: 1,
+                      tableDisplayOrder: 1,
+                      tablePositionX: 180,
+                      tablePositionY: 100,
+                      tableWidthPx: 260,
+                      tableHeightPx: 96,
+                      tableRotationDeg: 0,
+                      seatNo: 'B-001',
+                      seatLabel: 'B座1号',
+                      seatSide: 'NORTH',
+                      seatOrder: 1,
+                      rowNo: 1,
+                      columnNo: 1,
+                      displayOrder: 1,
+                      status: 'ACTIVE',
+                    },
+                  ]
+                : [],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/reservations/rules')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: makeReservationRules(),
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/student/seats']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('室内导航')).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: /B 楼南自习区/ }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/seats?areaId=2', expect.any(Object));
+    });
+    expect(await screen.findByRole('button', { name: /B座1号/ })).toBeTruthy();
+  });
+
   it('renders the student home dashboard with active reservation details', async () => {
     storeStudentSession();
 

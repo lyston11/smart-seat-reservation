@@ -264,6 +264,7 @@ public class ReservationService {
             throw new BusinessException("SEAT_LOCK_FAILED", "Seat cannot be locked");
         }
 
+        evictSlotCache(slot);
         recordAction(reservationId, userId, CheckinAction.SEAT_LOCK, now);
         Reservation updated = requireReservation(reservationId);
         return toResponse(updated);
@@ -314,6 +315,7 @@ public class ReservationService {
             throw new BusinessException("SEAT_LOCK_REACTIVATE_FAILED", "Locked seat cannot be reactivated");
         }
 
+        evictSlotCache(slot);
         recordAction(reservation.getId(), userId, CheckinAction.SEAT_LOCK_REACTIVATE, now);
         Reservation updated = requireReservation(reservation.getId());
         log.info(

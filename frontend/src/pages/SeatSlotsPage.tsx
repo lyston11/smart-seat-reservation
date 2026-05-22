@@ -12,6 +12,7 @@ import {
   createReservation,
   listUserReservations,
 } from '../api/reservations';
+import CampusIndoorMap from '../components/CampusIndoorMap';
 import SeatMap from '../components/SeatMap';
 import type { ReservationResult } from '../types/reservation';
 import type { Area, Seat, SeatSlot } from '../types/seat';
@@ -300,6 +301,8 @@ export default function SeatSlotsPage() {
   return (
     <div className="page">
       {contextHolder}
+      <CampusIndoorMap areas={activeAreas} selectedAreaId={areaId} onSelectArea={applySelectedArea} />
+
       <div className="toolbar">
         <Form layout="inline">
           <Form.Item label="区域">
@@ -738,6 +741,7 @@ function seatStatusText(status: SeatSlot['status']) {
     AVAILABLE: '可预约',
     RESERVED: '已预约',
     USING: '使用中',
+    LOCKED: '已锁位',
     ABNORMAL: '异常占用',
     UNPUBLISHED: '未开放',
   };
@@ -749,6 +753,7 @@ function seatStatusColor(status: SeatSlot['status']) {
     AVAILABLE: 'green',
     RESERVED: 'blue',
     USING: 'orange',
+    LOCKED: 'purple',
     ABNORMAL: 'red',
     UNPUBLISHED: 'default',
   };

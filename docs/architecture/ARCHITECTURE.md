@@ -75,6 +75,7 @@ CHECKED_IN -> LOCKED -> LOCK_RELEASED
 - `seat_slots` 表表示某个座位时段的当前库存状态，释放后应回到 `AVAILABLE`。
 - `reservations` 表保存预约历史，取消、过期、签退等终态记录在这里。
 - `checkin_records` 表保存签到、签退、取消、过期释放、WiFi 在线心跳、WiFi 离线释放、锁位、锁位恢复和锁位释放等动作审计。
+- 座位图响应中的 `LOCKED` 是展示状态：数据库中的 `seat_slots.status` 仍保持 `USING`，接口查询时根据关联 `reservations.status = LOCKED` 派生为 `LOCKED`，用于学生端和管理端独立展示“已锁位”。
 
 桌码签到和座位码签到复用普通签到的状态流转：
 
@@ -95,6 +96,8 @@ seat_slots:   USING -> USING
 使用中预约需要持续通过 `POST /api/reservations/{reservationId}/wifi-presence` 刷新 `last_wifi_seen_at`。定时任务按 `wifi_offline_release_minutes` 扫描超时未刷新记录，若座位时段尚未结束，将预约置为 `WIFI_RELEASED` 并把座位时段释放为 `AVAILABLE`。
 
 预约规则采用“前一日 18:00 开放次日预约”的模型，学生端仍选择连续开始/结束时间，不做三段多选。管理员可以按上午、下午、晚上分段发布 `seat_slots`，只要同一座位的可用窗口首尾相接，学生端和后端都会把它合并为连续可预约范围。后端按单个连续预约是否跨过业务边界计算锁位次数：跨过 12:00 记 1 次，跨过 18:00 再记 1 次。分开的两笔预约不会合并计算锁位权益。
+
+系统会按 `smart-seat.auto-seat-slots.zone-id`，默认 `Asia/Shanghai`，在达到 `reservation-open-hour` 后定时为次日自动发布开放时段。自动发布只处理启用区域和启用座位，使用区域的 `open_time` 到 `close_time` 作为完整可预约窗口，并复用 `SeatSlotService.publishSeatSlots` 保持重复执行幂等。区域时间为空、结束不晚于开始或不是半小时边界时会跳过该区域，避免单个异常配置影响其他区域。
 
 锁位用于学生临时离开座位。只有 `CHECKED_IN` 预约可进入 `LOCKED`，锁位期间暂停 WiFi 离线释放；学生正式流程中扫描座位固定二维码恢复为 `CHECKED_IN`，也可以主动释放为 `LOCK_RELEASED`。锁位到期或预约结束时间先到时，定时任务必须强制释放座位时段。预约 ID 直签和直连恢复接口只作为开发测试入口保留，不能绕过动态签到码、时间窗或校园网 IP 校验。
 

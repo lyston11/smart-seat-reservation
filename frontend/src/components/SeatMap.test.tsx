@@ -239,4 +239,25 @@ describe('SeatMap', () => {
     expect(seat).toHaveProperty('disabled', true);
     expect(screen.getByText('未开放')).toBeTruthy();
   });
+
+  it('renders locked seats as an independent disabled status', () => {
+    render(
+      <SeatMap
+        slots={[
+          makeSlot({
+            id: 51,
+            seatId: 51,
+            seatNo: 'A-051',
+            seatLabel: '51号',
+            status: 'LOCKED',
+          }),
+        ]}
+        onReserve={vi.fn()}
+      />,
+    );
+
+    const seat = screen.getByRole('button', { name: /51号/ });
+    expect(seat).toHaveProperty('disabled', true);
+    expect(screen.getByText('已锁位')).toBeTruthy();
+  });
 });

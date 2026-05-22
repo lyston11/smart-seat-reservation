@@ -28,6 +28,20 @@ public interface SeatMapper extends BaseMapper<Seat> {
     List<Seat> findByAreaId(@Param("areaId") Long areaId);
 
     @Select("""
+            SELECT s.id, s.area_id, s.table_id, s.seat_no, s.seat_label, s.seat_side, s.seat_order,
+                   s.row_no, s.column_no, s.display_order, s.status, s.created_at, s.updated_at
+            FROM seats s
+            JOIN tables t
+              ON t.id = s.table_id
+             AND t.status = 'ACTIVE'
+            WHERE s.area_id = #{areaId}
+              AND s.status = 'ACTIVE'
+            ORDER BY COALESCE(t.display_order, 9999), t.table_no,
+                     COALESCE(s.seat_order, 9999), s.seat_no
+            """)
+    List<Seat> findActiveByAreaId(@Param("areaId") Long areaId);
+
+    @Select("""
             SELECT COUNT(*)
             FROM seats
             WHERE area_id = #{areaId}

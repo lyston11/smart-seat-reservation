@@ -2,6 +2,7 @@ package com.lyston.smartseat;
 
 import com.lyston.smartseat.network.NetworkProperties;
 import com.lyston.smartseat.reservation.ReservationRuleProperties;
+import com.lyston.smartseat.seat.AutoSeatSlotPublishProperties;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -10,7 +11,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @MapperScan("com.lyston.smartseat")
 @EnableScheduling
-@EnableConfigurationProperties({ReservationRuleProperties.class, NetworkProperties.class})
+@EnableConfigurationProperties({
+        ReservationRuleProperties.class,
+        NetworkProperties.class,
+        AutoSeatSlotPublishProperties.class
+})
 @SpringBootApplication
 public class SmartSeatApplication {
 

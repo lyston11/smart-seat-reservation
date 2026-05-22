@@ -41,6 +41,7 @@
 - 管理员维护类动作放在 `/api/admin/**`。
 - 资源 CRUD 保持清晰名词路径，不把复杂业务动作塞进资源列表接口。
 - 新增 Controller 时优先复用 `ApiPaths`，不要直接硬编码完整 `/api/...` 字符串。
+- `GET /api/seat-slots` 返回的 `status` 允许包含展示态 `LOCKED`。该值从关联 `reservations.status` 派生，表示座位正在锁位中；持久化的 `seat_slots.status` 仍保持原有库存状态机。
 
 ## 3. 前端 API 模块边界
 
