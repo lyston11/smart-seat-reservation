@@ -12,10 +12,15 @@ public record UpdateAreaRequest(
         @NotNull String status,
         LocalTime openTime,
         LocalTime closeTime,
-        @Size(max = 512) String checkinIpCidrs
+        @Size(max = 512) String checkinIpCidrs,
+        @Size(max = 32) String buildingCode,
+        @Size(max = 32) String floorCode,
+        @Size(max = 32) String areaType,
+        Integer mapX,
+        Integer mapY
 ) {
 
     public UpdateAreaRequest(String name, String floor, String description, String status) {
-        this(name, floor, description, status, null, null, null);
+        this(name, floor, description, status, null, null, null, null, null, null, null, null);
     }
 }

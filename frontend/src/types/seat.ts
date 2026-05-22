@@ -2,6 +2,11 @@ export type Area = {
   id: number;
   name: string;
   floor: string | null;
+  buildingCode?: AreaBuildingCode | null;
+  floorCode?: string | null;
+  areaType?: AreaMapType | null;
+  mapX?: number | null;
+  mapY?: number | null;
   description: string | null;
   status: AreaStatus;
   openTime: string;
@@ -10,6 +15,10 @@ export type Area = {
 };
 
 export type AreaStatus = 'ACTIVE' | 'INACTIVE';
+
+export type AreaBuildingCode = 'A' | 'B' | 'CONNECTOR';
+
+export type AreaMapType = 'STUDY_ROOM' | 'HALL' | 'CORRIDOR' | 'CONNECTOR';
 
 export type Seat = {
   id: number;

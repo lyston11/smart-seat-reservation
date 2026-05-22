@@ -2274,3 +2274,33 @@
 
 ### 对其他成员的影响
 - 后续在 MyBatis 注解 SQL 中使用 `<script>` 动态标签时，比较符需要写成 `&lt;` / `&lt;=` / `&gt;` / `&gt;=`，不能直接写裸 `<`。
+
+## 2026-05-22
+
+### 任务
+- Issue: 暂无
+- 分支: feature/merge-amorlx-area-map-metadata
+- 目标: 将 `feature/AmorLX-area-map-metadata` 合入最新 `main`，解决冲突并准备通过 PR 合并。
+
+### 本次改动
+- 合并 AmorLX 区域地图元数据分支，保留区域接口新增的 `buildingCode`、`floorCode`、`areaType`、`mapX`、`mapY` 能力。
+- 解决 `docs/architecture/API_CONTRACT.md` 冲突，同时保留开放时段持续计划接口说明和区域地图元数据接口说明。
+- 发现 `main` 已有 `V15__add_seat_slot_publish_plans.sql`，将 AmorLX 新增的区域地图元数据迁移顺延为 `V16__add_area_map_metadata.sql`，避免 Flyway 版本冲突。
+- 同步修正 AmorLX 日志和计划文档中的迁移版本号。
+
+### 涉及文件
+- docs/architecture/API_CONTRACT.md
+- backend/src/main/resources/db/migration/V16__add_area_map_metadata.sql
+- docs/dev-logs/AmorLX.md
+- docs/dev-logs/lyston11.md
+- docs/plans/2026-05-22-area-map-metadata-design.md
+- docs/plans/2026-05-22-area-map-metadata.md
+
+### 验证方式
+- 待运行合并后的后端测试、前端测试、lint、build 和 `git diff --check`。
+
+### 遗留问题
+- 按项目规范不直接 push 到 `main`，本次会推送合并分支后通过 PR 合并。
+
+### 对其他成员的影响
+- 后续新增 Flyway 迁移需要先看最新 `main` 的最大版本号，避免多个功能分支同时使用同一个版本号。

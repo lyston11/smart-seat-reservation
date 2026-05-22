@@ -8,14 +8,16 @@ import org.apache.ibatis.annotations.Select;
 public interface AreaMapper extends BaseMapper<Area> {
 
     @Select("""
-            SELECT id, name, floor, description, status, open_time, close_time, checkin_ip_cidrs, created_at, updated_at
+            SELECT id, name, floor, building_code, floor_code, area_type, map_x, map_y,
+                   description, status, open_time, close_time, checkin_ip_cidrs, created_at, updated_at
             FROM areas
             ORDER BY id
             """)
     List<Area> findAllOrderById();
 
     @Select("""
-            SELECT id, name, floor, description, status, open_time, close_time, checkin_ip_cidrs, created_at, updated_at
+            SELECT id, name, floor, building_code, floor_code, area_type, map_x, map_y,
+                   description, status, open_time, close_time, checkin_ip_cidrs, created_at, updated_at
             FROM areas
             WHERE status = 'ACTIVE'
             ORDER BY id
