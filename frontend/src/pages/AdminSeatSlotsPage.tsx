@@ -915,6 +915,7 @@ export default function AdminSeatSlotsPage() {
                     open={datePickerOpen}
                     placement="bottomLeft"
                     trigger="click"
+                    getPopupContainer={(triggerNode) => triggerNode.parentElement ?? document.body}
                   >
                     <button
                       aria-label={`选择开放日期 ${selectedDateSummary || '未选择'}`}

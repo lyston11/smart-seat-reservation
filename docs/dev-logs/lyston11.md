@@ -4,6 +4,32 @@
 
 ### 任务
 - Issue: 暂无
+- 分支: fix/popup-container-layering
+- 目标: 修复管理员开放时段页面下拉框、日期选择弹层和表单区域不在同一视觉层的问题。
+
+### 本次改动
+- 前端全局 `ConfigProvider` 增加 `getPopupContainer`，让 Ant Design 的 Select、DatePicker、Popover 等弹层优先挂载到触发元素父级，避免默认挂到 `body` 后脱离页面滚动容器。
+- 管理员开放时段自定义多日期 `Popover` 显式挂载到触发按钮父级，保证日期面板和普通下拉框使用一致的定位层。
+- 整理自定义日期弹层的 `getPopupContainer` 写法，保持代码格式和可读性。
+
+### 涉及文件
+- frontend/src/main.tsx
+- frontend/src/pages/AdminSeatSlotsPage.tsx
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式问题。
+
+### 遗留问题
+- 该修复统一了解决弹层挂载层级问题；如果后续新增特殊滚动容器中的弹层组件，需要继续确认弹层挂载点是否和触发控件处于同一定位层。
+
+### 对其他成员的影响
+- 新增 Ant Design 弹层类组件时优先沿用全局 `ConfigProvider` 行为；如果组件位于独立滚动或固定区域内，再在组件级补充更精确的挂载容器。
+
+### 任务
+- Issue: 暂无
 - 分支: feature/lyston11-multi-day-seat-slots
 - 目标: 优化管理员开放时段发布体验，移除“单日/多日”显式模式和固定 180 天限制，改为直接选择日期并支持滑动选择、滑动取消、隔日选择和按日撤销开放。
 
