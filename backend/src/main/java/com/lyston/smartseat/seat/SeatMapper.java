@@ -1,9 +1,11 @@
 package com.lyston.smartseat.seat;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 public interface SeatMapper extends BaseMapper<Seat> {
 
@@ -71,4 +73,17 @@ public interface SeatMapper extends BaseMapper<Seat> {
             WHERE s.id = #{seatId}
             """)
     Seat findByIdWithQrToken(@Param("seatId") Long seatId);
+
+    @Update("""
+            UPDATE seats
+            SET qr_token = #{qrToken},
+                updated_at = #{now}
+            WHERE id = #{seatId}
+              AND (qr_token IS NULL OR qr_token = '')
+            """)
+    int updateMissingQrToken(
+            @Param("seatId") Long seatId,
+            @Param("qrToken") String qrToken,
+            @Param("now") LocalDateTime now
+    );
 }

@@ -2124,3 +2124,33 @@
 
 ### 对其他成员的影响
 - 管理员可以继续按上午/下午/晚上模板发布，只要时间连续，学生端可以一次选择跨段预约并按整笔预约计算锁位权益。
+
+## 2026-05-22
+
+### 任务
+- Issue: 暂无
+- 分支: main
+- 目标: 修复管理员座位管理页点击“座位码”时 `/api/seats/{seatId}/checkin-qr` 返回 500 的问题。
+
+### 本次改动
+- 座位码接口支持旧座位数据兜底：如果 `qr_token` 为空，会自动生成稳定 token 并写回 `seats` 表。
+- `SeatMapper` 新增 `updateMissingQrToken` 原子更新，避免重复覆盖已有座位码。
+- 新增 `V14__repair_missing_seat_qr_tokens.sql`，启动时补齐历史座位缺失的 `qr_token`，并兼容缺列/缺索引的本地旧库。
+- 补充 `SeatServiceTest`，覆盖座位码 token 缺失时自动补齐并返回扫码路径。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/seat/SeatMapper.java
+- backend/src/main/java/com/lyston/smartseat/seat/SeatService.java
+- backend/src/main/resources/db/migration/V14__repair_missing_seat_qr_tokens.sql
+- backend/src/test/java/com/lyston/smartseat/seat/SeatServiceTest.java
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 79 个测试通过。
+- 已运行 `git diff --check`，未发现空白字符问题。
+
+### 遗留问题
+- 如果本地后端已经在旧代码下启动，需要拉取本提交后重启后端，让 Flyway 执行 V14 修复历史数据。
+
+### 对其他成员的影响
+- 旧数据库里已有座位无需手动补 `qr_token`，启动后会自动修复；新建座位仍在创建时生成 token。
