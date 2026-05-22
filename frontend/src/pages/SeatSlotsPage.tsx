@@ -29,6 +29,7 @@ import {
   type NormalizedReservationRule,
 } from '../utils/reservationRules';
 import { buildStudentTimeOptions, type StudentTimeOption } from '../utils/studentTimeOptions';
+import { getSeatDisplayLabelInSlots, getSeatPathText } from '../utils/seatDisplay';
 
 export default function SeatSlotsPage() {
   const [areas, setAreas] = useState<Area[]>([]);
@@ -126,6 +127,8 @@ export default function SeatSlotsPage() {
     () => visibleSlots.find((slot) => slot.seatId === selectedSeatId) ?? null,
     [selectedSeatId, visibleSlots],
   );
+  const selectedAreaFloorText = selectedArea?.floorCode ?? selectedArea?.floor ?? '未选择';
+  const selectedSeatPathText = selectedSlot ? getSeatPathText(selectedSlot, visibleSlots) : '未选择座位';
 
   function restoreActiveReservation(reservations: ReservationResult[]) {
     const active = reservations.find((reservation) =>
@@ -334,6 +337,33 @@ export default function SeatSlotsPage() {
         </Form>
       </div>
 
+      <div className="student-reservation-path" aria-label="选择路径">
+        <div className="student-reservation-path-header">
+          <strong>选择路径</strong>
+          <span>从楼层到桌座连续确认</span>
+        </div>
+        <div className="student-reservation-path-steps">
+          <div className="student-reservation-path-step">
+            <span>楼层</span>
+            <strong>{selectedAreaFloorText}</strong>
+          </div>
+          <div className="student-reservation-path-step">
+            <span>区域</span>
+            <strong>{selectedArea?.name ?? '未选择区域'}</strong>
+          </div>
+          <div className="student-reservation-path-step">
+            <span>预约时段</span>
+            <strong>
+              {dateText} {validStartTime}-{validEndTime}
+            </strong>
+          </div>
+          <div className="student-reservation-path-step student-reservation-path-step-active">
+            <span>桌座</span>
+            <strong>{selectedSeatPathText}</strong>
+          </div>
+        </div>
+      </div>
+
       <div className="student-summary-grid">
         <Card>
           <Statistic title="可预约座位" value={availableSeatCount} suffix="个" />
@@ -392,8 +422,7 @@ export default function SeatSlotsPage() {
               <Space orientation="vertical" size={12} className="student-seat-panel-stack">
                 <Space wrap>
                   <Typography.Text strong>
-                    {selectedSlot.seatNo ?? `座位 ${selectedSlot.seatId}`}
-                    {selectedSlot.seatLabel ? ` (${selectedSlot.seatLabel})` : ''}
+                    {getSeatDisplayLabelInSlots(selectedSlot, visibleSlots)}
                   </Typography.Text>
                   <Tag color={seatStatusColor(selectedSlot.status)}>
                     {seatStatusText(selectedSlot.status)}

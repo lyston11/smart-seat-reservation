@@ -101,13 +101,13 @@ describe('SeatMap', () => {
 
     const seatButtons = within(table).getAllByRole('button');
     expect(seatButtons.map((button) => button.textContent)).toEqual([
-      expect.stringContaining('北侧 1'),
-      expect.stringContaining('西侧 1'),
-      expect.stringContaining('东侧 1'),
+      expect.stringContaining('1号'),
+      expect.stringContaining('2号'),
+      expect.stringContaining('3号'),
     ]);
 
-    const availableSeat = within(table).getByRole('button', { name: /西侧 1/ });
-    const reservedSeat = within(table).getByRole('button', { name: /东侧 1/ });
+    const availableSeat = within(table).getByRole('button', { name: /2号/ });
+    const reservedSeat = within(table).getByRole('button', { name: /3号/ });
 
     expect((availableSeat as HTMLButtonElement).disabled).toBe(false);
     expect((reservedSeat as HTMLButtonElement).disabled).toBe(true);
@@ -193,6 +193,147 @@ describe('SeatMap', () => {
     expect(within(table).getByText('4号')).toBeTruthy();
   });
 
+  it('shows zoom controls for coordinate layouts and scales the room canvas', () => {
+    render(
+      <SeatMap
+        slots={[
+          makeSlot({
+            id: 1,
+            seatId: 1,
+            tableNo: 'T01',
+            tablePositionX: 120,
+            tablePositionY: 80,
+            tableWidthPx: 260,
+            tableHeightPx: 96,
+            seatSide: 'NORTH',
+          }),
+          makeSlot({
+            id: 2,
+            seatId: 2,
+            tableId: 2,
+            tableNo: 'T02',
+            tablePositionX: 520,
+            tablePositionY: 80,
+            tableWidthPx: 96,
+            tableHeightPx: 260,
+            seatSide: 'WEST',
+          }),
+        ]}
+        onReserve={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText('座位图缩放控制')).toBeTruthy();
+    expect(screen.getByText('100%')).toBeTruthy();
+
+    const content = screen.getByTestId('seat-map-coordinate-content');
+    expect(content.style.transform).toBe('scale(1)');
+
+    fireEvent.click(screen.getByLabelText('放大座位图'));
+    expect(screen.getByText('110%')).toBeTruthy();
+    expect(content.style.transform).toBe('scale(1.1)');
+
+    fireEvent.click(screen.getByLabelText('缩小座位图'));
+    fireEvent.click(screen.getByLabelText('缩小座位图'));
+    expect(screen.getByText('90%')).toBeTruthy();
+    expect(content.style.transform).toBe('scale(0.9)');
+
+    fireEvent.click(screen.getByLabelText('适配座位图'));
+    expect(screen.getByText('100%')).toBeTruthy();
+    expect(content.style.transform).toBe('scale(1)');
+  });
+
+  it('marks horizontal, vertical, and rotated coordinate tables for realistic placements', () => {
+    render(
+      <SeatMap
+        slots={[
+          makeSlot({
+            id: 1,
+            seatId: 1,
+            tableNo: '横向桌',
+            tablePositionX: 120,
+            tablePositionY: 80,
+            tableWidthPx: 280,
+            tableHeightPx: 96,
+            tableRotationDeg: 0,
+            seatSide: 'NORTH',
+          }),
+          makeSlot({
+            id: 2,
+            seatId: 2,
+            tableId: 2,
+            tableNo: '侧向桌',
+            tablePositionX: 500,
+            tablePositionY: 120,
+            tableWidthPx: 96,
+            tableHeightPx: 260,
+            tableRotationDeg: 90,
+            seatSide: 'WEST',
+          }),
+        ]}
+        onReserve={vi.fn()}
+      />,
+    );
+
+    const horizontalTable = screen.getByLabelText('横向桌');
+    const verticalTable = screen.getByLabelText('侧向桌');
+
+    expect(horizontalTable.className).toContain('seat-table-horizontal');
+    expect(verticalTable.className).toContain('seat-table-vertical');
+    expect(verticalTable.className).toContain('seat-table-rotated');
+    expect((verticalTable as HTMLElement).style.getPropertyValue('--table-rotation')).toBe('90deg');
+  });
+
+  it('labels seats from 1 within every table instead of using global seat labels', () => {
+    render(
+      <SeatMap
+        slots={[
+          makeSlot({
+            id: 1,
+            seatId: 41,
+            tableId: 101,
+            tableNo: 'T01',
+            seatNo: 'A-041',
+            seatLabel: '41号',
+            seatSide: 'NORTH',
+            seatOrder: 1,
+          }),
+          makeSlot({
+            id: 2,
+            seatId: 42,
+            tableId: 101,
+            tableNo: 'T01',
+            seatNo: 'A-042',
+            seatLabel: '42号',
+            seatSide: 'SOUTH',
+            seatOrder: 2,
+          }),
+          makeSlot({
+            id: 3,
+            seatId: 91,
+            tableId: 202,
+            tableNo: 'T02',
+            tableDisplayOrder: 2,
+            seatNo: 'B-091',
+            seatLabel: '91号',
+            seatSide: 'NORTH',
+            seatOrder: 1,
+          }),
+        ]}
+        onReserve={vi.fn()}
+      />,
+    );
+
+    const firstTable = screen.getByLabelText('T01');
+    const secondTable = screen.getByLabelText('T02');
+
+    expect(within(firstTable).getByRole('button', { name: /1号/ })).toBeTruthy();
+    expect(within(firstTable).getByRole('button', { name: /2号/ })).toBeTruthy();
+    expect(within(firstTable).queryByRole('button', { name: /41号/ })).toBeNull();
+    expect(within(secondTable).getByRole('button', { name: /1号/ })).toBeTruthy();
+    expect(within(secondTable).queryByRole('button', { name: /91号/ })).toBeNull();
+  });
+
   it('renders a fallback table label for legacy seats without table data', () => {
     render(
       <SeatMap
@@ -235,7 +376,7 @@ describe('SeatMap', () => {
       />,
     );
 
-    const seat = screen.getByRole('button', { name: /41号/ });
+    const seat = screen.getByRole('button', { name: /1号/ });
     expect(seat).toHaveProperty('disabled', true);
     expect(screen.getByText('未开放')).toBeTruthy();
   });
@@ -256,7 +397,7 @@ describe('SeatMap', () => {
       />,
     );
 
-    const seat = screen.getByRole('button', { name: /51号/ });
+    const seat = screen.getByRole('button', { name: /1号/ });
     expect(seat).toHaveProperty('disabled', true);
     expect(screen.getByText('已锁位')).toBeTruthy();
   });

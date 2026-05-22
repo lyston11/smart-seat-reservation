@@ -1,7 +1,16 @@
 import { Button, Empty, Spin, Tag, Tooltip } from 'antd';
-import type { CSSProperties } from 'react';
+import { Maximize2, Minus, Plus } from 'lucide-react';
+import { useState, type CSSProperties } from 'react';
 import { seatSlotStatusColor, seatSlotStatusText } from '../constants/seatSlotStatus';
 import type { SeatSlot, SeatSlotStatus } from '../types/seat';
+import {
+  compareSeatDisplayOrder,
+  getSeatDisplayLabel,
+  getSeatSide,
+  getTableKey,
+  getTableLabel,
+  type SeatSide,
+} from '../utils/seatDisplay';
 
 type SeatMapProps = {
   slots: SeatSlot[];
@@ -11,10 +20,10 @@ type SeatMapProps = {
   sectionTitle?: string;
   selectedSeatId?: number | null;
   selectableStatuses?: SeatSlotStatus[];
-  onReserve: (slot: SeatSlot) => void;
+  statusTextOverrides?: Partial<Record<SeatSlotStatus, string>>;
+  onReserve?: (slot: SeatSlot) => void;
+  onSeatClick?: (slot: SeatSlot) => void;
 };
-
-type SeatSide = 'NORTH' | 'EAST' | 'SOUTH' | 'WEST' | 'SINGLE';
 
 type TableGroup = {
   key: string;
@@ -37,14 +46,6 @@ type TimeGroup = {
   totalSeats: number;
 };
 
-const sideOrder: Record<SeatSide, number> = {
-  NORTH: 1,
-  WEST: 2,
-  EAST: 3,
-  SOUTH: 4,
-  SINGLE: 5,
-};
-
 const sideClass: Record<SeatSide, string> = {
   NORTH: 'north',
   EAST: 'east',
@@ -57,31 +58,17 @@ const tableSeatSides: SeatSide[] = ['NORTH', 'WEST', 'EAST', 'SOUTH', 'SINGLE'];
 const TABLE_DISPLAY_SCALE = 0.6;
 const TABLE_SIDE_OFFSET = 66;
 const TABLE_VERTICAL_OFFSET = 44;
+const MIN_ZOOM = 0.7;
+const MAX_ZOOM = 1.4;
+const ZOOM_STEP = 0.1;
+const DEFAULT_ZOOM = 1;
 
 function getTimeRange(slot: SeatSlot) {
   return `${slot.startTime.slice(0, 5)}-${slot.endTime.slice(0, 5)}`;
 }
 
-function getSeatSide(slot: SeatSlot): SeatSide {
-  if (slot.seatSide === 'NORTH' || slot.seatSide === 'EAST' || slot.seatSide === 'SOUTH' || slot.seatSide === 'WEST') {
-    return slot.seatSide;
-  }
-  return 'SINGLE';
-}
-
-function getTableKey(slot: SeatSlot) {
-  if (slot.tableId) {
-    return `table-${slot.tableId}`;
-  }
-  return `legacy-${slot.tableNo ?? slot.seatId}`;
-}
-
-function getTableLabel(table: TableGroup) {
+function getTableGroupLabel(table: TableGroup) {
   return table.tableNo ?? (table.tableId ? String(table.tableId) : '未分配桌位');
-}
-
-function getSeatLabel(slot: SeatSlot) {
-  return slot.seatLabel ?? slot.seatNo ?? `座位 ${slot.seatId}`;
 }
 
 function byTimeTableAndSeat(left: SeatSlot, right: SeatSlot) {
@@ -112,15 +99,7 @@ function byTimeTableAndSeat(left: SeatSlot, right: SeatSlot) {
 }
 
 function bySeatPosition(left: SeatSlot, right: SeatSlot) {
-  const sideCompare = sideOrder[getSeatSide(left)] - sideOrder[getSeatSide(right)];
-  if (sideCompare !== 0) {
-    return sideCompare;
-  }
-  const orderCompare = (left.seatOrder ?? Number.MAX_SAFE_INTEGER) - (right.seatOrder ?? Number.MAX_SAFE_INTEGER);
-  if (orderCompare !== 0) {
-    return orderCompare;
-  }
-  return (left.seatNo ?? String(left.seatId)).localeCompare(right.seatNo ?? String(right.seatId));
+  return compareSeatDisplayOrder(left, right);
 }
 
 function byTablePosition(left: TableGroup, right: TableGroup) {
@@ -144,7 +123,7 @@ function byTablePosition(left: TableGroup, right: TableGroup) {
   if (columnCompare !== 0) {
     return columnCompare;
   }
-  return getTableLabel(left).localeCompare(getTableLabel(right));
+  return getTableGroupLabel(left).localeCompare(getTableGroupLabel(right));
 }
 
 function groupSlots(slots: SeatSlot[]): TimeGroup[] {
@@ -229,24 +208,52 @@ function normalizeCoordinateTables(tables: TableGroup[]) {
   });
 }
 
-function getCoordinateRoomStyle(tables: TableGroup[]): CSSProperties {
+function getCoordinateRoomBounds(tables: TableGroup[]) {
   const positionedTables = tables.filter((table) => table.positionX !== null && table.positionY !== null);
   if (positionedTables.length === 0) {
-    return {};
+    return null;
   }
   const maxRight = Math.max(
     ...positionedTables.map(
-      (table) => (table.positionX ?? 0) + (table.widthPx ?? 220) + TABLE_SIDE_OFFSET + 72,
+      (table) => (table.positionX ?? 0) + getTableFootprintWidth(table) + TABLE_SIDE_OFFSET + 92,
     ),
   );
   const maxBottom = Math.max(
     ...positionedTables.map(
-      (table) => (table.positionY ?? 0) + (table.heightPx ?? 96) + TABLE_VERTICAL_OFFSET + 100,
+      (table) => (table.positionY ?? 0) + getTableFootprintHeight(table) + TABLE_VERTICAL_OFFSET + 116,
     ),
   );
   return {
-    minWidth: Math.max(maxRight + 96, 640),
-    minHeight: Math.max(maxBottom + 64, 360),
+    width: Math.max(maxRight + 96, 640),
+    height: Math.max(maxBottom + 64, 360),
+  };
+}
+
+function getTableFootprintWidth(table: TableGroup) {
+  const width = table.widthPx ?? 220;
+  const height = table.heightPx ?? 96;
+  return isQuarterTurn(table.rotationDeg) ? Math.max(width, height) : width;
+}
+
+function getTableFootprintHeight(table: TableGroup) {
+  const width = table.widthPx ?? 220;
+  const height = table.heightPx ?? 96;
+  return isQuarterTurn(table.rotationDeg) ? Math.max(width, height) : height;
+}
+
+function isQuarterTurn(rotationDeg: number | null) {
+  const normalized = Math.abs(rotationDeg ?? 0) % 180;
+  return normalized > 45 && normalized < 135;
+}
+
+function getCoordinateRoomStyle(tables: TableGroup[]): CSSProperties {
+  const bounds = getCoordinateRoomBounds(tables);
+  if (!bounds) {
+    return {};
+  }
+  return {
+    width: bounds.width,
+    height: bounds.height,
   };
 }
 
@@ -269,9 +276,10 @@ function getTableStyle(table: TableGroup): CSSProperties {
     return {
       '--table-width': `${table.widthPx ?? 220}px`,
       '--table-height': `${table.heightPx ?? 96}px`,
+      '--table-rotation': `${table.rotationDeg ?? 0}deg`,
       left: Math.max(table.positionX - TABLE_SIDE_OFFSET, 0),
       top: Math.max(table.positionY - TABLE_VERTICAL_OFFSET, 0),
-      transform: table.rotationDeg ? `rotate(${table.rotationDeg}deg)` : undefined,
+      transform: table.rotationDeg ? 'rotate(var(--table-rotation))' : undefined,
     } as CSSProperties;
   }
   if (!table.rowNo || !table.columnNo) {
@@ -280,6 +288,55 @@ function getTableStyle(table: TableGroup): CSSProperties {
   return {
     gridRow: table.rowNo,
     gridColumn: table.columnNo,
+  };
+}
+
+function getTableOrientationClass(table: TableGroup) {
+  const width = table.widthPx ?? 220;
+  const height = table.heightPx ?? 96;
+  if (height > width * 1.15) {
+    return 'seat-table-vertical';
+  }
+  if (width > height * 1.15) {
+    return 'seat-table-horizontal';
+  }
+  return 'seat-table-square';
+}
+
+function getTableClassName(table: TableGroup) {
+  const classes = ['seat-table'];
+  if (table.positionX !== null && table.positionY !== null) {
+    classes.push('seat-table-positioned', getTableOrientationClass(table));
+  }
+  if (table.rotationDeg) {
+    classes.push('seat-table-rotated');
+  }
+  return classes.join(' ');
+}
+
+function clampZoom(value: number) {
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.round(value * 10) / 10));
+}
+
+function formatZoomPercent(zoom: number) {
+  return `${Math.round(zoom * 100)}%`;
+}
+
+function getCoordinateViewportStyle(tables: TableGroup[], zoom: number): CSSProperties {
+  const bounds = getCoordinateRoomBounds(tables);
+  if (!bounds) {
+    return {};
+  }
+  return {
+    width: Math.round(bounds.width * zoom),
+    height: Math.round(bounds.height * zoom),
+  };
+}
+
+function getCoordinateContentStyle(tables: TableGroup[], zoom: number): CSSProperties {
+  return {
+    ...getCoordinateRoomStyle(tables),
+    transform: `scale(${zoom})`,
   };
 }
 
@@ -307,10 +364,106 @@ export default function SeatMap({
   sectionTitle,
   selectedSeatId,
   selectableStatuses = ['AVAILABLE'],
+  statusTextOverrides,
   onReserve,
+  onSeatClick,
 }: SeatMapProps) {
+  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const groups = groupSlots(slots);
   const selectableStatusSet = new Set(selectableStatuses);
+  const zoomText = formatZoomPercent(zoom);
+  const handleSeatClick = onSeatClick ?? onReserve;
+
+  function getStatusText(status: SeatSlotStatus) {
+    return statusTextOverrides?.[status] ?? seatSlotStatusText[status];
+  }
+
+  function changeZoom(delta: number) {
+    setZoom((currentZoom) => clampZoom(currentZoom + delta));
+  }
+
+  function resetZoom() {
+    setZoom(DEFAULT_ZOOM);
+  }
+
+  function renderZoomControls(isCoordinateLayout: boolean) {
+    if (!isCoordinateLayout) {
+      return null;
+    }
+
+    return (
+      <div className="seat-map-zoom-controls" aria-label="座位图缩放控制" role="group">
+        <Button
+          aria-label="缩小座位图"
+          disabled={zoom <= MIN_ZOOM}
+          icon={<Minus size={15} />}
+          onClick={() => changeZoom(-ZOOM_STEP)}
+          size="small"
+        />
+        <span className="seat-map-zoom-value">{zoomText}</span>
+        <Button
+          aria-label="放大座位图"
+          disabled={zoom >= MAX_ZOOM}
+          icon={<Plus size={15} />}
+          onClick={() => changeZoom(ZOOM_STEP)}
+          size="small"
+        />
+        <Button aria-label="适配座位图" icon={<Maximize2 size={15} />} onClick={resetZoom} size="small" />
+      </div>
+    );
+  }
+
+  function renderTables(tables: TableGroup[]) {
+    return tables.map((table) => (
+      <div
+        className={getTableClassName(table)}
+        style={getTableStyle(table)}
+        key={table.key}
+        role="group"
+        aria-label={getTableGroupLabel(table)}
+      >
+        <div className="seat-table-surface" style={getTableSurfaceStyle(table)}>
+          <span>{getTableGroupLabel(table)}</span>
+        </div>
+        {tableSeatSides.map((side) => {
+          const sideSeats = table.seats.filter((slot) => getSeatSide(slot) === side);
+          if (sideSeats.length === 0) {
+            return null;
+          }
+
+          return (
+            <div className={`seat-table-side seat-table-side-${sideClass[side]}`} key={side}>
+              {sideSeats.map((slot) => {
+                const disabled = !selectableStatusSet.has(slot.status);
+                const selected = selectedSeatId === slot.seatId;
+                const label = getSeatDisplayLabel(slot, table.seats);
+                const tableLabel = getTableLabel(table);
+                const statusText = getStatusText(slot.status);
+                const title = `${tableLabel} · ${label} · ${statusText}`;
+
+                return (
+                  <Tooltip title={title} key={slot.id}>
+                    <Button
+                      aria-pressed={selected}
+                      className={`seat-map-cell seat-map-cell-${slot.status.toLowerCase()} ${
+                        selected ? 'seat-map-cell-selected' : ''
+                      }`}
+                      disabled={disabled}
+                      loading={loadingSlotId === slot.id}
+                      onClick={() => handleSeatClick?.(slot)}
+                    >
+                      <span>{label}</span>
+                      <Tag color={seatSlotStatusColor[slot.status]}>{statusText}</Tag>
+                    </Button>
+                  </Tooltip>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    ));
+  }
 
   if (loading) {
     return (
@@ -330,69 +483,38 @@ export default function SeatMap({
 
   return (
     <div className="seat-map">
-      {groups.map((group) => (
-        <section className="seat-map-section" key={group.timeRange}>
-          <div className="seat-map-section-header">
-            <strong>{sectionTitle ?? group.timeRange}</strong>
-            <span>{group.totalSeats} 个座位</span>
-          </div>
-          <div className={`seat-room-layout ${hasCoordinateLayout(group.tables) ? 'seat-room-layout-coordinate' : ''}`}>
-            <div
-              className={`seat-map-grid ${hasCoordinateLayout(group.tables) ? 'seat-map-grid-coordinate' : ''}`}
-              style={getLayoutStyle(group.tables)}
-            >
-              {group.tables.map((table) => (
-                <div
-                  className={`seat-table ${table.positionX !== null && table.positionY !== null ? 'seat-table-positioned' : ''}`}
-                  style={getTableStyle(table)}
-                  key={table.key}
-                  role="group"
-                  aria-label={getTableLabel(table)}
-                >
-                  <div className="seat-table-surface" style={getTableSurfaceStyle(table)}>
-                    <span>{getTableLabel(table)}</span>
-                  </div>
-                  {tableSeatSides.map((side) => {
-                    const sideSeats = table.seats.filter((slot) => getSeatSide(slot) === side);
-                    if (sideSeats.length === 0) {
-                      return null;
-                    }
+      {groups.map((group) => {
+        const isCoordinateLayout = hasCoordinateLayout(group.tables);
 
-                    return (
-                      <div className={`seat-table-side seat-table-side-${sideClass[side]}`} key={side}>
-                        {sideSeats.map((slot) => {
-                          const disabled = !selectableStatusSet.has(slot.status);
-                          const selected = selectedSeatId === slot.seatId;
-                          const label = getSeatLabel(slot);
-                          const tableLabel = getTableLabel(table);
-                          const title = `${tableLabel} · ${label} · ${seatSlotStatusText[slot.status]}`;
-
-                          return (
-                            <Tooltip title={title} key={slot.id}>
-                              <Button
-                                aria-pressed={selected}
-                                className={`seat-map-cell seat-map-cell-${slot.status.toLowerCase()} ${
-                                  selected ? 'seat-map-cell-selected' : ''
-                                }`}
-                                disabled={disabled}
-                                loading={loadingSlotId === slot.id}
-                                onClick={() => onReserve(slot)}
-                              >
-                                <span>{label}</span>
-                                <Tag color={seatSlotStatusColor[slot.status]}>{seatSlotStatusText[slot.status]}</Tag>
-                              </Button>
-                            </Tooltip>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+        return (
+          <section className="seat-map-section" key={group.timeRange}>
+            <div className="seat-map-section-header">
+              <div className="seat-map-section-title">
+                <strong>{sectionTitle ?? group.timeRange}</strong>
+                <span>{group.totalSeats} 个座位</span>
+              </div>
+              {renderZoomControls(isCoordinateLayout)}
             </div>
-          </div>
-        </section>
-      ))}
+            <div className={`seat-room-layout ${isCoordinateLayout ? 'seat-room-layout-coordinate' : ''}`}>
+              {isCoordinateLayout ? (
+                <div className="seat-map-coordinate-viewport" style={getCoordinateViewportStyle(group.tables, zoom)}>
+                  <div
+                    className="seat-map-grid seat-map-grid-coordinate seat-map-coordinate-content"
+                    data-testid="seat-map-coordinate-content"
+                    style={getCoordinateContentStyle(group.tables, zoom)}
+                  >
+                    {renderTables(group.tables)}
+                  </div>
+                </div>
+              ) : (
+                <div className="seat-map-grid" style={getLayoutStyle(group.tables)}>
+                  {renderTables(group.tables)}
+                </div>
+              )}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

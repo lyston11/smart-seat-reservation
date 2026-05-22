@@ -246,6 +246,27 @@ body {
   border-radius: 8px;
 }
 
+.admin-seat-map-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 16px;
+  align-items: start;
+}
+
+.admin-seat-map-detail {
+  min-width: 0;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+  background: #fafaf9;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.admin-seat-map-detail .ant-space {
+  width: 100%;
+}
+
 .admin-resource-summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -708,6 +729,70 @@ body {
   line-height: 20px;
 }
 
+.student-reservation-path {
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.student-reservation-path-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.student-reservation-path-header strong {
+  color: #111827;
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.student-reservation-path-header span {
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.student-reservation-path-steps {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.7fr) minmax(160px, 1fr) minmax(220px, 1.25fr) minmax(150px, 0.9fr);
+  gap: 10px;
+}
+
+.student-reservation-path-step {
+  min-width: 0;
+  padding: 10px 12px;
+  display: grid;
+  gap: 3px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fafaf9;
+}
+
+.student-reservation-path-step span {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.student-reservation-path-step strong {
+  overflow: hidden;
+  color: #111827;
+  font-size: 14px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-reservation-path-step-active {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
 .campus-indoor-map {
   padding: 16px;
   margin-bottom: 16px;
@@ -839,6 +924,7 @@ body {
 }
 
 .seat-map {
+  min-width: 0;
   display: grid;
   gap: 16px;
 }
@@ -875,6 +961,7 @@ body {
 }
 
 .seat-map-section {
+  min-width: 0;
   padding: 16px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
@@ -889,18 +976,57 @@ body {
   margin-bottom: 12px;
 }
 
-.seat-map-section-header strong {
+.seat-map-section-title {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.seat-map-section-title strong {
   color: #111827;
   font-size: 15px;
 }
 
-.seat-map-section-header span {
+.seat-map-section-title span {
   color: #6b7280;
   font-size: 13px;
 }
 
+.seat-map-zoom-controls {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.seat-map-zoom-controls .ant-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+}
+
+.seat-map-zoom-controls .ant-btn .ant-btn-icon {
+  display: inline-flex;
+}
+
+.seat-map-zoom-value {
+  min-width: 44px;
+  color: #374151;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  text-align: center;
+}
+
 .seat-room-layout {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
   padding: 36px 16px 42px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(244, 244, 245, 0.78)),
@@ -959,6 +1085,19 @@ body {
   display: block;
 }
 
+.seat-map-coordinate-viewport {
+  position: relative;
+  min-width: 100%;
+  transition:
+    width 180ms ease,
+    height 180ms ease;
+}
+
+.seat-map-coordinate-content {
+  transform-origin: top left;
+  transition: transform 180ms ease;
+}
+
 .seat-table {
   min-width: 0;
   min-height: 174px;
@@ -982,6 +1121,10 @@ body {
     ". south ." 40px
     ". single ." auto / 66px var(--table-width, 132px) 66px;
   transform-origin: center center;
+  transition:
+    left 180ms ease,
+    top 180ms ease,
+    transform 180ms ease;
 }
 
 .seat-table-surface {
@@ -1014,6 +1157,25 @@ body {
 .seat-table-positioned .seat-table-surface {
   width: var(--table-width, 132px);
   height: var(--table-height, 58px);
+}
+
+.seat-table-horizontal .seat-table-surface {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.24), transparent 24%, rgba(255, 255, 255, 0.18) 52%, transparent),
+    repeating-linear-gradient(90deg, #d6b47c 0 30px, #c99f68 30px 34px, #e0bf86 34px 62px);
+}
+
+.seat-table-vertical .seat-table-surface {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.24), transparent 24%, rgba(255, 255, 255, 0.18) 52%, transparent),
+    repeating-linear-gradient(180deg, #d6b47c 0 30px, #c99f68 30px 34px, #e0bf86 34px 62px);
+}
+
+.seat-table-rotated .seat-table-surface {
+  border-color: #57534e;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.38),
+    0 12px 22px rgba(17, 24, 39, 0.12);
 }
 
 .seat-table-positioned .seat-table-side-north,
@@ -1296,9 +1458,11 @@ body {
   .stats-grid,
   .reservation-rule-stats-grid,
   .student-summary-grid,
+  .student-reservation-path-steps,
   .rule-explain-grid,
   .student-card-grid,
   .student-seat-workspace,
+  .admin-seat-map-workspace,
   .student-seat-time-grid,
   .student-area-list,
   .campus-map-stage,
@@ -1336,6 +1500,11 @@ body {
   .seat-map-section-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .seat-map-zoom-controls {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .student-seat-lock-panel {

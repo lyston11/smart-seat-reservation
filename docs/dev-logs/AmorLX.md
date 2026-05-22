@@ -4,6 +4,54 @@
 
 ### 任务
 - Issue: 暂无
+- 分支: feature/AmorLX-reservation-ui-polish
+- 目标: 继续完善学生预约端 UI，让楼层、区域、时间和具体座位选择更连贯，并修正桌内座位编号展示，增强多方向桌椅和缩放查看体验。
+
+### 本次改动
+- 新增前端 `seatDisplay` 工具，学生座位图按每张桌内部顺序显示 `1号`、`2号`、`3号`、`4号`，避免历史全局座位标签造成跳号。
+- `SeatMap` 使用桌内编号生成座位按钮和 Tooltip，保留无桌子旧数据的兜底显示。
+- 学生选座页新增“选择路径”条，将楼层、区域、预约时段、桌座串联展示，减少地图选择与座位确认之间的割裂感。
+- 新增响应式样式，路径条在桌面多列展示，手机端自动变为单列。
+- 坐标座位图新增缩放控件，支持缩小、放大和适配，画布缩放使用平滑动画。
+- 桌子根据宽高和旋转角度标记横向、纵向、旋转状态，横向长桌和侧向桌使用不同桌面纹理方向。
+- 修复坐标画布撑宽导致缩放控件被右侧已选座位面板覆盖的问题。
+- 管理员桌子管理页新增“学生视角座位图”，复用学生端桌椅渲染、桌内编号和缩放控件，方便管理员按学生反馈定位具体桌座。
+- 管理员座位图将座位启用/停用状态展示为管理语义，点击座位后显示桌座路径、系统座位号和状态。
+- 更新 `SeatMap` 和 `App` 测试，覆盖桌内编号和选择路径。
+- 新增实施记录 `docs/plans/2026-05-22-reservation-ui-polish.md`。
+
+### 涉及文件
+- frontend/src/utils/seatDisplay.ts
+- frontend/src/components/SeatMap.tsx
+- frontend/src/components/SeatMap.test.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- docs/plans/2026-05-22-reservation-ui-polish.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已运行 `npm run test -- SeatMap.test.tsx`，覆盖桌内编号、缩放控件和多方向桌子展示。
+- 已运行 `npm run test -- App.test.tsx`，覆盖管理员桌子页学生视角座位图。
+- 已运行 `npm run test`，前端 53 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已用浏览器打开 `http://127.0.0.1:5173/student/seats`，确认缩放控件可见，点击放大后比例从 100% 变为 110%，且控件不再被右侧面板覆盖。
+- 已用浏览器打开 `http://127.0.0.1:5173/admin/tables`，确认管理员座位图可见，点击 `T01 · 1号` 后显示系统座位号和启用状态。
+
+### 遗留问题
+- 本次只完成前端展示层的桌内编号和管理员对照视图，管理员端批量生成/编辑座位标签仍可在后续继续优化。
+- 预约记录历史展示仍保留后端返回的座位号和标签，不在本次修改范围内。
+
+### 对其他成员的影响
+- 不修改签到验证、二维码 token、IP 校验、签到码校验和后端预约状态机。
+- 学生座位图展示从全局 `seatLabel` 转为桌内局部编号，后续前端新增选座入口时应复用 `seatDisplay` 工具。
+
+## 2026-05-22
+
+### 任务
+- Issue: 暂无
 - 分支: feature/AmorLX-area-map-metadata
 - 目标: 为预约端室内地图新增长期稳定的区域地图元数据，避免继续依赖区域名称推断 A/B 楼和连廊。
 

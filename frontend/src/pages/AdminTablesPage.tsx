@@ -21,8 +21,10 @@ import { listAreas } from '../api/areas';
 import { listSeats } from '../api/seats';
 import { createTable, getTableCheckinQr, listTables, updateTable, updateTableStatus } from '../api/tables';
 import AdminResourceActions from '../components/AdminResourceActions';
+import SeatMap from '../components/SeatMap';
 import TableLayoutPreview from '../components/TableLayoutPreview';
-import type { Area, Seat, StudyTable, StudyTableQr, StudyTableStatus } from '../types/seat';
+import type { Area, Seat, SeatSlot, SeatSlotStatus, StudyTable, StudyTableQr, StudyTableStatus } from '../types/seat';
+import { getSeatPathText } from '../utils/seatDisplay';
 
 type TableFormValues = {
   areaId: number;
@@ -56,6 +58,16 @@ const statusLabels: Record<StudyTableStatus, string> = {
 const statusColors: Record<StudyTableStatus, string> = {
   ACTIVE: 'green',
   INACTIVE: 'default',
+};
+
+const adminSeatStatusText: Partial<Record<SeatSlotStatus, string>> = {
+  AVAILABLE: '启用',
+  UNPUBLISHED: '停用',
+};
+
+const adminSeatStatusColor: Partial<Record<SeatSlotStatus, string>> = {
+  AVAILABLE: 'green',
+  UNPUBLISHED: 'default',
 };
 
 const tablePresets: Record<TablePresetKey, TablePreset> = {
@@ -125,6 +137,37 @@ function applyPresetValues(values: TableFormValues, presetKey: TablePresetKey): 
   };
 }
 
+function toAdminSeatMapSlot(seat: Seat): SeatSlot {
+  return {
+    id: seat.id,
+    seatId: seat.id,
+    seatNo: seat.seatNo,
+    tableId: seat.tableId,
+    tableNo: seat.tableNo,
+    tableRowNo: seat.tableRowNo,
+    tableColumnNo: seat.tableColumnNo,
+    tableDisplayOrder: seat.tableDisplayOrder,
+    tablePositionX: seat.tablePositionX,
+    tablePositionY: seat.tablePositionY,
+    tableWidthPx: seat.tableWidthPx,
+    tableHeightPx: seat.tableHeightPx,
+    tableRotationDeg: seat.tableRotationDeg,
+    seatLabel: seat.seatLabel,
+    seatSide: seat.seatSide,
+    seatOrder: seat.seatOrder,
+    rowNo: seat.rowNo,
+    columnNo: seat.columnNo,
+    displayOrder: seat.displayOrder,
+    areaId: seat.areaId,
+    slotDate: 'ADMIN',
+    startTime: '00:00:00',
+    endTime: '23:59:00',
+    status: seat.status === 'ACTIVE' ? 'AVAILABLE' : 'UNPUBLISHED',
+    reservedBy: null,
+    reservationId: null,
+  };
+}
+
 export default function AdminTablesPage() {
   const [form] = Form.useForm<TableFormValues>();
   const [areaId, setAreaId] = useState(1);
@@ -142,6 +185,7 @@ export default function AdminTablesPage() {
   const [layoutDrafts, setLayoutDrafts] = useState<Record<number, { positionX: number; positionY: number }>>({});
   const [layoutSaving, setLayoutSaving] = useState(false);
   const [tablePresetKey, setTablePresetKey] = useState<TablePresetKey>('FOUR');
+  const [selectedAdminSeatId, setSelectedAdminSeatId] = useState<number | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
 
   const selectedArea = useMemo(() => areas.find((area) => area.id === areaId), [areaId, areas]);
@@ -172,6 +216,17 @@ export default function AdminTablesPage() {
   const activeSeatCount = useMemo(
     () => seats.filter((seat) => seat.status === 'ACTIVE' && managedTableIds.has(seat.tableId)).length,
     [managedTableIds, seats],
+  );
+  const adminSeatMapSlots = useMemo(
+    () =>
+      seats
+        .filter((seat) => managedTableIds.has(seat.tableId))
+        .map(toAdminSeatMapSlot),
+    [managedTableIds, seats],
+  );
+  const selectedAdminSeatSlot = useMemo(
+    () => adminSeatMapSlots.find((slot) => slot.seatId === selectedAdminSeatId) ?? null,
+    [adminSeatMapSlots, selectedAdminSeatId],
   );
   const layoutTables = useMemo(
     () =>
@@ -208,6 +263,7 @@ export default function AdminTablesPage() {
       setTables(nextTables);
       setSeats(nextSeats);
       setLayoutDrafts({});
+      setSelectedAdminSeatId(null);
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '加载桌子失败');
     } finally {
@@ -565,6 +621,46 @@ export default function AdminTablesPage() {
             setLayoutDrafts((drafts) => ({ ...drafts, [table.id]: position }));
           }}
         />
+      </div>
+
+      <div className="layout-preview-panel admin-seat-map-panel" aria-label="学生视角座位图">
+        <div className="seat-map-section-header">
+          <div className="seat-map-section-title">
+            <strong>学生视角座位图</strong>
+            <span>按学生看到的桌号和座位编号定位反馈问题</span>
+          </div>
+          <Typography.Text type="secondary">
+            {selectedArea ? `${selectedArea.name}${selectedArea.floor ? ` · ${selectedArea.floor}` : ''}` : '当前区域'}
+          </Typography.Text>
+        </div>
+        <div className="admin-seat-map-workspace">
+          <SeatMap
+            emptyDescription="当前区域暂无真实座位，请先维护座位后再对照学生视图"
+            sectionTitle="全部桌座"
+            slots={adminSeatMapSlots}
+            selectableStatuses={['AVAILABLE', 'UNPUBLISHED']}
+            selectedSeatId={selectedAdminSeatId}
+            statusTextOverrides={adminSeatStatusText}
+            onSeatClick={(slot) => setSelectedAdminSeatId(slot.seatId)}
+          />
+          <div className="admin-seat-map-detail">
+            <Typography.Text type="secondary">当前定位</Typography.Text>
+            {selectedAdminSeatSlot ? (
+              <Space orientation="vertical" size={8}>
+                <Typography.Text strong>{getSeatPathText(selectedAdminSeatSlot, adminSeatMapSlots)}</Typography.Text>
+                <Typography.Text>系统座位号 {selectedAdminSeatSlot.seatNo ?? selectedAdminSeatSlot.seatId}</Typography.Text>
+                <Tag color={adminSeatStatusColor[selectedAdminSeatSlot.status] ?? 'default'}>
+                  {adminSeatStatusText[selectedAdminSeatSlot.status] ?? selectedAdminSeatSlot.status}
+                </Tag>
+                <Typography.Text type="secondary">
+                  学生反馈桌座时，可按这个桌号和座位编号在平面图中定位。
+                </Typography.Text>
+              </Space>
+            ) : (
+              <Typography.Text type="secondary">点击平面图中的座位后显示桌号、座位号和状态。</Typography.Text>
+            )}
+          </div>
+        </div>
       </div>
 
       <Modal

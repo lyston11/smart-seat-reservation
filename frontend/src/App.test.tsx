@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -644,11 +644,11 @@ describe('App', () => {
     );
 
     fireEvent.click(await screen.findByRole('button', { name: /A-001|1号/ }));
-    expect(await screen.findByText('A-001 (1号)')).toBeTruthy();
+    expect((await screen.findAllByText('1号')).length).toBeGreaterThan(0);
 
     await selectComboboxValue('开始时间', nextStartText);
 
-    expect(await screen.findByText('A-001 (1号)')).toBeTruthy();
+    expect((await screen.findAllByText('1号')).length).toBeGreaterThan(0);
     expect(screen.queryByText('请先在座位地图中选择一个位置。')).toBeNull();
   });
 
@@ -866,7 +866,166 @@ describe('App', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith('/api/seats?areaId=2', expect.any(Object));
     });
-    expect(await screen.findByRole('button', { name: /B座1号/ })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: /1号/ })).toBeTruthy();
+  });
+
+  it('connects floor, area, time, table, and seat in one reservation path', async () => {
+    storeStudentSession();
+    const todayText = toLocalDateText(new Date());
+    const startText = nextFutureHalfHourText();
+    const endText = addMinutesToTimeText(startText, 60);
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('/api/areas')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                name: 'A 楼北自习区',
+                floor: '1F',
+                buildingCode: 'A',
+                floorCode: '1F',
+                areaType: 'STUDY_ROOM',
+                mapX: 20,
+                mapY: 20,
+                description: null,
+                status: 'ACTIVE',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/seat-slots?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 8,
+                seatId: 41,
+                seatNo: 'A-041',
+                tableId: 1,
+                tableNo: 'T01',
+                tableRowNo: 1,
+                tableColumnNo: 1,
+                tableDisplayOrder: 1,
+                tablePositionX: 120,
+                tablePositionY: 80,
+                tableWidthPx: 260,
+                tableHeightPx: 96,
+                tableRotationDeg: 0,
+                seatLabel: '41号',
+                seatSide: 'NORTH',
+                seatOrder: 1,
+                rowNo: 1,
+                columnNo: 1,
+                displayOrder: 1,
+                areaId: 1,
+                slotDate: todayText,
+                startTime: `${startText}:00`,
+                endTime: `${endText}:00`,
+                status: 'AVAILABLE',
+                reservedBy: null,
+                reservationId: null,
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/seats?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 41,
+                areaId: 1,
+                tableId: 1,
+                tableNo: 'T01',
+                tableRowNo: 1,
+                tableColumnNo: 1,
+                tableDisplayOrder: 1,
+                tablePositionX: 120,
+                tablePositionY: 80,
+                tableWidthPx: 260,
+                tableHeightPx: 96,
+                tableRotationDeg: 0,
+                seatNo: 'A-041',
+                seatLabel: '41号',
+                seatSide: 'NORTH',
+                seatOrder: 1,
+                rowNo: 1,
+                columnNo: 1,
+                displayOrder: 1,
+                status: 'ACTIVE',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/reservations/rules')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: makeReservationRules({ reservationOpenHour: 0 }),
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/student/seats']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    const reservationPath = await screen.findByLabelText('选择路径');
+    expect(within(reservationPath).getByText('选择路径')).toBeTruthy();
+    expect(within(reservationPath).getByText('楼层')).toBeTruthy();
+    await waitFor(() => {
+      expect(within(reservationPath).getByText('1F')).toBeTruthy();
+    });
+    expect(within(reservationPath).getByText('区域')).toBeTruthy();
+    await waitFor(() => {
+      expect(within(reservationPath).getByText('A 楼北自习区')).toBeTruthy();
+    });
+    expect(within(reservationPath).getByText('预约时段')).toBeTruthy();
+
+    fireEvent.click(await screen.findByRole('button', { name: /1号/ }));
+
+    expect(within(reservationPath).getByText('桌座')).toBeTruthy();
+    await waitFor(() => {
+      expect(within(reservationPath).getByText('T01 · 1号')).toBeTruthy();
+    });
+    expect((await screen.findAllByText('T01 · 1号')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('T01 · 41号')).toBeNull();
   });
 
   it('renders the student home dashboard with active reservation details', async () => {
@@ -1264,6 +1423,143 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { level: 3, name: '桌子管理' })).toBeTruthy();
     expect(await screen.findByRole('link', { name: '桌子管理' })).toBeTruthy();
+  });
+
+  it('renders a student-view seat map on the admin table page for locating reported seats', async () => {
+    storeAdminSession();
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith('/api/areas')) {
+          return {
+            ok: true,
+            json: async () => ({
+              success: true,
+              code: 'OK',
+              message: 'ok',
+              data: [
+                {
+                  id: 1,
+                  name: 'A 区',
+                  floor: '1F',
+                  description: null,
+                  status: 'ACTIVE',
+                  openTime: '08:00:00',
+                  closeTime: '22:00:00',
+                  checkinIpCidrs: '127.0.0.1/32,::1/128',
+                },
+              ],
+            }),
+          };
+        }
+        if (url.startsWith('/api/tables?')) {
+          return {
+            ok: true,
+            json: async () => ({
+              success: true,
+              code: 'OK',
+              message: 'ok',
+              data: [
+                {
+                  id: 1,
+                  areaId: 1,
+                  tableNo: 'T01',
+                  name: 'A 区 T01',
+                  status: 'ACTIVE',
+                  rowNo: 1,
+                  columnNo: 1,
+                  displayOrder: 1,
+                  positionX: 120,
+                  positionY: 80,
+                  widthPx: 260,
+                  heightPx: 96,
+                  rotationDeg: 0,
+                },
+              ],
+            }),
+          };
+        }
+        if (url.startsWith('/api/seats?')) {
+          return {
+            ok: true,
+            json: async () => ({
+              success: true,
+              code: 'OK',
+              message: 'ok',
+              data: [
+                {
+                  id: 101,
+                  areaId: 1,
+                  tableId: 1,
+                  tableNo: 'T01',
+                  tableRowNo: 1,
+                  tableColumnNo: 1,
+                  tableDisplayOrder: 1,
+                  tablePositionX: 120,
+                  tablePositionY: 80,
+                  tableWidthPx: 260,
+                  tableHeightPx: 96,
+                  tableRotationDeg: 0,
+                  seatNo: 'A-101',
+                  seatLabel: '101号',
+                  seatSide: 'NORTH',
+                  seatOrder: 1,
+                  rowNo: null,
+                  columnNo: null,
+                  displayOrder: null,
+                  status: 'ACTIVE',
+                },
+                {
+                  id: 102,
+                  areaId: 1,
+                  tableId: 1,
+                  tableNo: 'T01',
+                  tableRowNo: 1,
+                  tableColumnNo: 1,
+                  tableDisplayOrder: 1,
+                  tablePositionX: 120,
+                  tablePositionY: 80,
+                  tableWidthPx: 260,
+                  tableHeightPx: 96,
+                  tableRotationDeg: 0,
+                  seatNo: 'A-102',
+                  seatLabel: '102号',
+                  seatSide: 'SOUTH',
+                  seatOrder: 1,
+                  rowNo: null,
+                  columnNo: null,
+                  displayOrder: null,
+                  status: 'INACTIVE',
+                },
+              ],
+            }),
+          };
+        }
+        return {
+          ok: true,
+          json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+        };
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/admin/tables']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 3, name: '桌子管理' })).toBeTruthy();
+    const adminSeatMap = await screen.findByLabelText('学生视角座位图');
+    expect(within(adminSeatMap).getByText('T01')).toBeTruthy();
+    expect(within(adminSeatMap).getByRole('button', { name: /1号.*启用/ })).toBeTruthy();
+    expect(within(adminSeatMap).getByRole('button', { name: /2号.*停用/ })).toBeTruthy();
+
+    fireEvent.click(within(adminSeatMap).getByRole('button', { name: /1号.*启用/ }));
+
+    expect(await screen.findByText('T01 · 1号')).toBeTruthy();
+    expect(await screen.findByText('系统座位号 A-101')).toBeTruthy();
   });
 
   it('normalizes nullable reservation rule fields on the admin rule page', async () => {
