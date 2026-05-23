@@ -46,6 +46,13 @@ type TimeGroup = {
   totalSeats: number;
 };
 
+type LayoutRect = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
 const sideClass: Record<SeatSide, string> = {
   NORTH: 'north',
   EAST: 'east',
@@ -59,6 +66,7 @@ const TABLE_DISPLAY_SCALE = 0.52;
 const TABLE_POSITION_SCALE = 0.72;
 const TABLE_SIDE_OFFSET = 50;
 const TABLE_VERTICAL_OFFSET = 34;
+const TABLE_COLLISION_GAP = 16;
 const MIN_ZOOM = 0.7;
 const MAX_ZOOM = 1.4;
 const ZOOM_STEP = 0.1;
@@ -177,7 +185,7 @@ function normalizeCoordinateTables(tables: TableGroup[]) {
     return tables;
   }
 
-  const occupied = new Set<string>();
+  const occupiedRects: LayoutRect[] = [];
   let fallbackIndex = 0;
 
   return tables.map((table) => {
@@ -195,21 +203,45 @@ function normalizeCoordinateTables(tables: TableGroup[]) {
       positionY = Math.round(positionY * TABLE_POSITION_SCALE);
     }
 
-    let key = `${positionX}:${positionY}`;
-    while (occupied.has(key)) {
-      positionY += height + 110;
-      key = `${positionX}:${positionY}`;
-    }
-    occupied.add(key);
-
-    return {
+    let normalizedTable = {
       ...table,
       positionX,
       positionY,
       widthPx: width,
       heightPx: height,
     };
+    let collisionRect = getTableCollisionRect(normalizedTable);
+    let guard = 0;
+    while (occupiedRects.some((rect) => rectsOverlap(collisionRect, rect, TABLE_COLLISION_GAP)) && guard < 100) {
+      normalizedTable = {
+        ...normalizedTable,
+        positionY: (normalizedTable.positionY ?? 0) + collisionRect.height + TABLE_COLLISION_GAP,
+      };
+      collisionRect = getTableCollisionRect(normalizedTable);
+      guard += 1;
+    }
+    occupiedRects.push(collisionRect);
+
+    return normalizedTable;
   });
+}
+
+function rectsOverlap(left: LayoutRect, right: LayoutRect, gap = 0) {
+  return (
+    left.left < right.left + right.width + gap &&
+    left.left + left.width + gap > right.left &&
+    left.top < right.top + right.height + gap &&
+    left.top + left.height + gap > right.top
+  );
+}
+
+function getTableCollisionRect(table: TableGroup): LayoutRect {
+  return {
+    left: Math.max((table.positionX ?? 0) - TABLE_SIDE_OFFSET, 0),
+    top: Math.max((table.positionY ?? 0) - TABLE_VERTICAL_OFFSET, 0),
+    width: getTableFootprintWidth(table) + TABLE_SIDE_OFFSET * 2,
+    height: getTableFootprintHeight(table) + TABLE_VERTICAL_OFFSET * 2,
+  };
 }
 
 function getCoordinateRoomBounds(tables: TableGroup[]) {

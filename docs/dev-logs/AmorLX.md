@@ -5,6 +5,47 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/AmorLX-reservation-ui-polish
+- 目标: 添加桌椅布局限位，避免整套桌椅在学生选座图和管理员桌子预览中相互重叠。
+
+### 本次改动
+- 管理员桌子布局预览新增桌子碰撞检测，拖拽或键盘移动桌子时如果会压到其他启用桌子，会保持在原位置。
+- 管理员预览会对历史上已经靠得过近的启用桌子做展示层自动错位，避免管理员看到重叠桌椅。
+- 学生端和管理员学生视角座位图的坐标归一化改为按完整桌子和座位占用范围计算，而不是只判断坐标点是否重复。
+- 自动错位时按桌椅整体高度向下排布，并让预览舞台高度跟随扩展，避免桌子被固定高度裁掉。
+- 补充桌椅重叠限位的回归测试和实施记录。
+
+### 涉及文件
+- frontend/src/components/TableLayoutPreview.tsx
+- frontend/src/components/TableLayoutPreview.test.tsx
+- frontend/src/components/SeatMap.tsx
+- frontend/src/components/SeatMap.test.tsx
+- docs/plans/2026-05-22-reservation-ui-polish.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- TableLayoutPreview.test.tsx`，确认旧实现允许桌子移动到其他桌子上方。
+- 已先运行 `npm run test -- SeatMap.test.tsx`，确认旧实现只处理重复坐标，近距离桌椅仍可能重叠。
+- 已运行 `npm run test -- TableLayoutPreview.test.tsx`，8 个桌子预览测试通过。
+- 已运行 `npm run test -- SeatMap.test.tsx`，9 个座位图测试通过。
+- 已运行 `npm run test`，前端 59 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn test`，后端 93 个测试通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已用浏览器打开 `http://127.0.0.1:5173/admin/tables`，通过 API 创建近距离演示桌 `OL47899A` 和 `OL47899B`，确认第二张桌子展示层自动下移，不再与第一张桌椅重叠。
+
+### 遗留问题
+- 当前限位是在渲染和管理员移动层面避免重叠，后续若需要多人共同编辑同一平面图，建议在后端保存坐标时也增加碰撞校验。
+- 自动错位只改变展示位置，不回写数据库坐标；如果管理员希望永久调整，应在桌子管理页拖拽保存布局。
+
+### 对其他成员的影响
+- 本次只修改预约端和管理员桌子可视化渲染，不修改签到验证、WiFi/IP 校验、签到码校验、签到时间窗和后端预约状态机。
+
+## 2026-05-23
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-reservation-ui-polish
 - 目标: 修复管理员新增或启用桌子后只有桌子预览、没有真实座位，导致学生端和管理员学生视角座位图不显示的问题。
 
 ### 本次改动

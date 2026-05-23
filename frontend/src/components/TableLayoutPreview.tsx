@@ -33,8 +33,8 @@ const ROOM_MARGIN = 48;
 const DEFAULT_ROOM_WIDTH = 760;
 const DEFAULT_ROOM_HEIGHT = 420;
 const MIN_STAGE_HEIGHT = 420;
-const MAX_STAGE_HEIGHT = 560;
 const VISUAL_SIZE_RATIO = 0.56;
+const TABLE_COLLISION_GAP = 12;
 
 type RoomMetrics = {
   width: number;
@@ -42,6 +42,13 @@ type RoomMetrics = {
 };
 
 type LayoutBounds = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+type LayoutRect = {
   left: number;
   top: number;
   width: number;
@@ -135,20 +142,96 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
+function getTableRect(table: StudyTable, seatCount: number, position?: TablePosition): LayoutRect {
+  const size = getVisualTableSize(table, seatCount);
+  return {
+    left: position?.positionX ?? table.positionX ?? 80,
+    top: position?.positionY ?? table.positionY ?? 80,
+    width: size.width,
+    height: size.height,
+  };
+}
+
+function rectsOverlap(left: LayoutRect, right: LayoutRect, gap = 0) {
+  return (
+    left.left < right.left + right.width + gap &&
+    left.left + left.width + gap > right.left &&
+    left.top < right.top + right.height + gap &&
+    left.top + left.height + gap > right.top
+  );
+}
+
+function overlapsOtherTable(
+  table: StudyTable,
+  position: TablePosition,
+  tables: StudyTable[],
+  seatCounts: Record<number, number>,
+) {
+  const nextRect = getTableRect(table, seatCounts[table.id] ?? 0, position);
+  return tables.some((otherTable) => {
+    if (otherTable.id === table.id || otherTable.status !== 'ACTIVE' || !isManagedTable(otherTable)) {
+      return false;
+    }
+    return rectsOverlap(nextRect, getTableRect(otherTable, seatCounts[otherTable.id] ?? 0), TABLE_COLLISION_GAP);
+  });
+}
+
+function separateOverlappingTables(tables: StudyTable[], seatCounts: Record<number, number>) {
+  const occupiedRects: LayoutRect[] = [];
+  return tables.map((table) => {
+    let positionedTable = table;
+    let position = {
+      positionX: table.positionX ?? 80,
+      positionY: table.positionY ?? 80,
+    };
+    let rect = getTableRect(positionedTable, seatCounts[table.id] ?? 0, position);
+    let guard = 0;
+    while (occupiedRects.some((occupiedRect) => rectsOverlap(rect, occupiedRect, TABLE_COLLISION_GAP)) && guard < 100) {
+      position = {
+        ...position,
+        positionY: position.positionY + rect.height + TABLE_COLLISION_GAP,
+      };
+      positionedTable = {
+        ...positionedTable,
+        positionX: position.positionX,
+        positionY: position.positionY,
+      };
+      rect = getTableRect(positionedTable, seatCounts[table.id] ?? 0, position);
+      guard += 1;
+    }
+    occupiedRects.push(rect);
+    return positionedTable;
+  });
+}
+
+function isSamePosition(left: TablePosition, right: TablePosition) {
+  return left.positionX === right.positionX && left.positionY === right.positionY;
+}
+
 function getNextPosition(
   table: StudyTable,
   seatCount: number,
   rawX: number,
   rawY: number,
   bounds: LayoutBounds,
+  tables: StudyTable[],
+  seatCounts: Record<number, number>,
 ): TablePosition {
   const size = getVisualTableSize(table, seatCount);
   const maxX = Math.max(bounds.left, bounds.left + bounds.width - size.width - 24);
   const maxY = Math.max(bounds.top, bounds.top + bounds.height - size.height - 24);
-  return {
+  const currentPosition = {
+    positionX: table.positionX ?? 80,
+    positionY: table.positionY ?? 80,
+  };
+  const nextPosition = {
     positionX: clamp(snapToGrid(rawX), bounds.left, maxX),
     positionY: clamp(snapToGrid(rawY), bounds.top, maxY),
   };
+  if (overlapsOtherTable(table, nextPosition, tables, seatCounts)) {
+    return currentPosition;
+  }
+  return nextPosition;
 }
 
 function getLayoutBounds(element: HTMLElement): LayoutBounds {
@@ -210,7 +293,8 @@ export default function TableLayoutPreview({
   const activeTables = tables
     .filter((table) => table.status === 'ACTIVE' && isManagedTable(table))
     .sort(byTablePosition);
-  const roomMetrics = getRoomMetrics(activeTables, seatCounts);
+  const displayTables = separateOverlappingTables(activeTables, seatCounts);
+  const roomMetrics = getRoomMetrics(displayTables, seatCounts);
 
   if (activeTables.length === 0) {
     return (
@@ -254,7 +338,12 @@ export default function TableLayoutPreview({
       dragState.startPositionX + deltaX,
       dragState.startPositionY + deltaY,
       dragState.bounds,
+      displayTables,
+      seatCounts,
     );
+    if (isSamePosition(nextPosition, { positionX: table.positionX ?? 80, positionY: table.positionY ?? 80 })) {
+      return;
+    }
     onMoveTable?.(table, nextPosition);
     if (!dragState.moved) {
       setDragState({ ...dragState, moved: true });
@@ -298,25 +387,28 @@ export default function TableLayoutPreview({
       return;
     }
     event.preventDefault();
-    onMoveTable(
+    const nextPosition = getNextPosition(
       table,
-      getNextPosition(
-        table,
-        seatCounts[table.id] ?? 0,
-        (table.positionX ?? 80) + delta.positionX,
-        (table.positionY ?? 80) + delta.positionY,
-        getLayoutBounds(event.currentTarget),
-      ),
+      seatCounts[table.id] ?? 0,
+      (table.positionX ?? 80) + delta.positionX,
+      (table.positionY ?? 80) + delta.positionY,
+      getLayoutBounds(event.currentTarget),
+      displayTables,
+      seatCounts,
     );
+    if (isSamePosition(nextPosition, { positionX: table.positionX ?? 80, positionY: table.positionY ?? 80 })) {
+      return;
+    }
+    onMoveTable(table, nextPosition);
   }
 
   return (
     <div className={`table-layout-preview ${editable ? 'table-layout-preview-editable' : ''}`}>
       <div
         className="table-layout-stage"
-        style={{ height: Math.min(Math.max(roomMetrics.height, MIN_STAGE_HEIGHT), MAX_STAGE_HEIGHT) }}
+        style={{ height: Math.max(roomMetrics.height, MIN_STAGE_HEIGHT) }}
       >
-        {activeTables.map((table) => {
+        {displayTables.map((table) => {
           const seatCount = seatCounts[table.id] ?? 0;
           const markerCount = getMarkerCount(seatCount);
           return (

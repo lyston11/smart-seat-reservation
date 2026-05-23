@@ -284,6 +284,45 @@ describe('SeatMap', () => {
     expect((verticalTable as HTMLElement).style.getPropertyValue('--table-rotation')).toBe('90deg');
   });
 
+  it('separates coordinate tables when their full table-and-seat footprint would overlap', () => {
+    render(
+      <SeatMap
+        slots={[
+          makeSlot({
+            id: 1,
+            seatId: 1,
+            tableId: 1,
+            tableNo: 'T01',
+            tablePositionX: 120,
+            tablePositionY: 80,
+            tableWidthPx: 260,
+            tableHeightPx: 96,
+            seatSide: 'NORTH',
+          }),
+          makeSlot({
+            id: 2,
+            seatId: 2,
+            tableId: 2,
+            tableNo: 'T02',
+            tablePositionX: 125,
+            tablePositionY: 80,
+            tableWidthPx: 260,
+            tableHeightPx: 96,
+            seatSide: 'NORTH',
+          }),
+        ]}
+        onReserve={vi.fn()}
+      />,
+    );
+
+    const firstTable = screen.getByLabelText('T01') as HTMLElement;
+    const secondTable = screen.getByLabelText('T02') as HTMLElement;
+
+    expect(firstTable.style.top).toBe('24px');
+    expect(secondTable.style.top).not.toBe('24px');
+    expect(Number.parseInt(secondTable.style.top, 10)).toBeGreaterThan(Number.parseInt(firstTable.style.top, 10));
+  });
+
   it('labels seats from 1 within every table instead of using global seat labels', () => {
     render(
       <SeatMap
