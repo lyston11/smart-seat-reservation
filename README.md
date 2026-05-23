@@ -59,6 +59,7 @@ npm run dev
 - [系统架构说明](./docs/architecture/ARCHITECTURE.md)
 - [API 接口契约说明](./docs/architecture/API_CONTRACT.md)
 - [本地开发与部署路线](./docs/deployment/LOCAL_DEVELOPMENT.md)
+- [服务器 Docker 部署说明](./docs/deployment/SERVER_DOCKER_DEPLOYMENT.md)
 - [API 手测示例](./docs/API_EXAMPLES.md)
 
 ## 协作开发

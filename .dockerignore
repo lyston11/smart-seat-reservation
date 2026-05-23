@@ -1,0 +1,13 @@
+.git
+.github
+.worktrees
+.m2
+logs
+
+**/.env
+**/.env.local
+**/node_modules
+**/dist
+**/target
+**/.vite
+**/*.log

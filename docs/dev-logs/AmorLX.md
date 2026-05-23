@@ -4,6 +4,56 @@
 
 ### 任务
 - Issue: 暂无
+- 分支: feature/AmorLX-server-deployment
+- 目标: 查询 `lyston_server` 上的项目部署现状，并补充可长期复用的 Docker 化服务器部署配置。
+
+### 本次改动
+- 通过 `ssh lyston_server` 确认服务器当前只有 `smart-seat-mysql` 数据库容器和 `/srv/projects/smart-seat-db` 目录，未发现本项目后端 jar、前端静态站点或应用容器。
+- 新增后端 Dockerfile，使用 Maven + Java 21 多阶段构建，运行 Spring Boot jar。
+- 新增前端 Dockerfile，使用 Node 22 构建 React/Vite 静态资源，并用 Nginx 托管。
+- 新增前端容器 Nginx 配置，支持 SPA fallback、`/api/` 反向代理、Swagger 文档代理。
+- 新增应用部署 compose，复用服务器已有 `smart-seat-db_default` Docker 网络连接 MySQL，只暴露前端容器到宿主机 `127.0.0.1:18081`。
+- 新增部署环境变量示例和服务器 Docker 部署说明，真实密码仍要求只放在服务器本地 `deploy/.env`，不提交到 Git。
+- README 增加服务器 Docker 部署文档入口。
+
+### 涉及文件
+- .dockerignore
+- backend/Dockerfile
+- frontend/Dockerfile
+- frontend/nginx.conf
+- deploy/.env.example
+- deploy/docker-compose.app.yml
+- docs/deployment/SERVER_DOCKER_DEPLOYMENT.md
+- docs/plans/2026-05-23-server-docker-deployment.md
+- README.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已确认本地当前分支不是 `main`，并从最新 `origin/main` 创建 `feature/AmorLX-server-deployment`。
+- 已读取 `docs/dev-logs/AmorLX.md` 和 `docs/dev-logs/lyston11.md`。
+- 已运行 `docker compose --env-file deploy/.env -f deploy/docker-compose.app.yml config`，本地配置可解析；`deploy/.env` 由示例文件临时复制，未提交。
+- 已运行 `npm run test`，前端 59 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn test`，后端 93 个测试通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 本地尝试运行 Docker 镜像构建时，Docker Desktop daemon 未启动，未能在本机完成镜像构建验证。
+- 已将当前工作树临时同步到服务器 `/tmp/smart-seat-deploy-check`，运行 compose config 校验通过，确认 external network `smart-seat-db_default` 可解析。
+- 服务器直接并行构建前后端镜像在 2GB 内存机器上超时并造成高负载，已将 Dockerfile 和部署文档调整为低内存顺序构建方案；截至本次记录，服务器 SSH 仍超时，后续恢复后应确认没有残留构建进程。
+
+### 遗留问题
+- 服务器目前没有完整应用部署；本次先补可复用部署配置，后续需要把代码同步到服务器并执行构建启动。
+- 若要绑定正式域名，还需要在服务器 Nginx 中新增或调整 server block，并在改动前确认域名规划。
+- 当前演示服务器内存较小且无 swap，不建议在服务器上并行构建前后端镜像；优先使用顺序构建、本机/CI 构建后发布镜像，或先增加 swap。
+
+### 对其他成员的影响
+- 本次不修改业务接口、数据库迁移、签到验证、预约状态机和前端业务页面。
+- 后续部署时需要服务器维护者提供 MySQL 业务用户密码，但不应把真实密码写入仓库。
+
+## 2026-05-23
+
+### 任务
+- Issue: 暂无
 - 分支: feature/AmorLX-reservation-ui-polish
 - 目标: 添加桌椅布局限位，避免整套桌椅在学生选座图和管理员桌子预览中相互重叠。
 
