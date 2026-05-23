@@ -5,6 +5,8 @@ import type { Area } from '../types/seat';
 type CampusIndoorMapProps = {
   areas: Area[];
   selectedAreaId: number;
+  selectedFloor?: string | null;
+  onFloorChange?: (floor: string, visibleAreas: Area[]) => void;
   onSelectArea: (area: Area) => void;
 };
 
@@ -144,7 +146,21 @@ function byMapPositionThenName(left: Area, right: Area) {
   return byAreaName(left, right);
 }
 
-export default function CampusIndoorMap({ areas, selectedAreaId, onSelectArea }: CampusIndoorMapProps) {
+function getVisibleAreasForFloor(areas: Area[], floor: string) {
+  const showConnectors = isConnectorFloor(floor);
+  return areas
+    .filter((area) => normalizeAreaFloor(area) === floor)
+    .filter((area) => showConnectors || !isConnectorZone(inferAreaZone(area)))
+    .sort(byMapPositionThenName);
+}
+
+export default function CampusIndoorMap({
+  areas,
+  selectedAreaId,
+  selectedFloor: controlledFloor,
+  onFloorChange,
+  onSelectArea,
+}: CampusIndoorMapProps) {
   const activeAreas = useMemo(() => areas.filter((area) => area.status === 'ACTIVE'), [areas]);
   const floors = useMemo(
     () => Array.from(new Set(activeAreas.map(normalizeAreaFloor))).sort(sortFloors),
@@ -156,20 +172,18 @@ export default function CampusIndoorMap({ areas, selectedAreaId, onSelectArea }:
   );
   const selectedAreaFloor = selectedArea ? normalizeAreaFloor(selectedArea) : null;
   const [manualFloor, setManualFloor] = useState<string | null>(null);
-  const selectedFloor = manualFloor && floors.includes(manualFloor)
+  const selectedFloor = controlledFloor && floors.includes(controlledFloor)
+    ? controlledFloor
+    : manualFloor && floors.includes(manualFloor)
     ? manualFloor
     : selectedAreaFloor && floors.includes(selectedAreaFloor)
       ? selectedAreaFloor
       : floors[0] ?? '未标注楼层';
 
-  const floorAreas = useMemo(
-    () => activeAreas.filter((area) => normalizeAreaFloor(area) === selectedFloor),
-    [activeAreas, selectedFloor],
-  );
   const showConnectors = isConnectorFloor(selectedFloor);
   const visibleFloorAreas = useMemo(
-    () => floorAreas.filter((area) => showConnectors || !isConnectorZone(inferAreaZone(area))),
-    [floorAreas, showConnectors],
+    () => getVisibleAreasForFloor(activeAreas, selectedFloor),
+    [activeAreas, selectedFloor],
   );
   const visibleZones = useMemo(
     () => zones.filter((zone) => showConnectors || !isConnectorZone(zone)),
@@ -187,6 +201,11 @@ export default function CampusIndoorMap({ areas, selectedAreaId, onSelectArea }:
     [visibleFloorAreas, visibleZones],
   );
   const visibleZoneSet = useMemo(() => new Set(visibleZones), [visibleZones]);
+
+  function changeFloor(nextFloor: string) {
+    setManualFloor(nextFloor);
+    onFloorChange?.(nextFloor, getVisibleAreasForFloor(activeAreas, nextFloor));
+  }
 
   const renderZone = (zone: BuildingZone) => (
     <section className={`campus-map-zone campus-map-zone-${getZoneClassName(zone)}`} key={zone} aria-label={zoneAriaLabels[zone]}>
@@ -226,7 +245,7 @@ export default function CampusIndoorMap({ areas, selectedAreaId, onSelectArea }:
         <Segmented<string>
           value={selectedFloor}
           options={floors.map((floor) => ({ label: floor, value: floor }))}
-          onChange={setManualFloor}
+          onChange={changeFloor}
         />
       </div>
 

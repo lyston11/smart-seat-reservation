@@ -43,6 +43,7 @@ export default function SeatSlotsPage() {
   const [slots, setSlots] = useState<SeatSlot[]>([]);
   const [seats, setSeats] = useState<Seat[]>([]);
   const [selectedSeatId, setSelectedSeatId] = useState<number | null>(null);
+  const [selectedCampusFloor, setSelectedCampusFloor] = useState<string | null>(null);
   const [activeReservation, setActiveReservation] = useState<ReservationResult | null>(null);
   const [reservationRules, setReservationRules] = useState<NormalizedReservationRule | null>(null);
   const [checkinCode, setCheckinCode] = useState('');
@@ -127,7 +128,7 @@ export default function SeatSlotsPage() {
     () => visibleSlots.find((slot) => slot.seatId === selectedSeatId) ?? null,
     [selectedSeatId, visibleSlots],
   );
-  const selectedAreaFloorText = selectedArea?.floorCode ?? selectedArea?.floor ?? '未选择';
+  const selectedAreaFloorText = selectedArea ? getAreaFloorText(selectedArea) : selectedCampusFloor ?? '未选择';
   const selectedSeatPathText = selectedSlot ? getSeatPathText(selectedSlot, visibleSlots) : '未选择座位';
 
   function restoreActiveReservation(reservations: ReservationResult[]) {
@@ -289,10 +290,28 @@ export default function SeatSlotsPage() {
 
   function applySelectedArea(area: Area) {
     setAreaId(area.id);
+    setSelectedCampusFloor(getAreaFloorText(area));
     setStartTime(toHalfHourCeil(area.openTime.slice(0, 5)));
     setEndTime(toHalfHourFloor(area.closeTime.slice(0, 5)));
     setSelectedSeatId(null);
     setTimeInitializedFromSlots(false);
+  }
+
+  function changeCampusFloor(nextFloor: string, visibleAreas: Area[]) {
+    setSelectedCampusFloor(nextFloor);
+    const selectedAreaStillVisible =
+      selectedArea &&
+      getAreaFloorText(selectedArea) === nextFloor &&
+      visibleAreas.some((area) => area.id === selectedArea.id);
+    if (selectedAreaStillVisible) {
+      return;
+    }
+    const nextArea = visibleAreas[0];
+    if (nextArea) {
+      applySelectedArea(nextArea);
+      return;
+    }
+    setSelectedSeatId(null);
   }
 
   function changeSlotDate(nextDate: string) {
@@ -304,10 +323,26 @@ export default function SeatSlotsPage() {
   return (
     <div className="page student-seat-page">
       {contextHolder}
-      <CampusIndoorMap areas={activeAreas} selectedAreaId={areaId} onSelectArea={applySelectedArea} />
+      <CampusIndoorMap
+        areas={activeAreas}
+        selectedAreaId={areaId}
+        selectedFloor={selectedCampusFloor ?? selectedAreaFloorText}
+        onFloorChange={changeCampusFloor}
+        onSelectArea={applySelectedArea}
+      />
 
-      <div className="toolbar">
-        <Form layout="inline">
+      <section className="student-seat-filter-panel" aria-label="选座筛选">
+        <div className="student-seat-filter-header">
+          <div className="student-seat-filter-title">
+            <span>选座筛选</span>
+            <strong>楼栋楼层与时段</strong>
+          </div>
+          <div className="student-seat-filter-status">
+            <Tag color="blue">{selectedAreaFloorText}</Tag>
+            <span>当前区域 {selectedArea?.name ?? '未选择区域'}</span>
+          </div>
+        </div>
+        <Form layout="vertical" className="student-seat-filter-form">
           <Form.Item label="区域">
             <Select
               className="area-select"
@@ -329,13 +364,42 @@ export default function SeatSlotsPage() {
           <Form.Item label="日期">
             <Segmented<string> value={dateText} options={dateOptions} onChange={changeSlotDate} />
           </Form.Item>
+          <Form.Item label="开始时间">
+            <Select
+              aria-label="开始时间"
+              value={validStartTime}
+              options={timeOptions.startOptions}
+              placeholder="暂无可预约开始时间"
+              onChange={(value) => {
+                setStartTime(value);
+              }}
+            />
+          </Form.Item>
+          <Form.Item label="结束时间">
+            <Select
+              aria-label="结束时间"
+              value={validEndTime}
+              options={timeOptions.endOptions}
+              placeholder="暂无可预约结束时间"
+              onChange={(value) => {
+                setEndTime(value);
+              }}
+            />
+          </Form.Item>
           <Form.Item>
             <Button type="primary" onClick={loadSlots} loading={loading}>
               刷新座位
             </Button>
           </Form.Item>
         </Form>
-      </div>
+        <div className="student-seat-filter-hints">
+          <span>
+            {dateText} {validStartTime}-{validEndTime}
+          </span>
+          <span>{availableSeatCount} 个座位可预约</span>
+          {reservationBlockedReason ? <span>{reservationBlockedReason}</span> : null}
+        </div>
+      </section>
 
       <div className="student-reservation-path" aria-label="选择路径">
         <div className="student-reservation-path-header">
@@ -433,31 +497,13 @@ export default function SeatSlotsPage() {
                   {selectedArea?.floor ? ` · ${selectedArea.floor}` : ''}
                   {selectedSlot.tableNo ? ` · ${selectedSlot.tableNo}` : ''}
                 </Typography.Text>
-                <div className="student-seat-time-grid">
-                  <label>
-                    <span>开始时间</span>
-                    <Select
-                      aria-label="开始时间"
-                      value={validStartTime}
-                      options={timeOptions.startOptions}
-                      placeholder="暂无可预约开始时间"
-                      onChange={(value) => {
-                        setStartTime(value);
-                      }}
-                    />
-                  </label>
-                  <label>
-                    <span>结束时间</span>
-                    <Select
-                      aria-label="结束时间"
-                      value={validEndTime}
-                      options={timeOptions.endOptions}
-                      placeholder="暂无可预约结束时间"
-                      onChange={(value) => {
-                        setEndTime(value);
-                      }}
-                    />
-                  </label>
+                <div className="student-seat-selected-summary">
+                  <span>预约日期</span>
+                  <strong>{dateText}</strong>
+                  <span>预约时段</span>
+                  <strong>
+                    {validStartTime}-{validEndTime}
+                  </strong>
                 </div>
                 <Button
                   type="primary"
@@ -548,6 +594,10 @@ export default function SeatSlotsPage() {
       </div>
     </div>
   );
+}
+
+function getAreaFloorText(area: Area) {
+  return area.floorCode?.trim() || area.floor || '未选择';
 }
 
 function normalizeInputTime(value: string) {

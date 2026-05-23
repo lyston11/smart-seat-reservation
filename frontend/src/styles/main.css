@@ -92,6 +92,95 @@ body {
   max-width: none;
 }
 
+.student-seat-filter-panel {
+  min-width: 0;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: grid;
+  gap: 14px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+}
+
+.student-seat-filter-header {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.student-seat-filter-title {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.student-seat-filter-title span {
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.student-seat-filter-title strong {
+  color: #111827;
+  font-size: 17px;
+  line-height: 24px;
+}
+
+.student-seat-filter-status {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  color: #4b5563;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.student-seat-filter-status span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-seat-filter-form.ant-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.25fr) minmax(150px, 0.72fr) minmax(130px, 0.65fr) minmax(130px, 0.65fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.student-seat-filter-form .ant-form-item {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.student-seat-filter-form .ant-select,
+.student-seat-filter-form .ant-segmented,
+.student-seat-filter-form .ant-btn {
+  width: 100%;
+}
+
+.student-seat-filter-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.student-seat-filter-hints span {
+  padding: 5px 10px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 12px;
+  line-height: 18px;
+}
+
 .empty-panel {
   padding: 48px 16px;
   background: #ffffff;
@@ -1108,6 +1197,31 @@ body {
   font-size: 12px;
 }
 
+.student-seat-selected-summary {
+  min-width: 0;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.student-seat-selected-summary span {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.student-seat-selected-summary strong {
+  overflow-wrap: anywhere;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 20px;
+}
+
 .seat-map-section {
   min-width: 0;
   padding: 16px;
@@ -1579,12 +1693,23 @@ body {
 
   .toolbar .ant-form,
   .toolbar .ant-space,
+  .student-seat-filter-header,
   .campus-map-header {
     width: 100%;
   }
 
+  .student-seat-filter-header,
   .campus-map-header {
     flex-direction: column;
+  }
+
+  .student-seat-filter-status {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .student-seat-filter-status span {
+    white-space: normal;
   }
 
   .campus-map-header .ant-segmented {
@@ -1596,6 +1721,7 @@ body {
   .toolbar .ant-picker-range,
   .toolbar .ant-input-number,
   .toolbar .ant-btn,
+  .student-seat-filter-form .ant-btn,
   .table-checkin-panel .ant-btn,
   .audit-filter-select,
   .reservation-filter-select,
@@ -1625,6 +1751,7 @@ body {
   .reservation-rule-stats-grid,
   .student-summary-grid,
   .student-reservation-path-steps,
+  .student-seat-filter-form.ant-form,
   .rule-explain-grid,
   .student-card-grid,
   .student-seat-workspace,

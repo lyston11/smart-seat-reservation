@@ -4,6 +4,50 @@
 
 ### 任务
 - Issue: 暂无
+- 分支: feature/AmorLX-student-seat-mobile-flow
+- 目标: 继续完善学生预约端 UI，让楼层、区域、预约时段和具体座位选择形成一套连续的响应式流程。
+
+### 本次改动
+- `CampusIndoorMap` 支持页面控制当前楼层，并在切换楼层时回传该楼层可见区域。
+- 学生选座页新增 `选座筛选` 面板，把区域、日期、开始时间、结束时间和刷新座位集中到地图下方。
+- 切换楼层时，如果当前区域不属于该楼层，会自动切到该楼层第一个可见区域，座位图随之加载对应区域。
+- 右侧已选座位面板改为确认座位、状态和当前时段，避免时间选择藏在选座之后。
+- 补充移动端响应式样式，手机宽度下筛选表单单列展示，侧栏回到正常文档流。
+- 新增设计说明和实施计划，明确本阶段只做预约端 UI，不改签到验证和后端状态机。
+
+### 涉及文件
+- frontend/src/components/CampusIndoorMap.tsx
+- frontend/src/components/CampusIndoorMap.test.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/App.test.tsx
+- frontend/src/styles/main.css
+- docs/plans/2026-05-23-student-seat-mobile-flow-design.md
+- docs/plans/2026-05-23-student-seat-mobile-flow.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- CampusIndoorMap.test.tsx App.test.tsx`，确认旧实现缺少楼层回调和顶层时间筛选。
+- 已运行 `npm run test -- CampusIndoorMap.test.tsx App.test.tsx`，34 个聚焦前端测试通过。
+- 已运行 `npm run test`，前端 61 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn test`，后端 93 个测试通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已用浏览器打开 `http://127.0.0.1:5173/student/seats` 验证学生页：桌面端能看到室内导航、选座筛选、选择路径和座位图；手机宽度 `390x844` 下无横向溢出，筛选表单单列展示。
+- 本地预览使用临时库 `smart_seat_ui_preview` 和临时 Redis 容器 `smart-seat-redis-preview`，避免修改旧开发库的 Flyway 状态。
+
+### 遗留问题
+- 当前只优化学生端预约页；管理员端若后续要做完整楼层筛选联动，可复用 `CampusIndoorMap` 的受控楼层能力。
+- 本地默认库存在历史 Flyway V15 校验和不一致问题，预览时使用临时库绕开；若要继续使用旧库，需要团队确认后再执行 Flyway repair 或重建本地库。
+
+### 对其他成员的影响
+- 本次不修改签到验证、WiFi/IP 校验、签到码校验、签到时间窗、预约状态机和后端接口。
+- `CampusIndoorMap` 新增可选 props，旧调用方式仍兼容；其他页面可以继续只传 `areas`、`selectedAreaId` 和 `onSelectArea`。
+
+## 2026-05-23
+
+### 任务
+- Issue: 暂无
 - 分支: feature/AmorLX-reservation-ui-polish
 - 目标: 添加桌椅布局限位，避免整套桌椅在学生选座图和管理员桌子预览中相互重叠。
 

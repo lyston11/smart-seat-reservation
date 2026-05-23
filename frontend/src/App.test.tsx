@@ -869,6 +869,184 @@ describe('App', () => {
     expect(await screen.findByRole('button', { name: /1号/ })).toBeTruthy();
   });
 
+  it('keeps floor changes, time filters, and the seat map aligned on the student page', async () => {
+    storeStudentSession();
+    const todayText = toLocalDateText(new Date());
+    const startText = nextFutureHalfHourText();
+    const endText = addMinutesToTimeText(startText, 60);
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('/api/areas')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                name: 'A 楼一层自习区',
+                floor: '1F',
+                buildingCode: 'A',
+                floorCode: '1F',
+                areaType: 'STUDY_ROOM',
+                mapX: 20,
+                mapY: 20,
+                description: null,
+                status: 'ACTIVE',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
+              },
+              {
+                id: 2,
+                name: 'B 楼二层自习区',
+                floor: '2F',
+                buildingCode: 'B',
+                floorCode: '2F',
+                areaType: 'STUDY_ROOM',
+                mapX: 70,
+                mapY: 20,
+                description: null,
+                status: 'ACTIVE',
+                openTime: '09:00:00',
+                closeTime: '21:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/seat-slots?')) {
+        const areaId = new URL(url, 'http://localhost').searchParams.get('areaId');
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data:
+              areaId === '2'
+                ? [
+                    {
+                      id: 28,
+                      seatId: 29,
+                      seatNo: 'B-201',
+                      tableId: 2,
+                      tableNo: 'B02',
+                      tableRowNo: 1,
+                      tableColumnNo: 1,
+                      tableDisplayOrder: 1,
+                      tablePositionX: 180,
+                      tablePositionY: 120,
+                      tableWidthPx: 260,
+                      tableHeightPx: 96,
+                      tableRotationDeg: 0,
+                      seatLabel: 'B座1号',
+                      seatSide: 'NORTH',
+                      seatOrder: 1,
+                      rowNo: 1,
+                      columnNo: 1,
+                      displayOrder: 1,
+                      areaId: 2,
+                      slotDate: todayText,
+                      startTime: `${startText}:00`,
+                      endTime: `${endText}:00`,
+                      status: 'AVAILABLE',
+                      reservedBy: null,
+                      reservationId: null,
+                    },
+                  ]
+                : [],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/seats?')) {
+        const areaId = new URL(url, 'http://localhost').searchParams.get('areaId');
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data:
+              areaId === '2'
+                ? [
+                    {
+                      id: 29,
+                      areaId: 2,
+                      tableId: 2,
+                      tableNo: 'B02',
+                      tableRowNo: 1,
+                      tableColumnNo: 1,
+                      tableDisplayOrder: 1,
+                      tablePositionX: 180,
+                      tablePositionY: 120,
+                      tableWidthPx: 260,
+                      tableHeightPx: 96,
+                      tableRotationDeg: 0,
+                      seatNo: 'B-201',
+                      seatLabel: 'B座1号',
+                      seatSide: 'NORTH',
+                      seatOrder: 1,
+                      rowNo: 1,
+                      columnNo: 1,
+                      displayOrder: 1,
+                      status: 'ACTIVE',
+                    },
+                  ]
+                : [],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/reservations/rules')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: makeReservationRules({ reservationOpenHour: 0 }),
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/student/seats']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    const filters = await screen.findByLabelText('选座筛选');
+    expect(within(filters).getByLabelText('开始时间')).toBeTruthy();
+    expect(within(filters).getByLabelText('结束时间')).toBeTruthy();
+
+    fireEvent.click(await screen.findByRole('radio', { name: '2F' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/seats?areaId=2', expect.any(Object));
+    });
+    expect(await screen.findByRole('group', { name: 'B02' })).toBeTruthy();
+
+    const reservationPath = await screen.findByLabelText('选择路径');
+    await waitFor(() => {
+      expect(within(reservationPath).getByText('2F')).toBeTruthy();
+      expect(within(reservationPath).getByText('B 楼二层自习区')).toBeTruthy();
+    });
+  });
+
   it('connects floor, area, time, table, and seat in one reservation path', async () => {
     storeStudentSession();
     const todayText = toLocalDateText(new Date());

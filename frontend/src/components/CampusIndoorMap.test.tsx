@@ -179,4 +179,34 @@ describe('CampusIndoorMap', () => {
     expect(within(buildingB).getByRole('button', { name: /A 楼命名但属于 B 楼/ })).toBeTruthy();
     expect(within(buildingA).queryByRole('button', { name: /A 楼命名但属于 B 楼/ })).toBeNull();
   });
+
+  it('reports visible floor areas when the parent controls floor selection', () => {
+    const onFloorChange = vi.fn();
+
+    render(
+      <CampusIndoorMap
+        areas={[
+          makeArea({ id: 1, name: 'A 楼一层自习区', floor: '1F', buildingCode: 'A' }),
+          makeArea({ id: 2, name: 'B 楼二层自习区', floor: '2F', buildingCode: 'B' }),
+          makeArea({ id: 3, name: 'A/B 连廊二层学习区', floor: '2F', buildingCode: 'CONNECTOR' }),
+        ]}
+        selectedAreaId={1}
+        selectedFloor="1F"
+        onFloorChange={onFloorChange}
+        onSelectArea={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('radio', { name: '1F' })).toHaveProperty('checked', true);
+
+    fireEvent.click(screen.getByRole('radio', { name: '2F' }));
+
+    expect(onFloorChange).toHaveBeenCalledWith(
+      '2F',
+      expect.arrayContaining([
+        expect.objectContaining({ id: 2, name: 'B 楼二层自习区' }),
+        expect.objectContaining({ id: 3, name: 'A/B 连廊二层学习区' }),
+      ]),
+    );
+  });
 });
