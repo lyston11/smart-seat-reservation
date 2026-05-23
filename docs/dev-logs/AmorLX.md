@@ -37,9 +37,10 @@
 - 已运行 `npm run build`，前端生产构建通过。
 - 已运行 `mvn test`，后端 93 个测试通过。
 - 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
-- 本地尝试运行 Docker 镜像构建时，Docker Desktop daemon 未启动，未能在本机完成镜像构建验证。
+- 本地首次尝试 Docker 镜像构建时 Docker Desktop daemon 未启动；用户打开 Docker 后，已在本机顺序完成 `smart-seat-backend:local` 和 `smart-seat-frontend:local` 镜像构建。
 - 已将当前工作树临时同步到服务器 `/tmp/smart-seat-deploy-check`，运行 compose config 校验通过，确认 external network `smart-seat-db_default` 可解析。
-- 服务器直接并行构建前后端镜像在 2GB 内存机器上超时并造成高负载，已将 Dockerfile 和部署文档调整为低内存顺序构建方案；截至本次记录，服务器 SSH 仍超时，后续恢复后应确认没有残留构建进程。
+- 服务器直接并行构建前后端镜像在 2GB 内存机器上超时并造成高负载，已将 Dockerfile 和部署文档调整为低内存顺序构建方案。
+- 服务器恢复后已确认无 `smart-seat-backend` / `smart-seat-frontend` 容器或最终镜像；已删除 `/tmp/smart-seat-deploy-check` 临时目录，并清理 Docker BuildKit 可回收缓存 2.086GB，现有 MySQL、fast-note、Hermes、fast-node 容器保持运行。
 
 ### 遗留问题
 - 服务器目前没有完整应用部署；本次先补可复用部署配置，后续需要把代码同步到服务器并执行构建启动。
