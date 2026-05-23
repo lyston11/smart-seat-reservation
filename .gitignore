@@ -28,3 +28,8 @@ prototype/
 
 # Logs
 *.log
+
+# Deployment artifacts
+deploy/artifacts/
+deploy/*.tar
+deploy/*.tar.gz

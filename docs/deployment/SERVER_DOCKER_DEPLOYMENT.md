@@ -46,21 +46,53 @@ MYSQL_DOCKER_NETWORK=smart-seat-db_default
 FRONTEND_HTTP_PORT=18081
 ```
 
-## 3. 构建并启动应用
+## 3. 在本机构建并导出镜像
+
+不要在 2GB 演示服务器上构建前后端镜像。推荐在开发电脑或 CI 上构建，再把镜像 tar 包传到服务器。
+
+在开发电脑执行：
 
 ```bash
-COMPOSE_PARALLEL_LIMIT=1 docker compose --env-file deploy/.env -f deploy/docker-compose.app.yml build backend
-COMPOSE_PARALLEL_LIMIT=1 docker compose --env-file deploy/.env -f deploy/docker-compose.app.yml build frontend
-docker compose --env-file deploy/.env -f deploy/docker-compose.app.yml up -d
+cp deploy/.env.example deploy/.env
+docker compose --env-file deploy/.env -f deploy/docker-compose.app.yml build backend
+docker compose --env-file deploy/.env -f deploy/docker-compose.app.yml build frontend
+pwsh -File scripts/export-docker-images.ps1
 ```
 
-如果服务器内存较小，不要一次并行构建前端和后端镜像。当前 2GB 演示机更适合按上面的命令顺序构建，或在本机/CI 构建镜像后再发布到服务器。
+Windows PowerShell 也可以使用：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/export-docker-images.ps1
+```
+
+默认会生成：
+
+```text
+deploy/artifacts/smart-seat-images-local.tar
+```
+
+上传到服务器：
+
+```bash
+scp deploy/artifacts/smart-seat-images-local.tar lyston_server:/srv/projects/smart-seat-reservation/
+```
+
+## 4. 在服务器加载镜像并启动应用
+
+在服务器执行：
+
+```bash
+cd /srv/projects/smart-seat-reservation/source
+scripts/load-docker-images.sh ../smart-seat-images-local.tar --up
+```
+
+这个脚本只执行 `docker load` 和 runtime compose 启动，不会触发 Docker build。
 
 查看状态：
 
 ```bash
-docker compose --env-file deploy/.env -f deploy/docker-compose.app.yml ps
-docker compose --env-file deploy/.env -f deploy/docker-compose.app.yml logs -f backend
+docker compose --env-file deploy/.env -f deploy/docker-compose.runtime.yml ps
+docker compose --env-file deploy/.env -f deploy/docker-compose.runtime.yml logs -f backend
 ```
 
 本机检查：
@@ -72,7 +104,7 @@ curl -i http://127.0.0.1:18081/api/health
 
 后端首次启动时会通过 Flyway 自动创建或迁移 `smart_seat` 数据库表。
 
-## 4. 接入服务器 Nginx
+## 5. 接入服务器 Nginx
 
 如果需要通过域名访问，在宿主机 Nginx 中增加一个 server block，将流量转发到前端容器：
 
@@ -98,29 +130,42 @@ nginx -t
 systemctl reload nginx
 ```
 
-## 5. 更新应用
+## 6. 更新应用
+
+在开发电脑重新构建并导出：
+
+```bash
+git fetch origin
+git checkout main
+git pull origin main
+docker compose --env-file deploy/.env -f deploy/docker-compose.app.yml build backend
+docker compose --env-file deploy/.env -f deploy/docker-compose.app.yml build frontend
+pwsh -File scripts/export-docker-images.ps1
+scp deploy/artifacts/smart-seat-images-local.tar lyston_server:/srv/projects/smart-seat-reservation/
+```
+
+在服务器只拉代码、加载镜像、重启 runtime compose：
 
 ```bash
 cd /srv/projects/smart-seat-reservation/source
 git fetch origin
 git checkout main
 git pull origin main
-COMPOSE_PARALLEL_LIMIT=1 docker compose --env-file deploy/.env -f deploy/docker-compose.app.yml build backend
-COMPOSE_PARALLEL_LIMIT=1 docker compose --env-file deploy/.env -f deploy/docker-compose.app.yml build frontend
-docker compose --env-file deploy/.env -f deploy/docker-compose.app.yml up -d
+scripts/load-docker-images.sh ../smart-seat-images-local.tar --up
 ```
 
-## 6. 停止应用
+## 7. 停止应用
 
 ```bash
-docker compose --env-file deploy/.env -f deploy/docker-compose.app.yml down
+docker compose --env-file deploy/.env -f deploy/docker-compose.runtime.yml down
 ```
 
 默认不会删除 Redis volume，也不会影响现有 MySQL 数据。
 
-## 7. 注意事项
+## 8. 注意事项
 
 - 不要把 `deploy/.env`、服务器 MySQL 密码、Token 或私钥提交到 Git。
-- 服务器当前没有 Java 和 Maven，后端构建依赖 Docker 中的 Java 21/Maven 镜像。
-- 服务器当前 Node.js 是 18，前端构建依赖 Docker 中的 Node 22 镜像。
+- 不要在演示服务器上运行 `docker compose ... -f deploy/docker-compose.app.yml build`。
+- 服务器启动应用使用 `deploy/docker-compose.runtime.yml`，该文件没有 `build:` 配置。
+- `deploy/docker-compose.app.yml` 只用于开发电脑或 CI 构建镜像。
 - 如果后续开启校园网签到 IP 校验，要确认 `TRUSTED_PROXY_CIDRS` 只包含可信代理或 Docker 内网，不要设置为 `0.0.0.0/0`。

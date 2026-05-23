@@ -13,6 +13,8 @@
 - 新增前端 Dockerfile，使用 Node 22 构建 React/Vite 静态资源，并用 Nginx 托管。
 - 新增前端容器 Nginx 配置，支持 SPA fallback、`/api/` 反向代理、Swagger 文档代理。
 - 新增应用部署 compose，复用服务器已有 `smart-seat-db_default` Docker 网络连接 MySQL，只暴露前端容器到宿主机 `127.0.0.1:18081`。
+- 新增服务器 runtime-only compose，移除 `build:` 配置，服务器只加载本机构建好的镜像并启动容器，避免再次在小内存服务器上构建。
+- 新增本地镜像导出脚本和服务器镜像加载脚本，支持 `docker save` / `scp` / `docker load` 的离线发布流程。
 - 新增部署环境变量示例和服务器 Docker 部署说明，真实密码仍要求只放在服务器本地 `deploy/.env`，不提交到 Git。
 - README 增加服务器 Docker 部署文档入口。
 
@@ -23,8 +25,11 @@
 - frontend/nginx.conf
 - deploy/.env.example
 - deploy/docker-compose.app.yml
+- deploy/docker-compose.runtime.yml
 - docs/deployment/SERVER_DOCKER_DEPLOYMENT.md
 - docs/plans/2026-05-23-server-docker-deployment.md
+- scripts/export-docker-images.ps1
+- scripts/load-docker-images.sh
 - README.md
 - docs/dev-logs/AmorLX.md
 
@@ -32,12 +37,15 @@
 - 已确认本地当前分支不是 `main`，并从最新 `origin/main` 创建 `feature/AmorLX-server-deployment`。
 - 已读取 `docs/dev-logs/AmorLX.md` 和 `docs/dev-logs/lyston11.md`。
 - 已运行 `docker compose --env-file deploy/.env -f deploy/docker-compose.app.yml config`，本地配置可解析；`deploy/.env` 由示例文件临时复制，未提交。
+- 已运行 `docker compose --env-file deploy/.env -f deploy/docker-compose.runtime.yml config`，确认服务器 runtime compose 可解析且不包含 `build:`。
 - 已运行 `npm run test`，前端 59 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
 - 已运行 `npm run lint`，前端 lint 通过。
 - 已运行 `npm run build`，前端生产构建通过。
 - 已运行 `mvn test`，后端 93 个测试通过。
 - 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
 - 本地首次尝试 Docker 镜像构建时 Docker Desktop daemon 未启动；用户打开 Docker 后，已在本机顺序完成 `smart-seat-backend:local` 和 `smart-seat-frontend:local` 镜像构建。
+- 已运行 `powershell -ExecutionPolicy Bypass -File scripts/export-docker-images.ps1`，确认本地镜像可导出为 tar 包。
+- 已运行 `bash scripts/load-docker-images.sh deploy/artifacts/smart-seat-images-test.tar`，确认镜像 tar 可被加载；测试 tar 已删除，部署产物目录受 `.gitignore` 忽略。
 - 已将当前工作树临时同步到服务器 `/tmp/smart-seat-deploy-check`，运行 compose config 校验通过，确认 external network `smart-seat-db_default` 可解析。
 - 服务器直接并行构建前后端镜像在 2GB 内存机器上超时并造成高负载，已将 Dockerfile 和部署文档调整为低内存顺序构建方案。
 - 服务器恢复后已确认无 `smart-seat-backend` / `smart-seat-frontend` 容器或最终镜像；已删除 `/tmp/smart-seat-deploy-check` 临时目录，并清理 Docker BuildKit 可回收缓存 2.086GB，现有 MySQL、fast-note、Hermes、fast-node 容器保持运行。
@@ -45,7 +53,8 @@
 ### 遗留问题
 - 服务器目前没有完整应用部署；本次先补可复用部署配置，后续需要把代码同步到服务器并执行构建启动。
 - 若要绑定正式域名，还需要在服务器 Nginx 中新增或调整 server block，并在改动前确认域名规划。
-- 当前演示服务器内存较小且无 swap，不建议在服务器上并行构建前后端镜像；优先使用顺序构建、本机/CI 构建后发布镜像，或先增加 swap。
+- 当前演示服务器内存较小且无 swap，不建议在服务器上构建前后端镜像；优先使用本机/CI 构建后发布镜像，或先增加 swap。
+- 后续服务器上线应使用 `deploy/docker-compose.runtime.yml`，不要在服务器执行带 `build:` 的 `deploy/docker-compose.app.yml`。
 
 ### 对其他成员的影响
 - 本次不修改业务接口、数据库迁移、签到验证、预约状态机和前端业务页面。

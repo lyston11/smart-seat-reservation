@@ -17,4 +17,6 @@
 5. Add `deploy/.env.example` with placeholders only.
 6. Add server deployment documentation that explains cloning, env setup, build, startup, Nginx proxying, updates, and shutdown.
 7. Validate compose config locally and on the server before starting any long-running application containers.
-8. On the 2GB demo server, build backend and frontend sequentially with `COMPOSE_PARALLEL_LIMIT=1`; avoid parallel Docker builds because they can exhaust memory.
+8. Avoid server-side image builds on the 2GB demo server; use local or CI builds and transfer image archives instead.
+9. Add a runtime-only compose file for the server so production startup never contains `build:` instructions.
+10. Add local image export and server image load scripts for the no-server-build deployment path.

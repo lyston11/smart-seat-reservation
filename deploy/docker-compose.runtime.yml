@@ -17,9 +17,6 @@ services:
       retries: 10
 
   backend:
-    build:
-      context: ..
-      dockerfile: backend/Dockerfile
     image: smart-seat-backend:${SMART_SEAT_IMAGE_TAG:-local}
     container_name: smart-seat-backend
     restart: unless-stopped
@@ -40,9 +37,6 @@ services:
       - smart-seat-db
 
   frontend:
-    build:
-      context: ..
-      dockerfile: frontend/Dockerfile
     image: smart-seat-frontend:${SMART_SEAT_IMAGE_TAG:-local}
     container_name: smart-seat-frontend
     restart: unless-stopped
