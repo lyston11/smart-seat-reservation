@@ -2222,6 +2222,94 @@ describe('App', () => {
     expect(await screen.findByLabelText('桌高 px')).toBeTruthy();
   });
 
+  it('submits the selected table seat count when administrators create a table', async () => {
+    storeAdminSession();
+
+    let createPayload: unknown;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.startsWith('/api/areas')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                name: 'A 区',
+                floor: '1F',
+                description: null,
+                status: 'ACTIVE',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
+              },
+            ],
+          }),
+        };
+      }
+      if (url === '/api/tables' && init?.method === 'POST') {
+        createPayload = JSON.parse(String(init.body));
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: {
+              id: 10,
+              areaId: 1,
+              tableNo: 'T10',
+              name: null,
+              status: 'ACTIVE',
+              rowNo: null,
+              columnNo: null,
+              displayOrder: 1,
+              positionX: 80,
+              positionY: 80,
+              widthPx: 220,
+              heightPx: 96,
+              rotationDeg: 0,
+            },
+          }),
+        };
+      }
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/admin/tables']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '新增桌子' }));
+    fireEvent.change(await screen.findByLabelText('桌号'), { target: { value: 'T10' } });
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /保\s*存/ }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/tables',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+    expect(createPayload).toEqual(
+      expect.objectContaining({
+        areaId: 1,
+        tableNo: 'T10',
+        seatCount: 4,
+        widthPx: 220,
+        heightPx: 96,
+      }),
+    );
+  });
+
   it('uses table preset seat count in the admin layout when seats are not configured yet', async () => {
     storeAdminSession();
 

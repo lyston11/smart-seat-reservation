@@ -1,6 +1,7 @@
 package com.lyston.smartseat.table;
 
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -13,6 +14,7 @@ public record UpdateStudyTableRequest(
         @Min(1) Integer rowNo,
         @Min(1) Integer columnNo,
         @Min(1) Integer displayOrder,
+        @Min(1) @Max(12) Integer seatCount,
         @Min(0) Integer positionX,
         @Min(0) Integer positionY,
         @Min(80) Integer widthPx,
@@ -29,6 +31,6 @@ public record UpdateStudyTableRequest(
             Integer columnNo,
             Integer displayOrder
     ) {
-        this(areaId, tableNo, name, status, rowNo, columnNo, displayOrder, null, null, null, null, null);
+        this(areaId, tableNo, name, status, rowNo, columnNo, displayOrder, null, null, null, null, null, null);
     }
 }

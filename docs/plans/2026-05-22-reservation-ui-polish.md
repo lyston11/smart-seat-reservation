@@ -52,6 +52,23 @@
 4. 在管理员桌子页新增一块“学生视角座位图”，点击座位后在旁边显示所属桌子、座位编号、系统座位号和状态。
 5. 更新样式、开发日志，并运行 `npm run test -- App.test.tsx`、`npm run test`、`npm run lint`、`npm run build` 和浏览器预览。
 
+## 扩展计划：管理员建桌生成真实座位
+
+### 目标
+
+- 管理员新增桌子时，不只生成桌子平面预览，还要生成可预约的真实座位。
+- 桌型预设支持 1、2、3、4 人桌，自定义桌型可以手动填写座位数。
+- 对历史空桌保持非破坏性修复：只有启用且没有真实座位的桌子才会自动补座位，已有座位、预约和签到状态不被覆盖。
+
+### 实施步骤
+
+1. 在 `App.test.tsx` 增加失败测试，确认管理员新增桌子时请求体携带 `seatCount`。
+2. 在 `StudyTableServiceTest` 增加失败测试，确认后端收到 `seatCount=4` 后会生成 `NORTH/NORTH/SOUTH/SOUTH` 的真实座位。
+3. 扩展 `CreateStudyTableRequest`、`UpdateStudyTableRequest` 和前端 `tables.ts` 的请求类型，加入 `seatCount`。
+4. 在 `StudyTableService` 中注入 `SeatMapper`，新增空桌自动建座位逻辑，并限制座位数范围为 `1-12`。
+5. 在管理员桌子页增加 1 人桌预设和座位数字段，创建、编辑、保存布局时都保持桌型和座位数一致。
+6. 更新接口文档、开发日志，并运行后端、前端测试与浏览器预览。
+
 ## 验证
 
 - `npm run test -- SeatMap.test.tsx`

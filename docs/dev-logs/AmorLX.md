@@ -1,5 +1,54 @@
 # AmorLX 开发日志
 
+## 2026-05-23
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-reservation-ui-polish
+- 目标: 修复管理员新增或启用桌子后只有桌子预览、没有真实座位，导致学生端和管理员学生视角座位图不显示的问题。
+
+### 本次改动
+- `POST/PUT /api/tables` 支持 `seatCount`，取值范围为 `1-12`。
+- 后端新增空桌自动生成座位逻辑：只有桌子启用且当前没有真实座位时才补座位，避免覆盖已有座位、预约和签到数据。
+- 四人长桌自动生成 `NORTH/NORTH/SOUTH/SOUTH` 布局，座位编号从 `1` 到 `4`，桌内顺序与学生端显示保持一致。
+- 启用历史无座位桌子时，会按桌型尺寸推断座位数并补齐真实座位。
+- 管理员桌子页新增 `1人桌` 预设和 `座位数` 字段，新增、编辑和保存布局时都会保持桌型和座位数一致。
+- 更新 API 示例、接口契约和预约端 UI 实施记录。
+
+### 涉及文件
+- backend/src/main/java/com/lyston/smartseat/table/CreateStudyTableRequest.java
+- backend/src/main/java/com/lyston/smartseat/table/UpdateStudyTableRequest.java
+- backend/src/main/java/com/lyston/smartseat/table/StudyTableService.java
+- backend/src/test/java/com/lyston/smartseat/table/StudyTableServiceTest.java
+- frontend/src/api/tables.ts
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/App.test.tsx
+- docs/API_EXAMPLES.md
+- docs/architecture/API_CONTRACT.md
+- docs/plans/2026-05-22-reservation-ui-polish.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- App.test.tsx -t "submits the selected table seat count"`，确认旧实现提交体缺少 `seatCount`。
+- 已先运行 `mvn -Dtest=StudyTableServiceTest test`，确认旧服务缺少 `SeatMapper` 依赖和 `seatCount` 请求字段。
+- 已运行 `mvn -Dtest=StudyTableServiceTest test`，8 个后端桌子服务测试通过。
+- 已运行 `npm run test -- App.test.tsx`，28 个前端页面测试通过。
+- 已运行 `mvn test`，后端 93 个测试通过。
+- 已运行 `npm run test`，前端 56 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已重启本地前端和后端；后端使用临时演示库 `smart_seat_pr21_admin_tables` 跑通 16 个 Flyway 迁移。
+- 已用浏览器打开 `http://127.0.0.1:5173/admin/tables`，通过 API 创建 `QA627346` 演示桌，确认后端生成 4 个真实座位；管理员桌子页能看到该桌和“学生视角座位图”，点击 `QA627346 · 1号` 后显示系统座位号 `QA627346-01`。
+
+### 遗留问题
+- 本次自动补座位只在桌子没有真实座位时执行；如果未来需要调整已有桌子的座位数量，需要设计单独的座位增删和预约影响确认流程。
+- 本地旧演示库仍有 Flyway V15 校验和冲突，演示时已改用新的临时库，未对旧库执行 repair 或重置。
+
+### 对其他成员的影响
+- 桌子接口新增可选字段 `seatCount`，旧调用不传仍兼容。
+- 本次不修改签到验证、WiFi/IP 校验、签到码校验和后端预约状态机。
+
 ## 2026-05-22
 
 ### 任务
