@@ -16,7 +16,7 @@ export type Area = {
 
 export type AreaStatus = 'ACTIVE' | 'INACTIVE';
 
-export type AreaBuildingCode = 'A' | 'B' | 'CONNECTOR';
+export type AreaBuildingCode = 'A' | 'B' | 'C' | 'D' | 'CONNECTOR' | 'CONNECTOR_AB' | 'CONNECTOR_CD';
 
 export type AreaMapType = 'STUDY_ROOM' | 'HALL' | 'CORRIDOR' | 'CONNECTOR';
 

@@ -32,7 +32,10 @@ const statusColors: Record<AreaStatus, string> = {
 const buildingOptions: { label: string; value: AreaBuildingCode }[] = [
   { label: 'A 楼', value: 'A' },
   { label: 'B 楼', value: 'B' },
+  { label: 'C 楼', value: 'C' },
+  { label: 'D 楼', value: 'D' },
   { label: 'A/B 连廊', value: 'CONNECTOR' },
+  { label: 'C/D 连廊', value: 'CONNECTOR_CD' },
 ];
 
 const areaTypeOptions: { label: string; value: AreaMapType }[] = [
@@ -45,7 +48,11 @@ const areaTypeOptions: { label: string; value: AreaMapType }[] = [
 const buildingLabels: Record<AreaBuildingCode, string> = {
   A: 'A 楼',
   B: 'B 楼',
+  C: 'C 楼',
+  D: 'D 楼',
   CONNECTOR: 'A/B 连廊',
+  CONNECTOR_AB: 'A/B 连廊',
+  CONNECTOR_CD: 'C/D 连廊',
 };
 
 const areaTypeLabels: Record<AreaMapType, string> = {

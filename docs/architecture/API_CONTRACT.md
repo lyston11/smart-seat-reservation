@@ -46,7 +46,8 @@
 - `GET/POST /api/seat-slots/publish-plans` 用于查询和创建持续开放计划；`POST /api/seat-slots/publish-plans/{planId}/stop` 用于从某天起停止计划。
 - `DELETE /api/seat-slots/{seatSlotId}` 用于撤销单个空闲时段；`DELETE /api/seat-slots?areaId=&date=` 用于撤销指定区域某天所有未被预约的空闲时段，并返回已保留的不可撤销数量。
 - `POST /api/seat-slots/cancel-batch` 用于撤销选中日期或日期范围，可同时写入开放例外，避免持续开放计划或自动发布任务重新生成这些日期。
-- `GET/POST/PUT /api/areas` 的区域对象包含预约端室内地图元数据：`buildingCode` 可选 `A`、`B`、`CONNECTOR`，`areaType` 可选 `STUDY_ROOM`、`HALL`、`CORRIDOR`、`CONNECTOR`，`floorCode` 用于地图楼层展示，`mapX/mapY` 是 `0-100` 的可选地图坐标。未配置地图元数据的旧区域仍由前端按名称、楼层和描述兼容推断。
+- `GET/POST/PUT /api/areas` 的区域对象包含预约端室内地图元数据：`buildingCode` 可选 `A`、`B`、`C`、`D`、`CONNECTOR`、`CONNECTOR_AB`、`CONNECTOR_CD`，其中 `CONNECTOR` 兼容表示 A/B 连廊；`areaType` 可选 `STUDY_ROOM`、`HALL`、`CORRIDOR`、`CONNECTOR`，`floorCode` 用于地图楼层展示，`mapX/mapY` 是 `0-100` 的可选地图坐标。预约端地图仅在 `2F`、`3F` 渲染 A/B 与 C/D 连廊，未配置地图元数据的旧区域仍由前端按名称、楼层和描述兼容推断。
+- `POST/PUT /api/tables` 可携带 `seatCount`（`1-12`）。后端只会在桌子为启用状态且当前没有真实座位时自动生成座位，避免覆盖已经存在的座位、预约和签到数据；`PATCH /api/tables/{id}/status` 启用无座位旧桌子时会按桌型尺寸推断座位数。
 
 ## 3. 前端 API 模块边界
 

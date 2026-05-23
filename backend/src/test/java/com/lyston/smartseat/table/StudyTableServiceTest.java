@@ -2,15 +2,21 @@ package com.lyston.smartseat.table;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.lyston.smartseat.area.Area;
 import com.lyston.smartseat.area.AreaMapper;
 import com.lyston.smartseat.common.BusinessException;
+import com.lyston.smartseat.seat.Seat;
+import com.lyston.smartseat.seat.SeatMapper;
+import com.lyston.smartseat.seat.SeatStatus;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.RecordComponent;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -18,13 +24,15 @@ class StudyTableServiceTest {
 
     private AreaMapperFake areaMapper;
     private StudyTableMapperFake studyTableMapper;
+    private SeatMapperFake seatMapper;
     private StudyTableService studyTableService;
 
     @BeforeEach
     void setUp() {
         areaMapper = new AreaMapperFake();
         studyTableMapper = new StudyTableMapperFake();
-        studyTableService = new StudyTableService(areaMapper.proxy(), studyTableMapper.proxy());
+        seatMapper = new SeatMapperFake();
+        studyTableService = new StudyTableService(areaMapper.proxy(), studyTableMapper.proxy(), seatMapper.proxy());
     }
 
     @Test
@@ -40,6 +48,42 @@ class StudyTableServiceTest {
         assertThat(response.status()).isEqualTo(StudyTableStatus.ACTIVE);
         assertThat(studyTableMapper.insertedTable.getQrToken()).hasSize(32).doesNotContain("-");
         assertThat(studyTableMapper.insertedTable.getTableNo()).isEqualTo("T01");
+    }
+
+    @Test
+    void createTableShouldGenerateSeatsFromRequestedSeatCount() {
+        areaMapper.area = area();
+
+        studyTableService.createTable(
+                new CreateStudyTableRequest(1L, "T10", "Window table", null, null, null, 4, 120, 90, 220, 96, 0)
+        );
+
+        assertThat(seatMapper.insertedSeats)
+                .hasSize(4)
+                .extracting(
+                        Seat::getSeatNo,
+                        Seat::getSeatLabel,
+                        Seat::getSeatSide,
+                        Seat::getSeatOrder,
+                        Seat::getRowNo,
+                        Seat::getColumnNo,
+                        Seat::getStatus
+                )
+                .containsExactly(
+                        tuple("T10-01", "1", "NORTH", 1, 1, 1, SeatStatus.ACTIVE),
+                        tuple("T10-02", "2", "NORTH", 2, 1, 2, SeatStatus.ACTIVE),
+                        tuple("T10-03", "3", "SOUTH", 1, 2, 1, SeatStatus.ACTIVE),
+                        tuple("T10-04", "4", "SOUTH", 2, 2, 2, SeatStatus.ACTIVE)
+                );
+        assertThat(seatMapper.insertedSeats)
+                .extracting(Seat::getAreaId)
+                .containsOnly(1L);
+        assertThat(seatMapper.insertedSeats)
+                .extracting(Seat::getTableId)
+                .containsOnly(1L);
+        assertThat(seatMapper.insertedSeats)
+                .extracting(Seat::getQrToken)
+                .allSatisfy(token -> assertThat((String) token).hasSize(32).doesNotContain("-"));
     }
 
     @Test
@@ -171,6 +215,24 @@ class StudyTableServiceTest {
                 case "countDuplicateTableNo" -> duplicateCount;
                 case "countBusySlotsByTableId" -> busySlotCount;
                 case "countSeatsByTableId" -> seatCount;
+                default -> defaultValue(method.getReturnType());
+            });
+        }
+    }
+
+    private static final class SeatMapperFake {
+        private final List<Seat> insertedSeats = new ArrayList<>();
+
+        SeatMapper proxy() {
+            return StudyTableServiceTest.proxy(SeatMapper.class, (unused, method, args) -> switch (method.getName()) {
+                case "insert" -> {
+                    Seat seat = (Seat) args[0];
+                    seat.setId((long) insertedSeats.size() + 1);
+                    insertedSeats.add(seat);
+                    yield 1;
+                }
+                case "countDuplicateSeatNo" -> 0;
+                case "countByAreaId" -> insertedSeats.size();
                 default -> defaultValue(method.getReturnType());
             });
         }

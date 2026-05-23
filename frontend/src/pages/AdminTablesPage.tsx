@@ -21,8 +21,10 @@ import { listAreas } from '../api/areas';
 import { listSeats } from '../api/seats';
 import { createTable, getTableCheckinQr, listTables, updateTable, updateTableStatus } from '../api/tables';
 import AdminResourceActions from '../components/AdminResourceActions';
+import SeatMap from '../components/SeatMap';
 import TableLayoutPreview from '../components/TableLayoutPreview';
-import type { Area, Seat, StudyTable, StudyTableQr, StudyTableStatus } from '../types/seat';
+import type { Area, Seat, SeatSlot, SeatSlotStatus, StudyTable, StudyTableQr, StudyTableStatus } from '../types/seat';
+import { getSeatPathText } from '../utils/seatDisplay';
 
 type TableFormValues = {
   areaId: number;
@@ -31,6 +33,7 @@ type TableFormValues = {
   rowNo?: number;
   columnNo?: number;
   displayOrder?: number;
+  seatCount?: number;
   positionX?: number;
   positionY?: number;
   widthPx?: number;
@@ -39,7 +42,7 @@ type TableFormValues = {
   status: StudyTableStatus;
 };
 
-type TablePresetKey = 'TWO' | 'THREE' | 'FOUR' | 'CUSTOM';
+type TablePresetKey = 'ONE' | 'TWO' | 'THREE' | 'FOUR' | 'CUSTOM';
 
 type TablePreset = {
   label: string;
@@ -58,7 +61,18 @@ const statusColors: Record<StudyTableStatus, string> = {
   INACTIVE: 'default',
 };
 
+const adminSeatStatusText: Partial<Record<SeatSlotStatus, string>> = {
+  AVAILABLE: '启用',
+  UNPUBLISHED: '停用',
+};
+
+const adminSeatStatusColor: Partial<Record<SeatSlotStatus, string>> = {
+  AVAILABLE: 'green',
+  UNPUBLISHED: 'default',
+};
+
 const tablePresets: Record<TablePresetKey, TablePreset> = {
+  ONE: { label: '1人桌', widthPx: 120, heightPx: 80, seatCount: 1 },
   TWO: { label: '2人桌', widthPx: 180, heightPx: 84, seatCount: 2 },
   THREE: { label: '3人桌', widthPx: 190, heightPx: 128, seatCount: 3 },
   FOUR: { label: '4人桌', widthPx: 220, heightPx: 96, seatCount: 4 },
@@ -86,7 +100,7 @@ function isManagedTable(table: StudyTable) {
 }
 
 function inferTablePreset(table: StudyTable): TablePresetKey {
-  const matchedPreset = (['TWO', 'THREE', 'FOUR'] as TablePresetKey[]).find((key) => {
+  const matchedPreset = (['ONE', 'TWO', 'THREE', 'FOUR'] as TablePresetKey[]).find((key) => {
     const preset = tablePresets[key];
     return table.widthPx === preset.widthPx && table.heightPx === preset.heightPx && table.rotationDeg === 0;
   });
@@ -94,7 +108,7 @@ function inferTablePreset(table: StudyTable): TablePresetKey {
 }
 
 function getTablePresetLabel(table: StudyTable, seatCount: number) {
-  if (seatCount === 2 || seatCount === 3 || seatCount === 4) {
+  if (seatCount >= 1 && seatCount <= 4) {
     return `${seatCount}人桌`;
   }
   const preset = tablePresets[inferTablePreset(table)];
@@ -122,6 +136,38 @@ function applyPresetValues(values: TableFormValues, presetKey: TablePresetKey): 
     widthPx: preset.widthPx,
     heightPx: preset.heightPx,
     rotationDeg: 0,
+    seatCount: preset.seatCount ?? values.seatCount,
+  };
+}
+
+function toAdminSeatMapSlot(seat: Seat): SeatSlot {
+  return {
+    id: seat.id,
+    seatId: seat.id,
+    seatNo: seat.seatNo,
+    tableId: seat.tableId,
+    tableNo: seat.tableNo,
+    tableRowNo: seat.tableRowNo,
+    tableColumnNo: seat.tableColumnNo,
+    tableDisplayOrder: seat.tableDisplayOrder,
+    tablePositionX: seat.tablePositionX,
+    tablePositionY: seat.tablePositionY,
+    tableWidthPx: seat.tableWidthPx,
+    tableHeightPx: seat.tableHeightPx,
+    tableRotationDeg: seat.tableRotationDeg,
+    seatLabel: seat.seatLabel,
+    seatSide: seat.seatSide,
+    seatOrder: seat.seatOrder,
+    rowNo: seat.rowNo,
+    columnNo: seat.columnNo,
+    displayOrder: seat.displayOrder,
+    areaId: seat.areaId,
+    slotDate: 'ADMIN',
+    startTime: '00:00:00',
+    endTime: '23:59:00',
+    status: seat.status === 'ACTIVE' ? 'AVAILABLE' : 'UNPUBLISHED',
+    reservedBy: null,
+    reservationId: null,
   };
 }
 
@@ -142,6 +188,7 @@ export default function AdminTablesPage() {
   const [layoutDrafts, setLayoutDrafts] = useState<Record<number, { positionX: number; positionY: number }>>({});
   const [layoutSaving, setLayoutSaving] = useState(false);
   const [tablePresetKey, setTablePresetKey] = useState<TablePresetKey>('FOUR');
+  const [selectedAdminSeatId, setSelectedAdminSeatId] = useState<number | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
 
   const selectedArea = useMemo(() => areas.find((area) => area.id === areaId), [areaId, areas]);
@@ -173,6 +220,17 @@ export default function AdminTablesPage() {
     () => seats.filter((seat) => seat.status === 'ACTIVE' && managedTableIds.has(seat.tableId)).length,
     [managedTableIds, seats],
   );
+  const adminSeatMapSlots = useMemo(
+    () =>
+      seats
+        .filter((seat) => managedTableIds.has(seat.tableId))
+        .map(toAdminSeatMapSlot),
+    [managedTableIds, seats],
+  );
+  const selectedAdminSeatSlot = useMemo(
+    () => adminSeatMapSlots.find((slot) => slot.seatId === selectedAdminSeatId) ?? null,
+    [adminSeatMapSlots, selectedAdminSeatId],
+  );
   const layoutTables = useMemo(
     () =>
       managedTables.map((table) => ({
@@ -186,7 +244,10 @@ export default function AdminTablesPage() {
   const checkinUrl = tableQr ? buildCheckinUrl(tableQr.checkinPath) : '';
   const previewTableId = editingTable?.id ?? -1;
   const previewSeatCount =
-    tablePresets[tablePresetKey].seatCount ?? (editingTable ? seatCountsByTable[editingTable.id] ?? 0 : 0);
+    layoutPreviewValues?.seatCount ??
+    tablePresets[tablePresetKey].seatCount ??
+    (editingTable ? seatCountsByTable[editingTable.id] : undefined) ??
+    4;
   const previewSeatCounts = { [previewTableId]: previewSeatCount };
 
   const loadAreas = useCallback(async () => {
@@ -208,6 +269,7 @@ export default function AdminTablesPage() {
       setTables(nextTables);
       setSeats(nextSeats);
       setLayoutDrafts({});
+      setSelectedAdminSeatId(null);
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '加载桌子失败');
     } finally {
@@ -225,6 +287,7 @@ export default function AdminTablesPage() {
       rowNo: undefined,
       columnNo: undefined,
       displayOrder: undefined,
+      seatCount: tablePresets.FOUR.seatCount,
       positionX: 80,
       positionY: 80,
       widthPx: tablePresets.FOUR.widthPx,
@@ -237,8 +300,10 @@ export default function AdminTablesPage() {
   }
 
   function openEditModal(table: StudyTable) {
+    const nextPresetKey = inferTablePreset(table);
+    const presetSeatCount = tablePresets[nextPresetKey].seatCount;
     setEditingTable(table);
-    setTablePresetKey(inferTablePreset(table));
+    setTablePresetKey(nextPresetKey);
     form.setFieldsValue({
       areaId: table.areaId,
       tableNo: table.tableNo,
@@ -246,6 +311,7 @@ export default function AdminTablesPage() {
       rowNo: table.rowNo ?? undefined,
       columnNo: table.columnNo ?? undefined,
       displayOrder: table.displayOrder ?? undefined,
+      seatCount: seatCountsByTable[table.id] ?? presetSeatCount ?? 4,
       positionX: table.positionX ?? 80,
       positionY: table.positionY ?? 80,
       widthPx: table.widthPx ?? 260,
@@ -266,6 +332,7 @@ export default function AdminTablesPage() {
         widthPx: preset.widthPx,
         heightPx: preset.heightPx,
         rotationDeg: 0,
+        seatCount: preset.seatCount,
       };
       form.setFieldsValue(nextValues);
       setLayoutPreviewValues(nextValues);
@@ -290,6 +357,7 @@ export default function AdminTablesPage() {
           rowNo: values.rowNo,
           columnNo: values.columnNo,
           displayOrder: values.displayOrder,
+          seatCount: values.seatCount ?? tablePresets[tablePresetKey].seatCount ?? 4,
           positionX: values.positionX,
           positionY: values.positionY,
           widthPx: values.widthPx,
@@ -325,6 +393,7 @@ export default function AdminTablesPage() {
             rowNo: table.rowNo ?? undefined,
             columnNo: table.columnNo ?? undefined,
             displayOrder: table.displayOrder ?? undefined,
+            seatCount: seatCountsByTable[table.id] ?? tablePresets[inferTablePreset(table)].seatCount ?? 4,
             positionX: layoutDrafts[table.id].positionX,
             positionY: layoutDrafts[table.id].positionY,
             widthPx: table.widthPx,
@@ -567,6 +636,46 @@ export default function AdminTablesPage() {
         />
       </div>
 
+      <div className="layout-preview-panel admin-seat-map-panel" aria-label="学生视角座位图">
+        <div className="seat-map-section-header">
+          <div className="seat-map-section-title">
+            <strong>学生视角座位图</strong>
+            <span>按学生看到的桌号和座位编号定位反馈问题</span>
+          </div>
+          <Typography.Text type="secondary">
+            {selectedArea ? `${selectedArea.name}${selectedArea.floor ? ` · ${selectedArea.floor}` : ''}` : '当前区域'}
+          </Typography.Text>
+        </div>
+        <div className="admin-seat-map-workspace">
+          <SeatMap
+            emptyDescription="当前区域暂无真实座位，请先维护座位后再对照学生视图"
+            sectionTitle="全部桌座"
+            slots={adminSeatMapSlots}
+            selectableStatuses={['AVAILABLE', 'UNPUBLISHED']}
+            selectedSeatId={selectedAdminSeatId}
+            statusTextOverrides={adminSeatStatusText}
+            onSeatClick={(slot) => setSelectedAdminSeatId(slot.seatId)}
+          />
+          <div className="admin-seat-map-detail">
+            <Typography.Text type="secondary">当前定位</Typography.Text>
+            {selectedAdminSeatSlot ? (
+              <Space orientation="vertical" size={8}>
+                <Typography.Text strong>{getSeatPathText(selectedAdminSeatSlot, adminSeatMapSlots)}</Typography.Text>
+                <Typography.Text>系统座位号 {selectedAdminSeatSlot.seatNo ?? selectedAdminSeatSlot.seatId}</Typography.Text>
+                <Tag color={adminSeatStatusColor[selectedAdminSeatSlot.status] ?? 'default'}>
+                  {adminSeatStatusText[selectedAdminSeatSlot.status] ?? selectedAdminSeatSlot.status}
+                </Tag>
+                <Typography.Text type="secondary">
+                  学生反馈桌座时，可按这个桌号和座位编号在平面图中定位。
+                </Typography.Text>
+              </Space>
+            ) : (
+              <Typography.Text type="secondary">点击平面图中的座位后显示桌号、座位号和状态。</Typography.Text>
+            )}
+          </div>
+        </div>
+      </div>
+
       <Modal
         title={editingTable ? '编辑桌子' : '新增桌子'}
         open={modalOpen}
@@ -616,6 +725,13 @@ export default function AdminTablesPage() {
               value={tablePresetKey}
               onChange={(value) => selectTablePreset(value as TablePresetKey)}
             />
+          </Form.Item>
+          <Form.Item
+            label="座位数"
+            name="seatCount"
+            rules={[{ required: true, message: '请输入座位数' }]}
+          >
+            <InputNumber min={1} max={12} precision={0} disabled={tablePresetKey !== 'CUSTOM'} />
           </Form.Item>
           <div className="resource-layout-fields">
             <Form.Item label="行号" name="rowNo">

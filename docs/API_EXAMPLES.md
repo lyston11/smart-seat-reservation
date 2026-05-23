@@ -244,7 +244,7 @@ curl http://localhost:18080/api/areas \
 区域响应包含预约端室内地图元数据：
 
 ```text
-buildingCode: A / B / CONNECTOR
+buildingCode: A / B / C / D / CONNECTOR / CONNECTOR_AB / CONNECTOR_CD
 floorCode: 地图展示楼层，例如 1F、2F、3F
 areaType: STUDY_ROOM / HALL / CORRIDOR / CONNECTOR
 mapX / mapY: 0-100 的可选地图坐标，用于稳定排序和后续可视化扩展
@@ -326,6 +326,7 @@ curl -X POST http://localhost:18080/api/tables \
     "rowNo": 1,
     "columnNo": 2,
     "displayOrder": 2,
+    "seatCount": 4,
     "positionX": 340,
     "positionY": 80,
     "widthPx": 260,
@@ -333,6 +334,8 @@ curl -X POST http://localhost:18080/api/tables \
     "rotationDeg": 0
   }'
 ```
+
+`seatCount` 用于创建真实座位，取值范围为 `1-12`。新增启用桌子时，如果该桌还没有座位，后端会按 `seatCount` 自动生成 `seatNo`、`seatLabel`、`seatSide`、`seatOrder` 和座位二维码 token；四人长桌默认生成上侧两个、下侧两个座位。
 
 编辑桌子资源：
 
@@ -348,6 +351,7 @@ curl -X PUT http://localhost:18080/api/tables/1 \
     "rowNo": 1,
     "columnNo": 1,
     "displayOrder": 1,
+    "seatCount": 4,
     "positionX": 80,
     "positionY": 80,
     "widthPx": 260,

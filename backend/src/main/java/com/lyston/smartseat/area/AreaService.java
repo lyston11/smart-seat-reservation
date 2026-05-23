@@ -21,7 +21,15 @@ public class AreaService {
     private static final LocalTime DEFAULT_OPEN_TIME = LocalTime.of(8, 0);
     private static final LocalTime DEFAULT_CLOSE_TIME = LocalTime.of(22, 0);
     private static final String DEFAULT_CHECKIN_IP_CIDRS = "127.0.0.1/32,::1/128";
-    private static final Set<String> ALLOWED_BUILDING_CODES = Set.of("A", "B", "CONNECTOR");
+    private static final Set<String> ALLOWED_BUILDING_CODES = Set.of(
+            "A",
+            "B",
+            "C",
+            "D",
+            "CONNECTOR",
+            "CONNECTOR_AB",
+            "CONNECTOR_CD"
+    );
     private static final Set<String> ALLOWED_AREA_TYPES = Set.of("STUDY_ROOM", "HALL", "CORRIDOR", "CONNECTOR");
 
     private final AreaMapper areaMapper;

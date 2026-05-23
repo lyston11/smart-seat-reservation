@@ -137,6 +137,44 @@ describe('TableLayoutPreview', () => {
     );
   });
 
+  it('prevents editable movement from overlapping another table', () => {
+    const onMoveTable = vi.fn();
+    render(
+      <TableLayoutPreview
+        editable
+        seatCounts={{ 1: 4, 2: 4 }}
+        onMoveTable={onMoveTable}
+        tables={[
+          makeTable({ id: 1, tableNo: 'T01', positionX: 120, positionY: 80 }),
+          makeTable({ id: 2, tableNo: 'T02', positionX: 260, positionY: 80 }),
+        ]}
+      />,
+    );
+
+    fireEvent.keyDown(screen.getByRole('button', { name: '编辑 T01' }), { key: 'ArrowRight' });
+
+    expect(onMoveTable).not.toHaveBeenCalled();
+  });
+
+  it('separates existing active tables when their preview footprints overlap', () => {
+    render(
+      <TableLayoutPreview
+        seatCounts={{ 1: 4, 2: 4 }}
+        tables={[
+          makeTable({ id: 1, tableNo: 'T01', positionX: 120, positionY: 80 }),
+          makeTable({ id: 2, tableNo: 'T02', positionX: 125, positionY: 80 }),
+        ]}
+      />,
+    );
+
+    const firstTable = screen.getByRole('button', { name: '编辑 T01' }) as HTMLElement;
+    const secondTable = screen.getByRole('button', { name: '编辑 T02' }) as HTMLElement;
+
+    expect(firstTable.style.getPropertyValue('--table-top')).toBe('80px');
+    expect(secondTable.style.getPropertyValue('--table-top')).not.toBe('80px');
+    expect(Number.parseInt(secondTable.style.getPropertyValue('--table-top'), 10)).toBeGreaterThan(80);
+  });
+
   it('does not render fake room features in the admin layout preview', () => {
     render(
       <TableLayoutPreview

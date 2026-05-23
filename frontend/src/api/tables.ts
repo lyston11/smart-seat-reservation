@@ -9,6 +9,7 @@ export type CreateTablePayload = {
   rowNo?: number;
   columnNo?: number;
   displayOrder?: number;
+  seatCount?: number;
   positionX?: number;
   positionY?: number;
   widthPx?: number;
@@ -24,6 +25,7 @@ export type UpdateTablePayload = {
   rowNo?: number;
   columnNo?: number;
   displayOrder?: number;
+  seatCount?: number;
   positionX?: number;
   positionY?: number;
   widthPx?: number;
