@@ -62,15 +62,15 @@ const sideClass: Record<SeatSide, string> = {
 };
 
 const tableSeatSides: SeatSide[] = ['NORTH', 'WEST', 'EAST', 'SOUTH', 'SINGLE'];
-const TABLE_DISPLAY_SCALE = 0.52;
-const TABLE_POSITION_SCALE = 0.72;
-const TABLE_SIDE_OFFSET = 50;
-const TABLE_VERTICAL_OFFSET = 34;
-const TABLE_COLLISION_GAP = 16;
+const TABLE_DISPLAY_SCALE = 0.5;
+const TABLE_POSITION_SCALE = 0.62;
+const TABLE_SIDE_OFFSET = 44;
+const TABLE_VERTICAL_OFFSET = 30;
+const TABLE_COLLISION_GAP = 14;
 const MIN_ZOOM = 0.7;
 const MAX_ZOOM = 1.4;
 const ZOOM_STEP = 0.1;
-const DEFAULT_ZOOM = 1;
+const DEFAULT_ZOOM = 0.9;
 
 function getTimeRange(slot: SeatSlot) {
   return `${slot.startTime.slice(0, 5)}-${slot.endTime.slice(0, 5)}`;
@@ -251,17 +251,17 @@ function getCoordinateRoomBounds(tables: TableGroup[]) {
   }
   const maxRight = Math.max(
     ...positionedTables.map(
-      (table) => (table.positionX ?? 0) + getTableFootprintWidth(table) + TABLE_SIDE_OFFSET + 92,
+      (table) => (table.positionX ?? 0) + getTableFootprintWidth(table) + TABLE_SIDE_OFFSET + 64,
     ),
   );
   const maxBottom = Math.max(
     ...positionedTables.map(
-      (table) => (table.positionY ?? 0) + getTableFootprintHeight(table) + TABLE_VERTICAL_OFFSET + 116,
+      (table) => (table.positionY ?? 0) + getTableFootprintHeight(table) + TABLE_VERTICAL_OFFSET + 76,
     ),
   );
   return {
-    width: Math.max(maxRight + 96, 640),
-    height: Math.max(maxBottom + 64, 360),
+    width: Math.max(maxRight + 72, 640),
+    height: Math.max(maxBottom + 44, 360),
   };
 }
 

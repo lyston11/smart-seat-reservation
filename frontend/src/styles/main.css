@@ -1303,7 +1303,7 @@ body {
 }
 
 .seat-room-layout-coordinate {
-  padding: 30px 14px 34px;
+  padding: 24px 10px 28px;
 }
 
 .seat-room-feature {
@@ -1375,13 +1375,13 @@ body {
 
 .seat-table-positioned {
   position: absolute;
-  width: calc(var(--table-width, 114px) + 100px);
-  min-height: 112px;
+  width: calc(var(--table-width, 114px) + 88px);
+  min-height: 104px;
   grid-template:
-    ". north ." 32px
+    ". north ." 30px
     "west table east" var(--table-height, 50px)
-    ". south ." 32px
-    ". single ." auto / 50px var(--table-width, 114px) 50px;
+    ". south ." 30px
+    ". single ." auto / 44px var(--table-width, 114px) 44px;
   transform-origin: center center;
   transition:
     left 180ms ease,

@@ -36,6 +36,41 @@ function makeSlot(overrides: Partial<SeatSlot>): SeatSlot {
   };
 }
 
+function makeDemoTableSlots(tableIndex: number, column: number, row: number): SeatSlot[] {
+  const tableNo = `T${String(tableIndex).padStart(2, '0')}`;
+  const tableId = 100 + tableIndex;
+  const baseSeatId = tableIndex * 10;
+  const positionX = column === 1 ? 120 : 520;
+  const positionY = 90 + (row - 1) * 230;
+  const seats = [
+    { side: 'NORTH' as const, order: 1 },
+    { side: 'NORTH' as const, order: 2 },
+    { side: 'SOUTH' as const, order: 1 },
+    { side: 'SOUTH' as const, order: 2 },
+  ];
+
+  return seats.map((seat, seatIndex) =>
+    makeSlot({
+      id: baseSeatId + seatIndex,
+      seatId: baseSeatId + seatIndex,
+      seatNo: `A-${String(baseSeatId + seatIndex).padStart(3, '0')}`,
+      tableId,
+      tableNo,
+      tableRowNo: row,
+      tableColumnNo: column,
+      tableDisplayOrder: tableIndex,
+      tablePositionX: positionX,
+      tablePositionY: positionY,
+      tableWidthPx: 260,
+      tableHeightPx: 96,
+      seatLabel: `${seatIndex + 1}`,
+      seatSide: seat.side,
+      seatOrder: seat.order,
+      displayOrder: baseSeatId + seatIndex,
+    }),
+  );
+}
+
 afterEach(() => {
   cleanup();
 });
@@ -183,10 +218,10 @@ describe('SeatMap', () => {
 
     const table = screen.getByLabelText('T01');
     expect(table.className).toContain('seat-table-positioned');
-    expect((table as HTMLElement).style.left).toBe('36px');
-    expect((table as HTMLElement).style.top).toBe('24px');
-    expect((table as HTMLElement).style.getPropertyValue('--table-width')).toBe('135px');
-    expect((table as HTMLElement).style.getPropertyValue('--table-height')).toBe('50px');
+    expect((table as HTMLElement).style.left).toBe('30px');
+    expect((table as HTMLElement).style.top).toBe('20px');
+    expect((table as HTMLElement).style.getPropertyValue('--table-width')).toBe('130px');
+    expect((table as HTMLElement).style.getPropertyValue('--table-height')).toBe('48px');
     expect(within(table).getByText('1号')).toBeTruthy();
     expect(within(table).getByText('2号')).toBeTruthy();
     expect(within(table).getByText('3号')).toBeTruthy();
@@ -224,23 +259,48 @@ describe('SeatMap', () => {
     );
 
     expect(screen.getByLabelText('座位图缩放控制')).toBeTruthy();
-    expect(screen.getByText('100%')).toBeTruthy();
+    expect(screen.getByText('90%')).toBeTruthy();
 
     const content = screen.getByTestId('seat-map-coordinate-content');
-    expect(content.style.transform).toBe('scale(1)');
-
-    fireEvent.click(screen.getByLabelText('放大座位图'));
-    expect(screen.getByText('110%')).toBeTruthy();
-    expect(content.style.transform).toBe('scale(1.1)');
-
-    fireEvent.click(screen.getByLabelText('缩小座位图'));
-    fireEvent.click(screen.getByLabelText('缩小座位图'));
-    expect(screen.getByText('90%')).toBeTruthy();
     expect(content.style.transform).toBe('scale(0.9)');
 
-    fireEvent.click(screen.getByLabelText('适配座位图'));
+    fireEvent.click(screen.getByLabelText('放大座位图'));
     expect(screen.getByText('100%')).toBeTruthy();
     expect(content.style.transform).toBe('scale(1)');
+
+    fireEvent.click(screen.getByLabelText('缩小座位图'));
+    fireEvent.click(screen.getByLabelText('缩小座位图'));
+    expect(screen.getByText('80%')).toBeTruthy();
+    expect(content.style.transform).toBe('scale(0.8)');
+
+    fireEvent.click(screen.getByLabelText('适配座位图'));
+    expect(screen.getByText('90%')).toBeTruthy();
+    expect(content.style.transform).toBe('scale(0.9)');
+  });
+
+  it('fits a ten-table demo room as two columns and five rows at the default zoom', () => {
+    const slots = Array.from({ length: 10 }, (_, index) => {
+      const tableIndex = index + 1;
+      const column = index % 2 === 0 ? 1 : 2;
+      const row = Math.floor(index / 2) + 1;
+      return makeDemoTableSlots(tableIndex, column, row);
+    }).flat();
+
+    render(<SeatMap slots={slots} onReserve={vi.fn()} />);
+
+    const tables = Array.from({ length: 10 }, (_, index) =>
+      screen.getByLabelText(`T${String(index + 1).padStart(2, '0')}`),
+    ) as HTMLElement[];
+    const leftPositions = new Set(tables.map((table) => table.style.left));
+    const topPositions = new Set(tables.map((table) => table.style.top));
+
+    expect(leftPositions.size).toBe(2);
+    expect(topPositions.size).toBe(5);
+    expect(screen.getByText('90%')).toBeTruthy();
+
+    const viewport = screen.getByTestId('seat-map-coordinate-content').parentElement as HTMLElement;
+    expect(Number.parseInt(viewport.style.width, 10)).toBeLessThanOrEqual(580);
+    expect(Number.parseInt(viewport.style.height, 10)).toBeLessThanOrEqual(750);
   });
 
   it('marks horizontal, vertical, and rotated coordinate tables for realistic placements', () => {
@@ -318,8 +378,8 @@ describe('SeatMap', () => {
     const firstTable = screen.getByLabelText('T01') as HTMLElement;
     const secondTable = screen.getByLabelText('T02') as HTMLElement;
 
-    expect(firstTable.style.top).toBe('24px');
-    expect(secondTable.style.top).not.toBe('24px');
+    expect(firstTable.style.top).toBe('20px');
+    expect(secondTable.style.top).not.toBe('20px');
     expect(Number.parseInt(secondTable.style.top, 10)).toBeGreaterThan(Number.parseInt(firstTable.style.top, 10));
   });
 

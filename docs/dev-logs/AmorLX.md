@@ -1,5 +1,49 @@
 # AmorLX 开发日志
 
+## 2026-05-24
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-student-seat-mobile-flow
+- 目标: 调整座位图缩放和演示显示效果，让默认演示区域至少展示 10 张桌子，按两列五行排列。
+
+### 本次改动
+- 学生/管理员共用的 `SeatMap` 坐标布局改为更紧凑的显示比例，默认适配缩放为 90%。
+- 收紧坐标画布边距和定位桌子的左右座位区宽度，减少大房间演示时的空白。
+- 新增 10 桌布局回归测试，固定 T01-T10 需要渲染为 2 列 x 5 行，并保持默认画布尺寸可控。
+- 新增 Flyway V17 演示数据迁移，将 `Library Area A` 扩展为 T01-T10，每桌 4 个座位，座号从 1 到 4。
+- V17 同时为演示区补齐当天和次日 08:00-22:00 的完整开放窗口，方便本地 demo 直接看到 40 个可预约座位。
+- 新增设计说明和实施计划，记录本次只调整座位图和演示数据，不改签到验证闭环。
+
+### 涉及文件
+- backend/src/main/resources/db/migration/V17__expand_library_demo_seat_map.sql
+- frontend/src/components/SeatMap.tsx
+- frontend/src/components/SeatMap.test.tsx
+- frontend/src/styles/main.css
+- docs/plans/2026-05-24-seat-map-ten-table-density-design.md
+- docs/plans/2026-05-24-seat-map-ten-table-density.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- SeatMap.test.tsx`，确认旧实现默认 100% 且 10 桌画布过高。
+- 已运行 `npm run test -- SeatMap.test.tsx`，10 个座位图测试通过。
+- 已运行 `npm run test`，前端 62 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn test`，后端 93 个测试通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已重启本地后端到临时库 `smart_seat_ui_preview`，确认 Flyway V17 成功执行，`Library Area A` 为 T01-T10、每桌 4 座。
+- 已用浏览器打开 `http://127.0.0.1:5173/student/seats` 验证：桌面端 T01-T10 为两列五行、默认 90%；手机宽度 `390x844` 下无横向溢出。
+
+### 遗留问题
+- 本次只扩展 `Library Area A` 的 demo 数据；真实楼栋/区域的桌数仍需要管理员在桌子管理里维护。
+- 当前只是座位图显示密度优化，没有做自动根据容器宽度计算最佳缩放。
+
+### 对其他成员的影响
+- 新增后端迁移版本 V17，后续新增 Flyway 迁移需从 V18 开始。
+- 本次不修改签到验证、WiFi/IP 校验、签到码校验、桌码签到、预约状态机和管理员释放流程。
+- `SeatMap` 默认缩放从 100% 调为 90%，学生端和管理员学生视角座位图都会更紧凑。
+
 ## 2026-05-23
 
 ### 任务
