@@ -345,6 +345,42 @@ describe('SeatMap', () => {
     expect(Number.parseInt(viewport.style.height, 10)).toBeLessThanOrEqual(160);
   });
 
+  it('marks coordinate sections so the outer seat frame can fit the rendered canvas', () => {
+    render(
+      <SeatMap
+        slots={[
+          makeSlot({
+            id: 1,
+            seatId: 1,
+            tableId: 1,
+            tableNo: 'T01',
+            tablePositionX: 900,
+            tablePositionY: 1200,
+            tableWidthPx: 260,
+            tableHeightPx: 96,
+            seatSide: 'NORTH',
+          }),
+          makeSlot({
+            id: 2,
+            seatId: 2,
+            tableId: 2,
+            tableNo: 'T02',
+            tablePositionX: 1300,
+            tablePositionY: 1200,
+            tableWidthPx: 260,
+            tableHeightPx: 96,
+            seatSide: 'NORTH',
+          }),
+        ]}
+        onReserve={vi.fn()}
+      />,
+    );
+
+    const section = screen.getByTestId('seat-map-coordinate-content').closest('.seat-map-section');
+
+    expect(section?.className).toContain('seat-map-section-coordinate');
+  });
+
   it('marks horizontal, vertical, and rotated coordinate tables for realistic placements', () => {
     render(
       <SeatMap

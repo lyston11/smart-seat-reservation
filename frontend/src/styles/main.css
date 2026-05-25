@@ -1230,6 +1230,11 @@ body {
   border-radius: 8px;
 }
 
+.seat-map-section-coordinate {
+  width: fit-content;
+  max-width: 100%;
+}
+
 .seat-map-section-header {
   display: flex;
   align-items: center;

@@ -549,9 +549,10 @@ export default function SeatMap({
     <div className="seat-map">
       {groups.map((group) => {
         const isCoordinateLayout = hasCoordinateLayout(group.tables);
+        const sectionClassName = `seat-map-section${isCoordinateLayout ? ' seat-map-section-coordinate' : ''}`;
 
         return (
-          <section className="seat-map-section" key={group.timeRange}>
+          <section className={sectionClassName} key={group.timeRange}>
             <div className="seat-map-section-header">
               <div className="seat-map-section-title">
                 <strong>{sectionTitle ?? group.timeRange}</strong>

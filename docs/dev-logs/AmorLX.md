@@ -5,6 +5,40 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/AmorLX-student-seat-mobile-flow
+- 目标: 修复坐标画布已收缩后，“选择座位位置”外层框体仍按原工作区宽度铺满的问题。
+
+### 本次改动
+- `SeatMap` 在坐标布局模式下为外层 section 增加 `seat-map-section-coordinate` 状态类。
+- 坐标布局外层座位框体改为按内容宽度收缩，并保留 `max-width: 100%` 防止移动端横向溢出。
+- 新增回归测试，确保坐标座位图会标记外层 section，避免后续样式回退。
+
+### 涉及文件
+- frontend/src/components/SeatMap.tsx
+- frontend/src/components/SeatMap.test.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- SeatMap.test.tsx`，确认旧实现外层 section 缺少坐标布局状态类。
+- 已运行 `npm run test -- SeatMap.test.tsx`，12 个座位图测试通过。
+- 已运行 `npm run test`，前端 64 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn test`，后端 93 个测试通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已用浏览器打开 `http://127.0.0.1:5173/student/seats` 验证：外层座位框体宽度约 `519px`，内部房间容器约 `485px`，父级工作区约 `984px`，页面横向溢出为 `0px`。
+
+### 遗留问题
+- 本次只修复坐标布局的外层框体宽度，没有重新设计右侧已选座位面板或整体两栏比例。
+
+### 对其他成员的影响
+- 仅影响共用 `SeatMap` 的坐标布局显示宽度，不修改接口、数据库、签到验证、WiFi/IP 校验、签到码校验和预约状态机。
+
+## 2026-05-25
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-student-seat-mobile-flow
 - 目标: 座位图画布根据实际显示的桌椅外接范围渲染，不再保留大片空白区域。
 
 ### 本次改动
