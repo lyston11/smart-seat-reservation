@@ -660,6 +660,11 @@ export default function AdminTablesPage() {
           />
           <div className="admin-seat-map-detail">
             <Typography.Text type="secondary">当前定位</Typography.Text>
+            <div className="admin-seat-map-hint">
+              <Typography.Text type="secondary">
+                当前区域 {adminSeatMapSlots.length} 个座位，点击座位可同步查看系统编号和启停状态。
+              </Typography.Text>
+            </div>
             {selectedAdminSeatSlot ? (
               <Space orientation="vertical" size={8}>
                 <Typography.Text strong>{getSeatPathText(selectedAdminSeatSlot, adminSeatMapSlots)}</Typography.Text>

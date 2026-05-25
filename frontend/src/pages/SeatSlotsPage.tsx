@@ -505,6 +505,9 @@ export default function SeatSlotsPage() {
                     {validStartTime}-{validEndTime}
                   </strong>
                 </div>
+                <div className="student-seat-next-step">
+                  <Typography.Text strong>下一步：确认座位和时间无误后提交预约，成功后到座扫码签到。</Typography.Text>
+                </div>
                 <Button
                   type="primary"
                   block

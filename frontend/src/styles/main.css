@@ -507,6 +507,23 @@ body {
   width: 100%;
 }
 
+.admin-seat-map-hint,
+.student-seat-next-step {
+  min-width: 0;
+  padding: 10px 12px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #eff6ff;
+}
+
+.admin-seat-map-hint .ant-typography,
+.student-seat-next-step .ant-typography {
+  margin: 0;
+  line-height: 20px;
+}
+
 .admin-resource-summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

@@ -5,6 +5,42 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/AmorLX-student-seat-mobile-flow
+- 目标: 继续优化学生选座和管理员定位的使用体验，让下一步动作更明确。
+
+### 本次改动
+- 学生端已选座位卡片新增下一步提示，提醒确认座位和时间后提交预约，成功后到座扫码签到。
+- 管理员桌子管理页的学生视角座位图新增定位提示，显示当前区域座位数量，并说明点击座位可查看系统编号和启停状态。
+- 为新增提示补充 App 集成测试，覆盖学生预约流程和管理员学生视角座位图。
+- 新增统一提示样式，保持与现有信息卡片一致，并继续适配移动端布局。
+
+### 涉及文件
+- frontend/src/App.test.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已运行 `npm run test -- App.test.tsx -t "concrete seat reservation"`。
+- 已运行 `npm run test -- App.test.tsx -t "renders a student-view seat map on the admin table page"`。
+- 已运行 `npm run test`，前端 65 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已在浏览器打开 `http://127.0.0.1:5173/student/seats`，选中座位后确认下一步提示出现，页面横向溢出为 0。
+- 已在浏览器打开 `http://127.0.0.1:5173/admin/tables`，确认管理员定位提示出现，页面横向溢出为 0。
+
+### 遗留问题
+- 本次只优化前端提示和引导文案，不改预约提交、扫码签到和管理员维护的业务状态流转。
+
+### 对其他成员的影响
+- 本次不修改签到验证、WiFi/IP 校验、签到码校验、数据库迁移和后端状态机。
+
+## 2026-05-25
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-student-seat-mobile-flow
 - 目标: 同步优化管理员桌子管理页的座位渲染区域，让管理员端也保持两端对齐和居中显示。
 
 ### 本次改动

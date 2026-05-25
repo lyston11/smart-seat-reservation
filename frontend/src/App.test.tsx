@@ -508,6 +508,7 @@ describe('App', () => {
     });
     expect(await screen.findByText('正式签到请扫描桌面/座位二维码；测试入口仍会校验校园网 IP 和签到时间窗。')).toBeTruthy();
     expect(await screen.findByRole('button', { name: /开发测试签到/ })).toBeTruthy();
+    expect(await screen.findByText('下一步：确认座位和时间无误后提交预约，成功后到座扫码签到。')).toBeTruthy();
   });
 
   it('keeps the selected seat visible after changing the selected time', async () => {
@@ -1900,6 +1901,7 @@ describe('App', () => {
     });
 
     const adminSeatMap = await screen.findByLabelText('学生视角座位图');
+    expect(within(adminSeatMap).getByText('当前区域 2 个座位，点击座位可同步查看系统编号和启停状态。')).toBeTruthy();
     expect(within(adminSeatMap).getByText('T01')).toBeTruthy();
     expect(within(adminSeatMap).getByRole('button', { name: /1号.*启用/ })).toBeTruthy();
     expect(within(adminSeatMap).getByRole('button', { name: /2号.*停用/ })).toBeTruthy();
