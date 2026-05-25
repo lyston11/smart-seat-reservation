@@ -218,8 +218,8 @@ describe('SeatMap', () => {
 
     const table = screen.getByLabelText('T01');
     expect(table.className).toContain('seat-table-positioned');
-    expect((table as HTMLElement).style.left).toBe('30px');
-    expect((table as HTMLElement).style.top).toBe('20px');
+    expect((table as HTMLElement).style.left).toBe('24px');
+    expect((table as HTMLElement).style.top).toBe('24px');
     expect((table as HTMLElement).style.getPropertyValue('--table-width')).toBe('130px');
     expect((table as HTMLElement).style.getPropertyValue('--table-height')).toBe('48px');
     expect(within(table).getByText('1号')).toBeTruthy();
@@ -303,6 +303,48 @@ describe('SeatMap', () => {
     expect(Number.parseInt(viewport.style.height, 10)).toBeLessThanOrEqual(750);
   });
 
+  it('sizes the coordinate canvas from the rendered table footprint instead of distant source coordinates', () => {
+    render(
+      <SeatMap
+        slots={[
+          makeSlot({
+            id: 1,
+            seatId: 1,
+            tableId: 1,
+            tableNo: 'T01',
+            tablePositionX: 900,
+            tablePositionY: 1200,
+            tableWidthPx: 260,
+            tableHeightPx: 96,
+            seatSide: 'NORTH',
+          }),
+          makeSlot({
+            id: 2,
+            seatId: 2,
+            tableId: 2,
+            tableNo: 'T02',
+            tablePositionX: 1300,
+            tablePositionY: 1200,
+            tableWidthPx: 260,
+            tableHeightPx: 96,
+            seatSide: 'NORTH',
+          }),
+        ]}
+        onReserve={vi.fn()}
+      />,
+    );
+
+    const firstTable = screen.getByLabelText('T01') as HTMLElement;
+    const secondTable = screen.getByLabelText('T02') as HTMLElement;
+    const viewport = screen.getByTestId('seat-map-coordinate-content').parentElement as HTMLElement;
+
+    expect(firstTable.style.left).toBe('24px');
+    expect(firstTable.style.top).toBe('24px');
+    expect(Number.parseInt(secondTable.style.left, 10)).toBeGreaterThan(Number.parseInt(firstTable.style.left, 10));
+    expect(Number.parseInt(viewport.style.width, 10)).toBeLessThanOrEqual(500);
+    expect(Number.parseInt(viewport.style.height, 10)).toBeLessThanOrEqual(160);
+  });
+
   it('marks horizontal, vertical, and rotated coordinate tables for realistic placements', () => {
     render(
       <SeatMap
@@ -378,8 +420,8 @@ describe('SeatMap', () => {
     const firstTable = screen.getByLabelText('T01') as HTMLElement;
     const secondTable = screen.getByLabelText('T02') as HTMLElement;
 
-    expect(firstTable.style.top).toBe('20px');
-    expect(secondTable.style.top).not.toBe('20px');
+    expect(firstTable.style.top).toBe('24px');
+    expect(secondTable.style.top).not.toBe('24px');
     expect(Number.parseInt(secondTable.style.top, 10)).toBeGreaterThan(Number.parseInt(firstTable.style.top, 10));
   });
 

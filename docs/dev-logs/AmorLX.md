@@ -1,5 +1,45 @@
 # AmorLX 开发日志
 
+## 2026-05-25
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-student-seat-mobile-flow
+- 目标: 座位图画布根据实际显示的桌椅外接范围渲染，不再保留大片空白区域。
+
+### 本次改动
+- `SeatMap` 坐标布局新增内容边界归一化：在缩放、兜底定位和碰撞避让后，按完整桌椅外接矩形整体平移到画布左上角附近。
+- 坐标画布宽高改为由桌椅外接范围加少量安全边距计算，不再使用固定最小房间宽高撑开。
+- 坐标视口和外层房间容器改为按内容宽度收缩，同时保留最大宽度和内部滚动能力。
+- 新增回归测试，覆盖源坐标离原点很远时，渲染后的桌椅仍从紧凑画布边距开始。
+- 新增设计说明和实施计划，记录本次只调整共享座位图渲染，不改接口、数据库和签到闭环。
+
+### 涉及文件
+- frontend/src/components/SeatMap.tsx
+- frontend/src/components/SeatMap.test.tsx
+- frontend/src/styles/main.css
+- docs/plans/2026-05-25-seat-map-content-bounds-design.md
+- docs/plans/2026-05-25-seat-map-content-bounds.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- SeatMap.test.tsx`，确认旧实现会让远离原点的桌子保留大块空白。
+- 已运行 `npm run test -- SeatMap.test.tsx`，11 个座位图测试通过。
+- 已运行 `npm run test`，前端 63 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn test`，后端 93 个测试通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已用浏览器打开 `http://127.0.0.1:5173/student/seats` 验证：座位图内容从 `24px` 安全边距开始，画布和外层房间容器按 T01-T10 内容收缩，不再保留大片空白。
+
+### 遗留问题
+- 本次没有实现根据浏览器容器动态改变默认缩放，只收缩画布内容边界。
+- 如果后续管理员希望保留真实房间墙面比例，需要新增“房间尺寸模式”和“内容适配模式”的切换。
+
+### 对其他成员的影响
+- `SeatMap` 是学生端和管理员学生视角共用组件，两处都会获得更紧凑的坐标画布。
+- 本次不修改签到验证、WiFi/IP 校验、签到码校验、桌码签到、预约状态机、后端接口和数据库迁移。
+
 ## 2026-05-24
 
 ### 任务

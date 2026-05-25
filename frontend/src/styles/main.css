@@ -1303,6 +1303,7 @@ body {
 }
 
 .seat-room-layout-coordinate {
+  width: fit-content;
   padding: 24px 10px 28px;
 }
 
@@ -1349,7 +1350,6 @@ body {
 
 .seat-map-coordinate-viewport {
   position: relative;
-  min-width: 100%;
   transition:
     width 180ms ease,
     height 180ms ease;
