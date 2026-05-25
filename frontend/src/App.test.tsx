@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
+import { toBusinessTime } from './utils/businessTime';
 
 function makeReservation(overrides: Record<string, unknown> = {}) {
   return {
@@ -58,25 +59,16 @@ function storeAdminSession() {
 }
 
 function toLocalDateTimeText(value: Date) {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, '0');
-  const date = String(value.getDate()).padStart(2, '0');
-  const hours = String(value.getHours()).padStart(2, '0');
-  const minutes = String(value.getMinutes()).padStart(2, '0');
-  const seconds = String(value.getSeconds()).padStart(2, '0');
-  return `${year}-${month}-${date}T${hours}:${minutes}:${seconds}`;
+  return toBusinessTime(value).format('YYYY-MM-DDTHH:mm:ss');
 }
 
 function toLocalDateText(value: Date) {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, '0');
-  const date = String(value.getDate()).padStart(2, '0');
-  return `${year}-${month}-${date}`;
+  return toBusinessTime(value).format('YYYY-MM-DD');
 }
 
 function nextFutureHalfHourText(minOffsetMinutes = 30) {
-  const value = new Date(Date.now() + minOffsetMinutes * 60 * 1000);
-  const minutes = value.getHours() * 60 + value.getMinutes();
+  const value = toBusinessTime(Date.now() + minOffsetMinutes * 60 * 1000);
+  const minutes = value.hour() * 60 + value.minute();
   const nextMinutes = Math.min(Math.ceil((minutes + 1) / 30) * 30, 22 * 60);
   return `${String(Math.floor(nextMinutes / 60)).padStart(2, '0')}:${String(nextMinutes % 60).padStart(2, '0')}`;
 }
