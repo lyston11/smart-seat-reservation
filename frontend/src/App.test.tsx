@@ -1343,8 +1343,12 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
+    const navigationFrame = await screen.findByLabelText('室内导航');
+    const page = navigationFrame.closest('.student-seat-page');
+    expect(page?.className).toContain('student-seat-centered-page');
+
     const adaptiveFrames = [
-      await screen.findByLabelText('室内导航'),
+      navigationFrame,
       await screen.findByLabelText('选座筛选'),
       await screen.findByLabelText('选择路径'),
       screen.getByLabelText('预约概览'),

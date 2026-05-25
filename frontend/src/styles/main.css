@@ -92,21 +92,14 @@ body {
   max-width: none;
 }
 
+.student-seat-centered-page {
+  --student-seat-content-width: 860px;
+}
+
 .student-seat-adaptive-frame {
-  width: fit-content;
+  width: min(100%, var(--student-seat-content-width));
   max-width: 100%;
-}
-
-.campus-indoor-map.student-seat-adaptive-frame,
-.student-seat-filter-panel.student-seat-adaptive-frame,
-.student-reservation-path.student-seat-adaptive-frame,
-.student-summary-grid.student-seat-adaptive-frame,
-.student-seat-workspace.student-seat-adaptive-frame {
-  min-width: min(100%, 720px);
-}
-
-.reservation-rules.student-seat-adaptive-frame {
-  max-width: min(100%, 860px);
+  margin-inline: auto;
 }
 
 .student-seat-filter-panel {
@@ -952,6 +945,10 @@ body {
   flex-wrap: wrap;
   gap: 8px;
   margin: -4px 0 16px;
+}
+
+.reservation-rules.student-seat-adaptive-frame {
+  margin: -4px auto 16px;
 }
 
 .reservation-rules span {

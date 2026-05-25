@@ -321,7 +321,7 @@ export default function SeatSlotsPage() {
   }
 
   return (
-    <div className="page student-seat-page">
+    <div className="page student-seat-page student-seat-centered-page">
       {contextHolder}
       <CampusIndoorMap
         areas={activeAreas}

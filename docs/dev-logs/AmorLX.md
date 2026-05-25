@@ -5,6 +5,40 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/AmorLX-student-seat-mobile-flow
+- 目标: 让学生预约端主要内容框体两端对齐，并作为一组居中显示。
+
+### 本次改动
+- 为学生选座页根节点增加居中页面标识，统一管理预约端内容宽度。
+- 将室内导航、选座筛选、选择路径、预约概览、预约规则提示和座位预约工作区统一收敛到同一自适应内容轨道。
+- 修复预约规则提示自身 `margin` 简写覆盖居中规则的问题，保留原上下间距并恢复左右自动居中。
+- 补充页面结构回归测试，防止后续新增框体遗漏统一自适应类名。
+
+### 涉及文件
+- frontend/src/App.test.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已运行 `npm run test -- App.test.tsx -t "marks student reservation panels as adaptive content frames"`。
+- 已运行 `npm run test`，前端 65 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn test`，后端 93 个测试通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已在浏览器打开 `http://127.0.0.1:5173/student/seats` 测量 6 个主要框体，均为 `left=319`、`right=1179`、`width=860`，页面横向溢出为 0。
+
+### 遗留问题
+- 本次只处理学生预约端主流程框体的宽度和居中对齐，不调整管理员端布局。
+
+### 对其他成员的影响
+- 本次不修改签到验证、WiFi/IP 校验、签到码校验、数据库迁移和后端状态机。
+
+## 2026-05-25
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-student-seat-mobile-flow
 - 目标: 让学生选座页其它主流程框体也跟随内容自动适配，避免仍按整页宽度撑出空白。
 
 ### 本次改动
