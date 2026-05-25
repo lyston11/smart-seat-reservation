@@ -1,5 +1,38 @@
 # lyston11 开发日志
 
+## 2026-05-25
+
+### 任务
+- Issue: 暂无
+- 分支: feature/lyston11-merge-student-mobile-flow-and-db-policy
+- 目标: 明确当前服务器只作为团队共享数据库使用，并合并学生端移动选座流程优化分支。
+
+### 本次改动
+- 在 `AGENTS.md` 最高优先级规则中补充服务器边界：当前阶段不在共享数据库服务器上部署本项目后端、前端或 Redis 应用容器。
+- 在工程化代码要求和禁止行为中补充部署相关约束，避免后续误新增完整应用服务器部署方案。
+- 在本地开发与部署路线中明确允许维护 SSH tunnel、共享 MySQL 连接和数据库安全说明，不应新增应用 Dockerfile、应用 Compose、镜像发布脚本或服务器应用部署文档。
+- README 快速开始补充共享数据库服务器定位说明。
+- 后续合并 `feature/AmorLX-student-seat-mobile-flow`，但不合并 `feature/AmorLX-server-deployment`。
+
+### 涉及文件
+- AGENTS.md
+- README.md
+- docs/deployment/LOCAL_DEVELOPMENT.md
+- docs/dev-logs/lyston11.md
+
+### 验证方式
+- 已运行 `git diff --check`，未发现空白格式问题。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端 8 个测试文件、65 个测试用例通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn -Dmaven.repo.local=/Users/lyston/PycharmProjects/smart-seat-reservation/.m2/repository test`，后端 93 个测试通过。
+
+### 遗留问题
+- 若未来负责人决定把完整应用部署到服务器，需要先修改本文档约束，再单独创建部署方案分支评审。
+
+### 对其他成员的影响
+- 后续服务器相关开发默认围绕共享数据库连接展开，不要把共享数据库服务器扩展成应用服务器。
+
 ## 2026-05-22
 
 ### 任务
