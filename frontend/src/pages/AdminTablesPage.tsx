@@ -551,9 +551,9 @@ export default function AdminTablesPage() {
   ];
 
   return (
-    <div className="page">
+    <div className="page admin-seat-layout-page admin-seat-centered-page">
       {contextHolder}
-      <div className="toolbar">
+      <div className="toolbar admin-seat-adaptive-frame" aria-label="桌子筛选">
         <Form layout="inline">
           <Form.Item label="区域">
             <Select
@@ -580,7 +580,7 @@ export default function AdminTablesPage() {
         </Form>
       </div>
 
-      <div className="admin-resource-summary-grid">
+      <div className="admin-resource-summary-grid admin-seat-adaptive-frame" aria-label="桌子统计">
         <div className="admin-resource-summary-item">
           <Statistic title="当前区域桌子" value={managedTables.length} suffix="张" />
         </div>
@@ -592,17 +592,19 @@ export default function AdminTablesPage() {
         </div>
       </div>
 
-      <Table
-        className="admin-resource-table admin-tables-table"
-        rowKey="id"
-        loading={loading}
-        dataSource={managedTables}
-        columns={columns}
-        pagination={false}
-        scroll={{ x: 1140 }}
-      />
+      <div className="admin-seat-table-frame admin-seat-adaptive-frame" aria-label="桌子列表">
+        <Table
+          className="admin-resource-table admin-tables-table"
+          rowKey="id"
+          loading={loading}
+          dataSource={managedTables}
+          columns={columns}
+          pagination={false}
+          scroll={{ x: 1140 }}
+        />
+      </div>
 
-      <div className="layout-preview-panel">
+      <div className="layout-preview-panel admin-seat-adaptive-frame" aria-label="区域桌位平面图">
         <div className="seat-map-section-header">
           <strong>区域桌位平面图</strong>
           <span>拖动桌子调整位置，点击桌子进入编辑</span>
@@ -636,7 +638,7 @@ export default function AdminTablesPage() {
         />
       </div>
 
-      <div className="layout-preview-panel admin-seat-map-panel" aria-label="学生视角座位图">
+      <div className="layout-preview-panel admin-seat-map-panel admin-seat-adaptive-frame" aria-label="学生视角座位图">
         <div className="seat-map-section-header">
           <div className="seat-map-section-title">
             <strong>学生视角座位图</strong>

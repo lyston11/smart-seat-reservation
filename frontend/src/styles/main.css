@@ -102,6 +102,24 @@ body {
   margin-inline: auto;
 }
 
+.admin-seat-centered-page {
+  --admin-seat-content-width: 960px;
+}
+
+.admin-seat-adaptive-frame {
+  width: min(100%, var(--admin-seat-content-width));
+  max-width: 100%;
+  margin-inline: auto;
+}
+
+.admin-seat-table-frame {
+  margin-bottom: 16px;
+}
+
+.admin-seat-table-frame .ant-table-wrapper {
+  margin-bottom: 0;
+}
+
 .student-seat-filter-panel {
   min-width: 0;
   padding: 16px;

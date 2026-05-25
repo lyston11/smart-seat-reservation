@@ -1884,6 +1884,21 @@ describe('App', () => {
     );
 
     expect(await screen.findByRole('heading', { level: 3, name: '桌子管理' })).toBeTruthy();
+    const adminSeatPage = (await screen.findByLabelText('桌子筛选')).closest('.admin-seat-layout-page');
+    expect(adminSeatPage?.className).toContain('admin-seat-centered-page');
+
+    const adaptiveFrames = [
+      await screen.findByLabelText('桌子筛选'),
+      await screen.findByLabelText('桌子统计'),
+      await screen.findByLabelText('桌子列表'),
+      await screen.findByLabelText('区域桌位平面图'),
+      await screen.findByLabelText('学生视角座位图'),
+    ];
+
+    adaptiveFrames.forEach((frame) => {
+      expect(frame.className).toContain('admin-seat-adaptive-frame');
+    });
+
     const adminSeatMap = await screen.findByLabelText('学生视角座位图');
     expect(within(adminSeatMap).getByText('T01')).toBeTruthy();
     expect(within(adminSeatMap).getByRole('button', { name: /1号.*启用/ })).toBeTruthy();

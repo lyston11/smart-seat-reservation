@@ -5,6 +5,41 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/AmorLX-student-seat-mobile-flow
+- 目标: 同步优化管理员桌子管理页的座位渲染区域，让管理员端也保持两端对齐和居中显示。
+
+### 本次改动
+- 为管理员桌子管理页增加 `admin-seat-layout-page` 和 `admin-seat-centered-page` 页面标识。
+- 将桌子筛选、桌子统计、桌子列表、区域桌位平面图和学生视角座位图统一放入 `admin-seat-adaptive-frame` 内容轨道。
+- 新增管理员端内容宽度变量，桌面端统一为 960px 居中显示，移动端沿用现有满宽响应式规则。
+- 补充管理员桌子管理页回归测试，防止后续遗漏统一框体类名。
+
+### 涉及文件
+- frontend/src/App.test.tsx
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已运行 `npm run test -- App.test.tsx -t "renders a student-view seat map on the admin table page"`。
+- 已运行 `npm run test -- App.test.tsx TableLayoutPreview.test.tsx SeatMap.test.tsx`。
+- 已运行 `npm run test`，前端 65 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn test`，后端 93 个测试通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已在浏览器打开 `http://127.0.0.1:5173/admin/tables` 测量 5 个主要框体，均为 `left=269`、`right=1229`、`width=960`，页面横向溢出为 0。
+
+### 遗留问题
+- 本次只优化管理员桌子管理页中与座位渲染相关的主框体，不调整开放时段页和其它管理页的业务流程。
+
+### 对其他成员的影响
+- 本次不修改签到验证、WiFi/IP 校验、签到码校验、数据库迁移和后端状态机。
+
+## 2026-05-25
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-student-seat-mobile-flow
 - 目标: 让学生预约端主要内容框体两端对齐，并作为一组居中显示。
 
 ### 本次改动
