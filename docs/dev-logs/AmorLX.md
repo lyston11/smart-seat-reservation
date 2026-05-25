@@ -3,6 +3,38 @@
 ## 2026-05-25
 
 ### 任务
+- Issue: PR #23 GitHub Actions `CI / Frontend` 失败
+- 分支: feature/AmorLX-student-seat-mobile-flow
+- 目标: 修复学生选座页在 GitHub Actions Linux/UTC 环境下的时间段测试失败，保持业务规则按北京时间计算。
+
+### 本次改动
+- 新增前端业务时间工具，统一将学生预约端当前日期、明日开放判断、未来时段判断转换为 `Asia/Shanghai`。
+- 学生选座页不再依赖运行机器本地时区计算“今天/明天”和最早可预约半小时段。
+- App 集成测试的日期和下一半小时辅助函数改为按同一业务时区生成，复现并覆盖 CI 暴露的 UTC 环境问题。
+
+### 涉及文件
+- frontend/src/utils/businessTime.ts
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/App.test.tsx
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已运行 `$env:TZ='UTC'; npm run test -- App.test.tsx`，30 个测试通过，覆盖 GitHub Actions 报错的两个用例。
+- 已运行 `$env:TZ='UTC'; npm run test`，前端 65 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+
+### 遗留问题
+- 本次只修复学生选座页预约时段的业务时区一致性；管理员开放时段页仍沿用当前本地 dayjs 逻辑，后续如要统一全站时区可单独处理。
+
+### 对其他成员的影响
+- 本次不修改签到验证、WiFi/IP 校验、签到码校验、数据库迁移和后端状态机。
+- 前端如新增与“今天/明天/预约开放时间”相关逻辑，建议复用 `businessTime.ts`，避免本地与 CI 时区差异。
+
+## 2026-05-25
+
+### 任务
 - Issue: 暂无
 - 分支: feature/AmorLX-student-seat-mobile-flow
 - 目标: 继续优化学生选座和管理员定位的使用体验，让下一步动作更明确。
