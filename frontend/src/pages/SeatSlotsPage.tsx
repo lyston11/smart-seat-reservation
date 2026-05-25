@@ -331,7 +331,7 @@ export default function SeatSlotsPage() {
         onSelectArea={applySelectedArea}
       />
 
-      <section className="student-seat-filter-panel" aria-label="选座筛选">
+      <section className="student-seat-filter-panel student-seat-adaptive-frame" aria-label="选座筛选">
         <div className="student-seat-filter-header">
           <div className="student-seat-filter-title">
             <span>选座筛选</span>
@@ -401,7 +401,7 @@ export default function SeatSlotsPage() {
         </div>
       </section>
 
-      <div className="student-reservation-path" aria-label="选择路径">
+      <div className="student-reservation-path student-seat-adaptive-frame" aria-label="选择路径">
         <div className="student-reservation-path-header">
           <strong>选择路径</strong>
           <span>从楼层到桌座连续确认</span>
@@ -428,7 +428,7 @@ export default function SeatSlotsPage() {
         </div>
       </div>
 
-      <div className="student-summary-grid">
+      <div className="student-summary-grid student-seat-adaptive-frame" aria-label="预约概览">
         <Card>
           <Statistic title="可预约座位" value={availableSeatCount} suffix="个" />
         </Card>
@@ -440,7 +440,7 @@ export default function SeatSlotsPage() {
         </Card>
       </div>
 
-      <div className="reservation-rules">
+      <div className="reservation-rules student-seat-adaptive-frame" aria-label="预约规则提示">
         <span>同一时间仅允许保留一个活跃预约</span>
         <span>
           当前选择 {validStartTime}-{validEndTime}
@@ -468,7 +468,7 @@ export default function SeatSlotsPage() {
         ) : null}
       </div>
 
-      <div className="student-seat-workspace">
+      <div className="student-seat-workspace student-seat-adaptive-frame" aria-label="座位预约工作区">
         <SeatMap
           slots={visibleSlots}
           loading={loading}

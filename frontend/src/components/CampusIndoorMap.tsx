@@ -236,7 +236,7 @@ export default function CampusIndoorMap({
   );
 
   return (
-    <section className="campus-indoor-map" aria-label="室内导航">
+    <section className="campus-indoor-map student-seat-adaptive-frame" aria-label="室内导航">
       <div className="campus-map-header">
         <div>
           <h3>室内导航</h3>

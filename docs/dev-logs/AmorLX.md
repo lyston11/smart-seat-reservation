@@ -5,6 +5,45 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/AmorLX-student-seat-mobile-flow
+- 目标: 让学生选座页其它主流程框体也跟随内容自动适配，避免仍按整页宽度撑出空白。
+
+### 本次改动
+- 为室内导航、选座筛选、选择路径、预约概览、预约规则提示和座位预约工作区统一增加 `student-seat-adaptive-frame` 标记。
+- 桌面端主流程框体改为按内容宽度收缩，并为地图/筛选/路径/统计/座位工作区设置最小可读宽度。
+- 预约规则提示设置内容宽度上限，避免标签过多时继续撑满整页。
+- 移动端断点下统一恢复 `width: 100%` 和 `min-width: 0`，保留手机端单列响应式适配。
+- 新增页面级回归测试，防止后续主流程框体丢失自适应标记。
+
+### 涉及文件
+- frontend/src/App.test.tsx
+- frontend/src/components/CampusIndoorMap.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- App.test.tsx -t "marks student reservation panels as adaptive content frames"`，确认旧实现缺少统一自适应框体标记。
+- 已运行 `npm run test -- App.test.tsx -t "marks student reservation panels as adaptive content frames"`。
+- 已运行 `npm run test -- CampusIndoorMap.test.tsx`。
+- 已运行 `npm run test -- App.test.tsx CampusIndoorMap.test.tsx SeatMap.test.tsx`，47 个聚焦测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run test`，前端 65 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn test`，后端 93 个测试通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已用浏览器打开 `http://127.0.0.1:5173/student/seats` 验证：室内导航约 `720px`、选座筛选约 `800px`、选择路径约 `741px`、统计约 `738px`、规则提示约 `860px`、座位工作区约 `855px`，页面横向溢出为 `0px`。
+
+### 遗留问题
+- 本次只统一学生选座页主流程框体宽度适配，没有重新设计整体页面排版或右侧预约面板的信息结构。
+
+### 对其他成员的影响
+- 仅影响学生预约端 UI 宽度和语义标签，不修改接口、数据库、签到验证、WiFi/IP 校验、签到码校验和预约状态机。
+
+## 2026-05-25
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-student-seat-mobile-flow
 - 目标: 修复坐标画布已收缩后，“选择座位位置”外层框体仍按原工作区宽度铺满的问题。
 
 ### 本次改动

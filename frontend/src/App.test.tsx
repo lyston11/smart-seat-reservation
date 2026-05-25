@@ -1206,6 +1206,157 @@ describe('App', () => {
     expect(screen.queryByText('T01 · 41号')).toBeNull();
   });
 
+  it('marks student reservation panels as adaptive content frames', async () => {
+    storeStudentSession();
+    const todayText = toLocalDateText(new Date());
+    const startText = nextFutureHalfHourText();
+    const endText = addMinutesToTimeText(startText, 60);
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('/api/areas')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                name: 'A 楼北自习区',
+                floor: '1F',
+                buildingCode: 'A',
+                floorCode: '1F',
+                areaType: 'STUDY_ROOM',
+                mapX: 20,
+                mapY: 20,
+                description: null,
+                status: 'ACTIVE',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/seat-slots?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 8,
+                seatId: 41,
+                seatNo: 'A-041',
+                tableId: 1,
+                tableNo: 'T01',
+                tableRowNo: 1,
+                tableColumnNo: 1,
+                tableDisplayOrder: 1,
+                tablePositionX: 120,
+                tablePositionY: 80,
+                tableWidthPx: 260,
+                tableHeightPx: 96,
+                tableRotationDeg: 0,
+                seatLabel: '41号',
+                seatSide: 'NORTH',
+                seatOrder: 1,
+                rowNo: 1,
+                columnNo: 1,
+                displayOrder: 1,
+                areaId: 1,
+                slotDate: todayText,
+                startTime: `${startText}:00`,
+                endTime: `${endText}:00`,
+                status: 'AVAILABLE',
+                reservedBy: null,
+                reservationId: null,
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/seats?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 41,
+                areaId: 1,
+                tableId: 1,
+                tableNo: 'T01',
+                tableRowNo: 1,
+                tableColumnNo: 1,
+                tableDisplayOrder: 1,
+                tablePositionX: 120,
+                tablePositionY: 80,
+                tableWidthPx: 260,
+                tableHeightPx: 96,
+                tableRotationDeg: 0,
+                seatNo: 'A-041',
+                seatLabel: '41号',
+                seatSide: 'NORTH',
+                seatOrder: 1,
+                rowNo: 1,
+                columnNo: 1,
+                displayOrder: 1,
+                status: 'ACTIVE',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/reservations/rules')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: makeReservationRules({ reservationOpenHour: 0 }),
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/student/seats']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    const adaptiveFrames = [
+      await screen.findByLabelText('室内导航'),
+      await screen.findByLabelText('选座筛选'),
+      await screen.findByLabelText('选择路径'),
+      screen.getByLabelText('预约概览'),
+      screen.getByLabelText('预约规则提示'),
+      screen.getByLabelText('座位预约工作区'),
+    ];
+
+    adaptiveFrames.forEach((frame) => {
+      expect(frame.className).toContain('student-seat-adaptive-frame');
+    });
+  });
+
   it('renders the student home dashboard with active reservation details', async () => {
     storeStudentSession();
 

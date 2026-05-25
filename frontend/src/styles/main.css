@@ -92,6 +92,23 @@ body {
   max-width: none;
 }
 
+.student-seat-adaptive-frame {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.campus-indoor-map.student-seat-adaptive-frame,
+.student-seat-filter-panel.student-seat-adaptive-frame,
+.student-reservation-path.student-seat-adaptive-frame,
+.student-summary-grid.student-seat-adaptive-frame,
+.student-seat-workspace.student-seat-adaptive-frame {
+  min-width: min(100%, 720px);
+}
+
+.reservation-rules.student-seat-adaptive-frame {
+  max-width: min(100%, 860px);
+}
+
 .student-seat-filter-panel {
   min-width: 0;
   padding: 16px;
@@ -1694,6 +1711,12 @@ body {
 
   .page {
     max-width: none;
+  }
+
+  .student-seat-adaptive-frame {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .toolbar .ant-form,
