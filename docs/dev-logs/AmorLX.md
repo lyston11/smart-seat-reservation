@@ -1,5 +1,311 @@
 # AmorLX 开发日志
 
+## 2026-05-25
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-student-seat-mobile-flow
+- 目标: 继续优化学生选座和管理员定位的使用体验，让下一步动作更明确。
+
+### 本次改动
+- 学生端已选座位卡片新增下一步提示，提醒确认座位和时间后提交预约，成功后到座扫码签到。
+- 管理员桌子管理页的学生视角座位图新增定位提示，显示当前区域座位数量，并说明点击座位可查看系统编号和启停状态。
+- 为新增提示补充 App 集成测试，覆盖学生预约流程和管理员学生视角座位图。
+- 新增统一提示样式，保持与现有信息卡片一致，并继续适配移动端布局。
+
+### 涉及文件
+- frontend/src/App.test.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已运行 `npm run test -- App.test.tsx -t "concrete seat reservation"`。
+- 已运行 `npm run test -- App.test.tsx -t "renders a student-view seat map on the admin table page"`。
+- 已运行 `npm run test`，前端 65 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已在浏览器打开 `http://127.0.0.1:5173/student/seats`，选中座位后确认下一步提示出现，页面横向溢出为 0。
+- 已在浏览器打开 `http://127.0.0.1:5173/admin/tables`，确认管理员定位提示出现，页面横向溢出为 0。
+
+### 遗留问题
+- 本次只优化前端提示和引导文案，不改预约提交、扫码签到和管理员维护的业务状态流转。
+
+### 对其他成员的影响
+- 本次不修改签到验证、WiFi/IP 校验、签到码校验、数据库迁移和后端状态机。
+
+## 2026-05-25
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-student-seat-mobile-flow
+- 目标: 同步优化管理员桌子管理页的座位渲染区域，让管理员端也保持两端对齐和居中显示。
+
+### 本次改动
+- 为管理员桌子管理页增加 `admin-seat-layout-page` 和 `admin-seat-centered-page` 页面标识。
+- 将桌子筛选、桌子统计、桌子列表、区域桌位平面图和学生视角座位图统一放入 `admin-seat-adaptive-frame` 内容轨道。
+- 新增管理员端内容宽度变量，桌面端统一为 960px 居中显示，移动端沿用现有满宽响应式规则。
+- 补充管理员桌子管理页回归测试，防止后续遗漏统一框体类名。
+
+### 涉及文件
+- frontend/src/App.test.tsx
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已运行 `npm run test -- App.test.tsx -t "renders a student-view seat map on the admin table page"`。
+- 已运行 `npm run test -- App.test.tsx TableLayoutPreview.test.tsx SeatMap.test.tsx`。
+- 已运行 `npm run test`，前端 65 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn test`，后端 93 个测试通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已在浏览器打开 `http://127.0.0.1:5173/admin/tables` 测量 5 个主要框体，均为 `left=269`、`right=1229`、`width=960`，页面横向溢出为 0。
+
+### 遗留问题
+- 本次只优化管理员桌子管理页中与座位渲染相关的主框体，不调整开放时段页和其它管理页的业务流程。
+
+### 对其他成员的影响
+- 本次不修改签到验证、WiFi/IP 校验、签到码校验、数据库迁移和后端状态机。
+
+## 2026-05-25
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-student-seat-mobile-flow
+- 目标: 让学生预约端主要内容框体两端对齐，并作为一组居中显示。
+
+### 本次改动
+- 为学生选座页根节点增加居中页面标识，统一管理预约端内容宽度。
+- 将室内导航、选座筛选、选择路径、预约概览、预约规则提示和座位预约工作区统一收敛到同一自适应内容轨道。
+- 修复预约规则提示自身 `margin` 简写覆盖居中规则的问题，保留原上下间距并恢复左右自动居中。
+- 补充页面结构回归测试，防止后续新增框体遗漏统一自适应类名。
+
+### 涉及文件
+- frontend/src/App.test.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已运行 `npm run test -- App.test.tsx -t "marks student reservation panels as adaptive content frames"`。
+- 已运行 `npm run test`，前端 65 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn test`，后端 93 个测试通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已在浏览器打开 `http://127.0.0.1:5173/student/seats` 测量 6 个主要框体，均为 `left=319`、`right=1179`、`width=860`，页面横向溢出为 0。
+
+### 遗留问题
+- 本次只处理学生预约端主流程框体的宽度和居中对齐，不调整管理员端布局。
+
+### 对其他成员的影响
+- 本次不修改签到验证、WiFi/IP 校验、签到码校验、数据库迁移和后端状态机。
+
+## 2026-05-25
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-student-seat-mobile-flow
+- 目标: 让学生选座页其它主流程框体也跟随内容自动适配，避免仍按整页宽度撑出空白。
+
+### 本次改动
+- 为室内导航、选座筛选、选择路径、预约概览、预约规则提示和座位预约工作区统一增加 `student-seat-adaptive-frame` 标记。
+- 桌面端主流程框体改为按内容宽度收缩，并为地图/筛选/路径/统计/座位工作区设置最小可读宽度。
+- 预约规则提示设置内容宽度上限，避免标签过多时继续撑满整页。
+- 移动端断点下统一恢复 `width: 100%` 和 `min-width: 0`，保留手机端单列响应式适配。
+- 新增页面级回归测试，防止后续主流程框体丢失自适应标记。
+
+### 涉及文件
+- frontend/src/App.test.tsx
+- frontend/src/components/CampusIndoorMap.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- App.test.tsx -t "marks student reservation panels as adaptive content frames"`，确认旧实现缺少统一自适应框体标记。
+- 已运行 `npm run test -- App.test.tsx -t "marks student reservation panels as adaptive content frames"`。
+- 已运行 `npm run test -- CampusIndoorMap.test.tsx`。
+- 已运行 `npm run test -- App.test.tsx CampusIndoorMap.test.tsx SeatMap.test.tsx`，47 个聚焦测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run test`，前端 65 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn test`，后端 93 个测试通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已用浏览器打开 `http://127.0.0.1:5173/student/seats` 验证：室内导航约 `720px`、选座筛选约 `800px`、选择路径约 `741px`、统计约 `738px`、规则提示约 `860px`、座位工作区约 `855px`，页面横向溢出为 `0px`。
+
+### 遗留问题
+- 本次只统一学生选座页主流程框体宽度适配，没有重新设计整体页面排版或右侧预约面板的信息结构。
+
+### 对其他成员的影响
+- 仅影响学生预约端 UI 宽度和语义标签，不修改接口、数据库、签到验证、WiFi/IP 校验、签到码校验和预约状态机。
+
+## 2026-05-25
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-student-seat-mobile-flow
+- 目标: 修复坐标画布已收缩后，“选择座位位置”外层框体仍按原工作区宽度铺满的问题。
+
+### 本次改动
+- `SeatMap` 在坐标布局模式下为外层 section 增加 `seat-map-section-coordinate` 状态类。
+- 坐标布局外层座位框体改为按内容宽度收缩，并保留 `max-width: 100%` 防止移动端横向溢出。
+- 新增回归测试，确保坐标座位图会标记外层 section，避免后续样式回退。
+
+### 涉及文件
+- frontend/src/components/SeatMap.tsx
+- frontend/src/components/SeatMap.test.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- SeatMap.test.tsx`，确认旧实现外层 section 缺少坐标布局状态类。
+- 已运行 `npm run test -- SeatMap.test.tsx`，12 个座位图测试通过。
+- 已运行 `npm run test`，前端 64 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn test`，后端 93 个测试通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已用浏览器打开 `http://127.0.0.1:5173/student/seats` 验证：外层座位框体宽度约 `519px`，内部房间容器约 `485px`，父级工作区约 `984px`，页面横向溢出为 `0px`。
+
+### 遗留问题
+- 本次只修复坐标布局的外层框体宽度，没有重新设计右侧已选座位面板或整体两栏比例。
+
+### 对其他成员的影响
+- 仅影响共用 `SeatMap` 的坐标布局显示宽度，不修改接口、数据库、签到验证、WiFi/IP 校验、签到码校验和预约状态机。
+
+## 2026-05-25
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-student-seat-mobile-flow
+- 目标: 座位图画布根据实际显示的桌椅外接范围渲染，不再保留大片空白区域。
+
+### 本次改动
+- `SeatMap` 坐标布局新增内容边界归一化：在缩放、兜底定位和碰撞避让后，按完整桌椅外接矩形整体平移到画布左上角附近。
+- 坐标画布宽高改为由桌椅外接范围加少量安全边距计算，不再使用固定最小房间宽高撑开。
+- 坐标视口和外层房间容器改为按内容宽度收缩，同时保留最大宽度和内部滚动能力。
+- 新增回归测试，覆盖源坐标离原点很远时，渲染后的桌椅仍从紧凑画布边距开始。
+- 新增设计说明和实施计划，记录本次只调整共享座位图渲染，不改接口、数据库和签到闭环。
+
+### 涉及文件
+- frontend/src/components/SeatMap.tsx
+- frontend/src/components/SeatMap.test.tsx
+- frontend/src/styles/main.css
+- docs/plans/2026-05-25-seat-map-content-bounds-design.md
+- docs/plans/2026-05-25-seat-map-content-bounds.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- SeatMap.test.tsx`，确认旧实现会让远离原点的桌子保留大块空白。
+- 已运行 `npm run test -- SeatMap.test.tsx`，11 个座位图测试通过。
+- 已运行 `npm run test`，前端 63 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn test`，后端 93 个测试通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已用浏览器打开 `http://127.0.0.1:5173/student/seats` 验证：座位图内容从 `24px` 安全边距开始，画布和外层房间容器按 T01-T10 内容收缩，不再保留大片空白。
+
+### 遗留问题
+- 本次没有实现根据浏览器容器动态改变默认缩放，只收缩画布内容边界。
+- 如果后续管理员希望保留真实房间墙面比例，需要新增“房间尺寸模式”和“内容适配模式”的切换。
+
+### 对其他成员的影响
+- `SeatMap` 是学生端和管理员学生视角共用组件，两处都会获得更紧凑的坐标画布。
+- 本次不修改签到验证、WiFi/IP 校验、签到码校验、桌码签到、预约状态机、后端接口和数据库迁移。
+
+## 2026-05-24
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-student-seat-mobile-flow
+- 目标: 调整座位图缩放和演示显示效果，让默认演示区域至少展示 10 张桌子，按两列五行排列。
+
+### 本次改动
+- 学生/管理员共用的 `SeatMap` 坐标布局改为更紧凑的显示比例，默认适配缩放为 90%。
+- 收紧坐标画布边距和定位桌子的左右座位区宽度，减少大房间演示时的空白。
+- 新增 10 桌布局回归测试，固定 T01-T10 需要渲染为 2 列 x 5 行，并保持默认画布尺寸可控。
+- 新增 Flyway V17 演示数据迁移，将 `Library Area A` 扩展为 T01-T10，每桌 4 个座位，座号从 1 到 4。
+- V17 同时为演示区补齐当天和次日 08:00-22:00 的完整开放窗口，方便本地 demo 直接看到 40 个可预约座位。
+- 新增设计说明和实施计划，记录本次只调整座位图和演示数据，不改签到验证闭环。
+
+### 涉及文件
+- backend/src/main/resources/db/migration/V17__expand_library_demo_seat_map.sql
+- frontend/src/components/SeatMap.tsx
+- frontend/src/components/SeatMap.test.tsx
+- frontend/src/styles/main.css
+- docs/plans/2026-05-24-seat-map-ten-table-density-design.md
+- docs/plans/2026-05-24-seat-map-ten-table-density.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- SeatMap.test.tsx`，确认旧实现默认 100% 且 10 桌画布过高。
+- 已运行 `npm run test -- SeatMap.test.tsx`，10 个座位图测试通过。
+- 已运行 `npm run test`，前端 62 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn test`，后端 93 个测试通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已重启本地后端到临时库 `smart_seat_ui_preview`，确认 Flyway V17 成功执行，`Library Area A` 为 T01-T10、每桌 4 座。
+- 已用浏览器打开 `http://127.0.0.1:5173/student/seats` 验证：桌面端 T01-T10 为两列五行、默认 90%；手机宽度 `390x844` 下无横向溢出。
+
+### 遗留问题
+- 本次只扩展 `Library Area A` 的 demo 数据；真实楼栋/区域的桌数仍需要管理员在桌子管理里维护。
+- 当前只是座位图显示密度优化，没有做自动根据容器宽度计算最佳缩放。
+
+### 对其他成员的影响
+- 新增后端迁移版本 V17，后续新增 Flyway 迁移需从 V18 开始。
+- 本次不修改签到验证、WiFi/IP 校验、签到码校验、桌码签到、预约状态机和管理员释放流程。
+- `SeatMap` 默认缩放从 100% 调为 90%，学生端和管理员学生视角座位图都会更紧凑。
+
+## 2026-05-23
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-student-seat-mobile-flow
+- 目标: 继续完善学生预约端 UI，让楼层、区域、预约时段和具体座位选择形成一套连续的响应式流程。
+
+### 本次改动
+- `CampusIndoorMap` 支持页面控制当前楼层，并在切换楼层时回传该楼层可见区域。
+- 学生选座页新增 `选座筛选` 面板，把区域、日期、开始时间、结束时间和刷新座位集中到地图下方。
+- 切换楼层时，如果当前区域不属于该楼层，会自动切到该楼层第一个可见区域，座位图随之加载对应区域。
+- 右侧已选座位面板改为确认座位、状态和当前时段，避免时间选择藏在选座之后。
+- 补充移动端响应式样式，手机宽度下筛选表单单列展示，侧栏回到正常文档流。
+- 新增设计说明和实施计划，明确本阶段只做预约端 UI，不改签到验证和后端状态机。
+
+### 涉及文件
+- frontend/src/components/CampusIndoorMap.tsx
+- frontend/src/components/CampusIndoorMap.test.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/App.test.tsx
+- frontend/src/styles/main.css
+- docs/plans/2026-05-23-student-seat-mobile-flow-design.md
+- docs/plans/2026-05-23-student-seat-mobile-flow.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- CampusIndoorMap.test.tsx App.test.tsx`，确认旧实现缺少楼层回调和顶层时间筛选。
+- 已运行 `npm run test -- CampusIndoorMap.test.tsx App.test.tsx`，34 个聚焦前端测试通过。
+- 已运行 `npm run test`，前端 61 个测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn test`，后端 93 个测试通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已用浏览器打开 `http://127.0.0.1:5173/student/seats` 验证学生页：桌面端能看到室内导航、选座筛选、选择路径和座位图；手机宽度 `390x844` 下无横向溢出，筛选表单单列展示。
+- 本地预览使用临时库 `smart_seat_ui_preview` 和临时 Redis 容器 `smart-seat-redis-preview`，避免修改旧开发库的 Flyway 状态。
+
+### 遗留问题
+- 当前只优化学生端预约页；管理员端若后续要做完整楼层筛选联动，可复用 `CampusIndoorMap` 的受控楼层能力。
+- 本地默认库存在历史 Flyway V15 校验和不一致问题，预览时使用临时库绕开；若要继续使用旧库，需要团队确认后再执行 Flyway repair 或重建本地库。
+
+### 对其他成员的影响
+- 本次不修改签到验证、WiFi/IP 校验、签到码校验、签到时间窗、预约状态机和后端接口。
+- `CampusIndoorMap` 新增可选 props，旧调用方式仍兼容；其他页面可以继续只传 `areas`、`selectedAreaId` 和 `onSelectArea`。
+
 ## 2026-05-23
 
 ### 任务

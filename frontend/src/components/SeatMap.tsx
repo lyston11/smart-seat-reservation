@@ -62,15 +62,16 @@ const sideClass: Record<SeatSide, string> = {
 };
 
 const tableSeatSides: SeatSide[] = ['NORTH', 'WEST', 'EAST', 'SOUTH', 'SINGLE'];
-const TABLE_DISPLAY_SCALE = 0.52;
-const TABLE_POSITION_SCALE = 0.72;
-const TABLE_SIDE_OFFSET = 50;
-const TABLE_VERTICAL_OFFSET = 34;
-const TABLE_COLLISION_GAP = 16;
+const TABLE_DISPLAY_SCALE = 0.5;
+const TABLE_POSITION_SCALE = 0.62;
+const TABLE_SIDE_OFFSET = 44;
+const TABLE_VERTICAL_OFFSET = 30;
+const TABLE_COLLISION_GAP = 14;
+const COORDINATE_CANVAS_PADDING = 24;
 const MIN_ZOOM = 0.7;
 const MAX_ZOOM = 1.4;
 const ZOOM_STEP = 0.1;
-const DEFAULT_ZOOM = 1;
+const DEFAULT_ZOOM = 0.9;
 
 function getTimeRange(slot: SeatSlot) {
   return `${slot.startTime.slice(0, 5)}-${slot.endTime.slice(0, 5)}`;
@@ -188,7 +189,7 @@ function normalizeCoordinateTables(tables: TableGroup[]) {
   const occupiedRects: LayoutRect[] = [];
   let fallbackIndex = 0;
 
-  return tables.map((table) => {
+  const normalizedTables = tables.map((table) => {
     const width = Math.round((table.widthPx ?? 220) * TABLE_DISPLAY_SCALE);
     const height = Math.round((table.heightPx ?? 96) * TABLE_DISPLAY_SCALE);
     let positionX = table.positionX;
@@ -224,6 +225,31 @@ function normalizeCoordinateTables(tables: TableGroup[]) {
 
     return normalizedTable;
   });
+  return shiftTablesToContentBounds(normalizedTables);
+}
+
+function shiftTablesToContentBounds(tables: TableGroup[]) {
+  const positionedTables = tables.filter((table) => table.positionX !== null && table.positionY !== null);
+  if (positionedTables.length === 0) {
+    return tables;
+  }
+
+  const rects = positionedTables.map(getTableRenderRect);
+  const minLeft = Math.min(...rects.map((rect) => rect.left));
+  const minTop = Math.min(...rects.map((rect) => rect.top));
+  const shiftX = COORDINATE_CANVAS_PADDING - minLeft;
+  const shiftY = COORDINATE_CANVAS_PADDING - minTop;
+
+  return tables.map((table) => {
+    if (table.positionX === null || table.positionY === null) {
+      return table;
+    }
+    return {
+      ...table,
+      positionX: table.positionX + shiftX,
+      positionY: table.positionY + shiftY,
+    };
+  });
 }
 
 function rectsOverlap(left: LayoutRect, right: LayoutRect, gap = 0) {
@@ -244,24 +270,26 @@ function getTableCollisionRect(table: TableGroup): LayoutRect {
   };
 }
 
+function getTableRenderRect(table: TableGroup): LayoutRect {
+  return {
+    left: (table.positionX ?? 0) - TABLE_SIDE_OFFSET,
+    top: (table.positionY ?? 0) - TABLE_VERTICAL_OFFSET,
+    width: getTableFootprintWidth(table) + TABLE_SIDE_OFFSET * 2,
+    height: getTableFootprintHeight(table) + TABLE_VERTICAL_OFFSET * 2,
+  };
+}
+
 function getCoordinateRoomBounds(tables: TableGroup[]) {
   const positionedTables = tables.filter((table) => table.positionX !== null && table.positionY !== null);
   if (positionedTables.length === 0) {
     return null;
   }
-  const maxRight = Math.max(
-    ...positionedTables.map(
-      (table) => (table.positionX ?? 0) + getTableFootprintWidth(table) + TABLE_SIDE_OFFSET + 92,
-    ),
-  );
-  const maxBottom = Math.max(
-    ...positionedTables.map(
-      (table) => (table.positionY ?? 0) + getTableFootprintHeight(table) + TABLE_VERTICAL_OFFSET + 116,
-    ),
-  );
+  const rects = positionedTables.map(getTableRenderRect);
+  const maxRight = Math.max(...rects.map((rect) => rect.left + rect.width));
+  const maxBottom = Math.max(...rects.map((rect) => rect.top + rect.height));
   return {
-    width: Math.max(maxRight + 96, 640),
-    height: Math.max(maxBottom + 64, 360),
+    width: Math.round(maxRight + COORDINATE_CANVAS_PADDING),
+    height: Math.round(maxBottom + COORDINATE_CANVAS_PADDING),
   };
 }
 
@@ -521,9 +549,10 @@ export default function SeatMap({
     <div className="seat-map">
       {groups.map((group) => {
         const isCoordinateLayout = hasCoordinateLayout(group.tables);
+        const sectionClassName = `seat-map-section${isCoordinateLayout ? ' seat-map-section-coordinate' : ''}`;
 
         return (
-          <section className="seat-map-section" key={group.timeRange}>
+          <section className={sectionClassName} key={group.timeRange}>
             <div className="seat-map-section-header">
               <div className="seat-map-section-title">
                 <strong>{sectionTitle ?? group.timeRange}</strong>
