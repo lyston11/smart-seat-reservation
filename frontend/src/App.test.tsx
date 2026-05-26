@@ -1452,6 +1452,42 @@ describe('App', () => {
     expect(await screen.findByText('A 区 · 1F')).toBeTruthy();
   });
 
+  it('centers the student home content wrapper', async () => {
+    storeStudentSession();
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith('/api/reservations/rules')) {
+          return {
+            ok: true,
+            json: async () => ({
+              success: true,
+              code: 'OK',
+              message: 'ok',
+              data: makeReservationRules(),
+            }),
+          };
+        }
+        return {
+          ok: true,
+          json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+        };
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/student/home']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    const heroText = await screen.findByText('今天也给自己留一段安静的自习时间。');
+    const page = heroText.closest('.page');
+    expect(page?.className).toContain('student-home-page');
+  });
+
   it('lets students lock a checked-in reservation directly from the home page', async () => {
     storeStudentSession();
 
@@ -1611,6 +1647,28 @@ describe('App', () => {
         expect.objectContaining({ method: 'POST' }),
       );
     });
+  });
+
+  it('centers the student reservation management content wrapper', async () => {
+    storeStudentSession();
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/student/reservations']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    const sectionTitle = await screen.findByText('当前可操作预约');
+    const page = sectionTitle.closest('.page');
+    expect(page?.className).toContain('student-reservations-page');
   });
 
   it('keeps a clearly marked development check-in entry on the reservation management page', async () => {

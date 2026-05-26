@@ -251,7 +251,10 @@ body {
 }
 
 .page {
+  width: 100%;
+  min-width: 0;
   max-width: 1180px;
+  margin-inline: auto;
 }
 
 .student-seat-page {

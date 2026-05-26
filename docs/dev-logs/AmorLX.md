@@ -5,6 +5,44 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/AmorLX-login-page-polish
+- 目标: 让学生首页、我的预约和普通内容页在主内容区域中居中展示，并检查不影响宽画布座位页。
+
+### 本次改动
+- 为 `.page` 公共页面容器补充 `width: 100%`、`min-width: 0` 和 `margin-inline: auto`，普通页面在宽屏下按最大宽度居中。
+- 学生首页根容器新增 `student-home-page` 语义类，便于后续样式和测试定位。
+- 我的预约根容器新增 `student-reservations-page` 语义类，保持与学生首页一致。
+- 补充 App 级测试，覆盖学生首页和我的预约页面使用对应内容包装类。
+- 新增本次居中调整的设计说明和实施计划文档。
+
+### 涉及文件
+- frontend/src/App.test.tsx
+- frontend/src/pages/StudentHomePage.tsx
+- frontend/src/pages/MyReservationsPage.tsx
+- frontend/src/styles/main.css
+- docs/plans/2026-05-26-student-pages-centering-design.md
+- docs/plans/2026-05-26-student-pages-centering.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已运行 `npm run test -- App.test.tsx -t "centers"`，先确认缺少页面语义类时测试失败，再实现后通过。
+- 已运行 `npm run test -- App.test.tsx`，33 个 App 测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run test`，前端 68 个测试通过；测试环境仍有同类 jsdom 提示，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已在浏览器打开 `http://127.0.0.1:5173/student/home`、`http://127.0.0.1:5173/student/reservations`、`http://127.0.0.1:5173/student/seats` 和 `http://127.0.0.1:5173/admin/dashboard`，确认页面无横向溢出，学生首页和我的预约根容器已使用对应语义类。
+
+### 遗留问题
+- 当前浏览器窗口内容区宽度小于 1180px，页面自然占满内容区；宽屏居中由 `.page` 的最大宽度和 `margin-inline: auto` 保证。
+
+### 对其他成员的影响
+- 本次只修改前端布局容器和测试，不修改签到验证、预约接口、后端状态机、数据库迁移或同事开发日志。
+
+## 2026-05-26
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-login-page-polish
 - 目标: 优化登录界面第一屏观感，保持学生/管理员演示登录流程不变，并继续为手机端同一套页面适配做准备。
 
 ### 本次改动
