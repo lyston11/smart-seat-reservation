@@ -186,7 +186,7 @@ export default function StudentHomePage() {
   );
 
   return (
-    <div className="page">
+    <div className="page student-home-page">
       {contextHolder}
       <div className="student-home-hero">
         <div>

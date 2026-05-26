@@ -272,7 +272,7 @@ export default function MyReservationsPage() {
   ];
 
   return (
-    <div className="page">
+    <div className="page student-reservations-page">
       {contextHolder}
       <div className="toolbar">
         <Form layout="inline">
