@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Form, Input, Radio, Typography, message } from 'antd';
+import { Button, Form, Input, Typography, message } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { login } from '../api/auth';
 import { setAuthSession } from '../api/http';
@@ -10,8 +10,24 @@ type LoginFormValues = {
 };
 
 const demoAccounts = [
-  { label: '学生演示账号', value: '20260001', password: '123456' },
-  { label: '管理员演示账号', value: 'admin', password: 'admin' },
+  {
+    label: '学生演示账号',
+    value: '20260001',
+    password: '123456',
+    description: '查看座位实况，选择桌座并提交预约。',
+  },
+  {
+    label: '管理员演示账号',
+    value: 'admin',
+    password: 'admin',
+    description: '维护区域桌椅，查看占用并处理异常。',
+  },
+];
+
+const loginFeatures = [
+  { title: '实时座位', description: '在线查看空闲、已预约、使用中和锁位状态。' },
+  { title: '预约与扫码签到', description: '选定桌座和时段，到场扫码完成签到闭环。' },
+  { title: '管理员一屏调度', description: '区域、桌椅、开放时段和异常占用统一管理。' },
 ];
 
 export default function LoginPage() {
@@ -47,9 +63,28 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       {contextHolder}
-      <div className="login-panel">
-        <Typography.Title level={2}>Smart Seat</Typography.Title>
-        <Typography.Text type="secondary">学院公共区域学习座位预约系统</Typography.Text>
+      <div className="login-shell">
+        <section className="login-identity" aria-label="系统简介">
+          <div className="login-kicker">学院公共区域学习座位预约系统</div>
+          <Typography.Title level={1}>Smart Seat</Typography.Title>
+          <Typography.Paragraph>
+            让学生提前看见可用座位，到座扫码签到；让管理员实时掌握公共学习空间的使用状态。
+          </Typography.Paragraph>
+          <div className="login-feature-list">
+            {loginFeatures.map((feature) => (
+              <div className="login-feature-item" key={feature.title}>
+                <span>{feature.title}</span>
+                <strong>{feature.description}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="login-panel" aria-label="登录表单">
+          <div className="login-panel-heading">
+            <Typography.Title level={2}>登录系统</Typography.Title>
+            <Typography.Text type="secondary">选择演示身份或输入账号继续。</Typography.Text>
+          </div>
         <Form
           form={form}
           layout="vertical"
@@ -57,16 +92,20 @@ export default function LoginPage() {
           initialValues={{ studentNo: '20260001', password: '123456' }}
         >
           <Form.Item label="演示账号">
-            <Radio.Group
-              optionType="button"
-              buttonStyle="solid"
-              options={demoAccounts}
-              onChange={(event) => {
-                const account = demoAccounts.find((item) => item.value === event.target.value);
-                form.setFieldsValue({ studentNo: event.target.value, password: account?.password ?? '' });
-              }}
-              defaultValue="20260001"
-            />
+            <div className="login-account-grid">
+              {demoAccounts.map((account) => (
+                <button
+                  className="login-account-card"
+                  key={account.value}
+                  type="button"
+                  onClick={() => form.setFieldsValue({ studentNo: account.value, password: account.password })}
+                >
+                  <span>{account.label}</span>
+                  <strong>{account.value}</strong>
+                  <small>{account.description}</small>
+                </button>
+              ))}
+            </div>
           </Form.Item>
           <Form.Item
             label="学号/账号"
@@ -86,6 +125,7 @@ export default function LoginPage() {
             登录
           </Button>
         </Form>
+        </section>
       </div>
     </div>
   );

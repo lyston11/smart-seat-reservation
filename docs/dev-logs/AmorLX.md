@@ -1,5 +1,42 @@
 # AmorLX 开发日志
 
+## 2026-05-26
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-login-page-polish
+- 目标: 优化登录界面第一屏观感，保持学生/管理员演示登录流程不变，并继续为手机端同一套页面适配做准备。
+
+### 本次改动
+- 登录页改为克制的业务入口布局，桌面端左侧展示系统定位和能力摘要，右侧保留登录表单。
+- 新增“实时座位”“预约与扫码签到”“管理员一屏调度”三项能力提示，方便 demo 时说明系统价值。
+- 将原演示账号单选按钮升级为学生/管理员快捷账号卡片，点击后仍自动填入账号和密码。
+- 新增响应式样式，移动端登录页单列展示，快捷账号卡片和能力提示不横向溢出。
+- 补充 App 级登录页测试，覆盖能力摘要和管理员快捷账号填充行为。
+- 新增登录页优化设计说明和实施计划文档。
+
+### 涉及文件
+- frontend/src/pages/LoginPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- docs/plans/2026-05-26-login-page-polish-design.md
+- docs/plans/2026-05-26-login-page-polish.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已运行 `npm run test -- App.test.tsx -t "renders the polished login page"`。
+- 已运行 `npm run test -- App.test.tsx`，31 个 App 测试通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已在浏览器打开 `http://127.0.0.1:5173/login`，确认桌面端 `bodyOverflowX=0`，登录主体为两列布局，管理员快捷账号可填入 `admin/admin`，并存在移动端单列规则。
+
+### 遗留问题
+- 本次只优化登录界面，不新增验证码、记住登录、忘记密码或真实统一身份认证入口。
+
+### 对其他成员的影响
+- 本次不修改认证接口、Token 存储、路由守卫、后端登录逻辑、签到验证和数据库迁移。
+
 ## 2026-05-25
 
 ### 任务

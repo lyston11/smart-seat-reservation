@@ -154,6 +154,33 @@ describe('App', () => {
     expect(await screen.findByRole('button', { name: /登\s*录/ })).toBeTruthy();
   });
 
+  it('renders the polished login page with role quick accounts', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Smart Seat' })).toBeTruthy();
+    expect(await screen.findByText('实时座位')).toBeTruthy();
+    expect(await screen.findByText('预约与扫码签到')).toBeTruthy();
+    expect(await screen.findByText('管理员一屏调度')).toBeTruthy();
+
+    const adminAccount = await screen.findByRole('button', { name: /管理员演示账号/ });
+    fireEvent.click(adminAccount);
+
+    expect(screen.getByLabelText('学号/账号')).toHaveProperty('value', 'admin');
+    expect(screen.getByLabelText('密码')).toHaveProperty('value', 'admin');
+  });
+
   it('submits table QR check-in with token and check-in code', async () => {
     storeStudentSession();
 
