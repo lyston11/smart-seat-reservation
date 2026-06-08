@@ -1,5 +1,45 @@
 # lyston11 开发日志
 
+## 2026-06-08
+
+### 任务
+- Issue: 暂无
+- 分支: feature/merge-amorlx-login-page-polish
+- 目标: 从最新 `main` 创建本地集成分支，合并 `feature/AmorLX-login-page-polish` 的登录页和学生页面居中优化。
+
+### 本次改动
+- 已同步 `main` 到 `origin/main` 最新提交 `77a6a0d`。
+- 已 fetch 并合并 `origin/feature/AmorLX-login-page-polish`，合并过程无冲突。
+- 保留 AmorLX 登录页 polish、学生首页/选座页/我的预约页内容居中和相关样式、测试、计划文档。
+- 未直接在 `main` 上提交合并，当前合并结果位于本地集成分支。
+
+### 涉及文件
+- frontend/src/pages/LoginPage.tsx
+- frontend/src/pages/MyReservationsPage.tsx
+- frontend/src/pages/StudentHomePage.tsx
+- frontend/src/App.test.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/AmorLX.md
+- docs/dev-logs/lyston11.md
+- docs/plans/2026-05-26-login-page-polish-design.md
+- docs/plans/2026-05-26-login-page-polish.md
+- docs/plans/2026-05-26-student-pages-centering-design.md
+- docs/plans/2026-05-26-student-pages-centering.md
+
+### 验证方式
+- 已运行 `git diff --check main..HEAD`，未发现空白格式问题。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run test`，前端 8 个测试文件、68 个测试用例通过；测试环境仍提示 jsdom 不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 尚未运行后端测试；本次合并范围为前端页面、样式、测试和文档。
+- 尚未 push 集成分支或创建 PR。
+
+### 对其他成员的影响
+- 登录页和学生端内容页面样式会随该集成分支进入后续 PR。
+- 如继续调整学生端页面容器宽度，需要同时检查登录页、学生首页、选座页和我的预约页的响应式布局。
+
 ## 2026-05-25
 
 ### 任务
