@@ -30,14 +30,15 @@ import {
 } from '../utils/reservationRules';
 import { buildStudentTimeOptions, type StudentTimeOption } from '../utils/studentTimeOptions';
 import { getSeatDisplayLabelInSlots, getSeatPathText } from '../utils/seatDisplay';
+import { getBusinessNow, parseBusinessDateTime } from '../utils/businessTime';
 
 export default function SeatSlotsPage() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [areaId, setAreaId] = useState(1);
   const [areaTimeInitialized, setAreaTimeInitialized] = useState(false);
   const [timeInitializedFromSlots, setTimeInitializedFromSlots] = useState(false);
-  const [now, setNow] = useState(() => dayjs());
-  const [slotDate, setSlotDate] = useState(() => dayjs().format('YYYY-MM-DD'));
+  const [now, setNow] = useState(() => getBusinessNow());
+  const [slotDate, setSlotDate] = useState(() => getBusinessNow().format('YYYY-MM-DD'));
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('22:00');
   const [slots, setSlots] = useState<SeatSlot[]>([]);
@@ -284,7 +285,7 @@ export default function SeatSlotsPage() {
   }, [loadActiveReservation, loadAreas, loadSlots, loadRules]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(dayjs()), 60_000);
+    const timer = window.setInterval(() => setNow(getBusinessNow()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -676,7 +677,7 @@ function isStudentReservationDateOpen(slotDate: string, now: dayjs.Dayjs, reserv
 }
 
 function isFutureSlotStart(slotDate: string, startTime: string, now: dayjs.Dayjs) {
-  const startAt = dayjs(`${slotDate} ${startTime.slice(0, 5)}`, 'YYYY-MM-DD HH:mm');
+  const startAt = parseBusinessDateTime(slotDate, startTime);
   return startAt.isAfter(now);
 }
 
