@@ -2164,6 +2164,17 @@ body {
   min-width: 0;
 }
 
+.student-mobile-reservation-dock,
+.student-mobile-reservation-drawer {
+  display: none;
+}
+
+.student-seat-mobile-panel {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+
 .student-current-reservation-card .ant-card-head {
   min-height: 46px;
   padding: 0 14px;
@@ -3277,6 +3288,10 @@ body {
     border-left: 0;
   }
 
+  .app-content:has(.student-seat-page) {
+    padding-bottom: 92px;
+  }
+
   .page {
     max-width: none;
   }
@@ -3417,8 +3432,53 @@ body {
     position: static;
   }
 
-  .student-reservation-floating-summary {
-    order: -1;
+  .student-seat-desktop-side-panel {
+    display: none;
+  }
+
+  .student-mobile-reservation-dock {
+    position: fixed;
+    z-index: 1200;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    display: block;
+    padding: 8px;
+    border: 1px solid rgba(147, 197, 253, 0.78);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+    backdrop-filter: blur(12px);
+  }
+
+  .student-mobile-reservation-trigger.ant-btn {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .student-mobile-reservation-drawer {
+    display: block;
+  }
+
+  .student-mobile-reservation-drawer .ant-drawer-content {
+    border-radius: 8px 8px 0 0;
+  }
+
+  .student-mobile-reservation-drawer .ant-drawer-header {
+    padding: 14px 16px;
+  }
+
+  .student-mobile-reservation-drawer-body {
+    padding: 12px;
+    overflow: auto;
+    background: #f8fafc;
+  }
+
+  .student-seat-mobile-panel .student-reservation-floating-summary {
+    order: 0;
   }
 
   .student-floating-stat-grid {
@@ -3468,10 +3528,6 @@ body {
 
   .seat-map-cell.ant-btn {
     height: 46px;
-  }
-
-  .student-seat-side-panel {
-    position: static;
   }
 
   .student-timeline-item {

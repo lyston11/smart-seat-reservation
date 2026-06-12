@@ -1608,6 +1608,12 @@ describe('App', () => {
       expect(frame.className).toContain('student-seat-adaptive-frame');
     });
     expect(screen.queryByLabelText('预约规则提示')).toBeNull();
+    const mobileTrigger = await screen.findByRole('button', { name: /预约面板/ });
+    expect(mobileTrigger.className).toContain('student-mobile-reservation-trigger');
+    expect(mobileTrigger.closest('.student-seat-page')).toBeNull();
+    expect(screen.getByLabelText('桌面预约侧栏').className).toContain('student-seat-desktop-side-panel');
+    fireEvent.click(mobileTrigger);
+    expect((await screen.findByLabelText('移动端预约面板')).className).toContain('student-seat-mobile-panel');
   });
 
   it('shows the reservation rule warning only when the selected time is out of range', async () => {

@@ -5,6 +5,42 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/AmorLX-light-tech-login-showcase
+- 目标: 优化学生选座页手机端适配，将预约确认、已选座位和当前预约收纳到可展开面板，减少移动端长页面上下滚动。
+
+### 本次改动
+- 学生选座页新增移动端底部“预约面板”入口，手机宽度下隐藏桌面右侧预约栏，主界面优先展示公共区域位置、预约时间和座位图。
+- 将原右侧预约内容抽成复用面板，在桌面端继续作为右侧栏显示，在移动端通过底部抽屉展示。
+- 移动端抽屉内保留选择路径、已选座位、当前预约和签到/签退操作，并允许面板内部滚动。
+- 修复浮动入口被页面入场动画容器影响的问题，将移动端入口放到页面主体外，确保固定在手机视口底部。
+- App 级测试补充移动端入口、桌面侧栏、移动端抽屉和浮动入口 DOM 层级断言。
+
+### 涉及文件
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- App.test.tsx -t "marks student reservation panels"`，确认旧结构下移动端浮动入口仍在 `.student-seat-page` 内，测试失败。
+- 已运行 `npm run test -- App.test.tsx -t "marks student reservation panels"`，移动端预约面板结构测试通过。
+- 已运行 `npm run test`，8 个测试文件、73 个测试通过；jsdom 仍提示不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已用内置浏览器打开 `http://127.0.0.1:5173/student/seats` 检查移动宽度：桌面侧栏隐藏，底部预约入口固定在视口底部，点击后抽屉内显示选择路径、已选座位和当前预约内容。
+
+### 遗留问题
+- 本次只优化学生选座页手机端布局，不改预约接口、签到校验、二维码闭环或后端状态机。
+
+### 对其他成员的影响
+- 学生预约端移动布局从“长页面堆叠”改为“主界面 + 底部预约面板”；桌面端右侧栏交互保持不变。
+- 签到验证相关按钮和接口调用路径未修改，同事继续做签到验证时无需调整后端契约。
+
+## 2026-06-12
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-light-tech-login-showcase
 - 目标: 将签到时间窗等后端英文业务错误改为中文提示，避免学生点击“开发测试签到”后看到英文报错。
 
 ### 本次改动
