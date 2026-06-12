@@ -250,7 +250,7 @@ areaType: STUDY_ROOM / HALL / CORRIDOR / CONNECTOR
 mapX / mapY: 0-100 的可选地图坐标，用于稳定排序和后续可视化扩展
 ```
 
-学生端室内导航图会优先使用这些结构化字段；旧数据未填写时，仍按区域名称、楼层和描述兼容推断。
+学生端室内导航图会优先使用这些结构化字段；当前只展示 2F/3F 的 A/B 连廊和 B/C 连廊，`CONNECTOR_CD` 在前端暂作为 B/C 连廊兼容展示。旧数据未填写时，仍按区域名称、楼层和描述兼容推断。
 
 新增区域：
 
@@ -259,14 +259,14 @@ curl -X POST http://localhost:18080/api/areas \
   -H "Content-Type: application/json" \
   -H "X-Auth-Token: 替换为管理员 token" \
   -d '{
-    "name": "图书馆二楼 C 区",
+    "name": "A/B 连廊学习区",
     "floor": "2F",
-    "buildingCode": "A",
+    "buildingCode": "CONNECTOR",
     "floorCode": "2F",
-    "areaType": "STUDY_ROOM",
+    "areaType": "CONNECTOR",
     "mapX": 24,
     "mapY": 40,
-    "description": "安静学习区",
+    "description": "A/B connector public study seats",
     "openTime": "08:00:00",
     "closeTime": "22:00:00"
   }'
@@ -279,14 +279,14 @@ curl -X PUT http://localhost:18080/api/areas/1 \
   -H "Content-Type: application/json" \
   -H "X-Auth-Token: 替换为管理员 token" \
   -d '{
-    "name": "Library Area A",
-    "floor": "1F",
-    "buildingCode": "A",
-    "floorCode": "1F",
-    "areaType": "STUDY_ROOM",
+    "name": "A/B 连廊学习区",
+    "floor": "2F",
+    "buildingCode": "CONNECTOR",
+    "floorCode": "2F",
+    "areaType": "CONNECTOR",
     "mapX": 20,
     "mapY": 35,
-    "description": "Demo public study area",
+    "description": "A/B connector public study seats",
     "status": "ACTIVE",
     "openTime": "08:00:00",
     "closeTime": "22:00:00"

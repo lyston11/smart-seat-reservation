@@ -470,7 +470,7 @@ export default function AdminTablesPage() {
       width: 220,
       fixed: 'left',
       render: (_, record) => (
-        <Space direction="vertical" size={2}>
+        <Space orientation="vertical" size={2}>
           <Typography.Text strong>{record.tableNo}</Typography.Text>
           <Typography.Text type="secondary">{record.name ?? '未命名桌位'}</Typography.Text>
         </Space>
@@ -482,7 +482,7 @@ export default function AdminTablesPage() {
       render: (_, record) => {
         const { positionText, sizeText } = formatPlanePosition(record);
         return (
-          <Space direction="vertical" size={2}>
+          <Space orientation="vertical" size={2}>
             <Typography.Text>{positionText}</Typography.Text>
             <Typography.Text type="secondary">{sizeText}</Typography.Text>
           </Space>
@@ -493,7 +493,7 @@ export default function AdminTablesPage() {
       title: '网格顺序',
       width: 160,
       render: (_, record) => (
-        <Space direction="vertical" size={2}>
+        <Space orientation="vertical" size={2}>
           <Typography.Text>
             {record.rowNo && record.columnNo ? `第 ${record.rowNo} 排 / 第 ${record.columnNo} 列` : '未配置行列'}
           </Typography.Text>
@@ -505,7 +505,7 @@ export default function AdminTablesPage() {
       title: '桌型',
       width: 130,
       render: (_, record) => (
-        <Space direction="vertical" size={2}>
+        <Space orientation="vertical" size={2}>
           <Typography.Text>{getTablePresetLabel(record, displaySeatCountsByTable[record.id] ?? 0)}</Typography.Text>
           <Typography.Text type="secondary">{displaySeatCountsByTable[record.id] ?? 0} 个座位</Typography.Text>
         </Space>

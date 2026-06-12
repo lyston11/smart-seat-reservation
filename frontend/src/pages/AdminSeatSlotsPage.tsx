@@ -1140,12 +1140,12 @@ export default function AdminSeatSlotsPage() {
         onOk={runCancelOpenings}
         onCancel={() => setCancelModalOpen(false)}
       >
-        <Space direction="vertical" className="cancel-openings-form" size={14}>
+        <Space orientation="vertical" className="cancel-openings-form" size={14}>
           <Radio.Group
             value={cancelMode}
             onChange={(event) => setCancelMode(event.target.value as CancelMode)}
           >
-            <Space direction="vertical">
+            <Space orientation="vertical">
               <Radio value="selectedDates">撤销当前已选日期</Radio>
               <Radio value="dateRange">撤销一个日期范围</Radio>
               <Radio value="stopPlan" disabled={activePublishPlans.length === 0}>
@@ -1176,7 +1176,7 @@ export default function AdminSeatSlotsPage() {
           ) : null}
 
           {cancelMode === 'stopPlan' ? (
-            <Space direction="vertical" className="cancel-openings-form" size={10}>
+            <Space orientation="vertical" className="cancel-openings-form" size={10}>
               <Select
                 value={selectedPlanId ?? undefined}
                 placeholder="选择持续开放计划"

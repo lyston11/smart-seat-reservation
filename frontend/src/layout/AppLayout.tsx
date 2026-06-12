@@ -127,7 +127,7 @@ export default function AppLayout() {
             </Button>
           </Space>
         </Header>
-        <Content className="app-content">
+        <Content className="app-content motion-viewport">
           <Outlet />
         </Content>
       </Layout>

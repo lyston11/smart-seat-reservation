@@ -49,6 +49,25 @@ describe('request', () => {
     await expect(request('/api/test')).rejects.toThrow('座位已被占用');
   });
 
+  it('translates known backend business error codes to Chinese messages', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        makeResponse(
+          JSON.stringify({
+            success: false,
+            code: 'RESERVATION_CHECKIN_TIME_NOT_ALLOWED',
+            message: 'Check-in is only allowed within the configured time window',
+            data: null,
+          }),
+          { status: 400 },
+        ),
+      ),
+    );
+
+    await expect(request('/api/reservations/1/check-in')).rejects.toThrow('当前不在签到时间窗内，请在预约开始前后规定时间内签到');
+  });
+
   it('clears local session and emits auth expiry for non-json 401 responses', async () => {
     storeSession();
     const authExpiredListener = vi.fn();

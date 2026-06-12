@@ -2,6 +2,14 @@
   color: #111827;
   background: #f5f5f4;
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --motion-duration-fast: 160ms;
+  --motion-duration-base: 240ms;
+  --motion-duration-slow: 420ms;
+  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-emphasis: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ring-blue: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  --motion-shadow-hover: 0 16px 34px rgba(15, 23, 42, 0.1);
+  --motion-shadow-active: 0 18px 40px rgba(37, 99, 235, 0.14);
 }
 
 * {
@@ -82,48 +90,161 @@ body {
   place-items: center;
   color: #4b5563;
   background: #f5f5f4;
+  animation: motion-page-enter var(--motion-duration-slow) var(--motion-ease-emphasis) both;
+}
+
+.motion-page,
+.motion-viewport > .page {
+  animation: motion-page-enter var(--motion-duration-slow) var(--motion-ease-emphasis) both;
+}
+
+.motion-viewport > .page > * {
+  animation: motion-content-rise var(--motion-duration-slow) var(--motion-ease-emphasis) both;
+}
+
+.motion-viewport > .page > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+
+.motion-viewport > .page > *:nth-child(3) {
+  animation-delay: 80ms;
+}
+
+.motion-viewport > .page > *:nth-child(4) {
+  animation-delay: 120ms;
+}
+
+.motion-viewport > .page > *:nth-child(n + 5) {
+  animation-delay: 150ms;
+}
+
+.motion-viewport :where(.ant-card, .ant-table-wrapper, .toolbar, .reservation-panel, .student-section, .student-seat-lock-panel, .student-seat-adaptive-frame, .student-reservation-floating-summary, .campus-indoor-map, .admin-seat-map-workspace, .table-checkin-panel, .rule-explain-card, .admin-command-panel, .admin-status-flow, .admin-anomaly-panel),
+.motion-page :where(.login-shell, .login-feature-item, .login-seat-map-panel, .login-student-flow-card, .login-flow-card, .login-account-card) {
+  transition:
+    transform var(--motion-duration-fast) var(--motion-ease-standard),
+    border-color var(--motion-duration-fast) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-fast) var(--motion-ease-standard),
+    background-color var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+.motion-viewport :where(.ant-card, .ant-table-wrapper, .toolbar, .reservation-panel, .student-section, .student-seat-lock-panel, .student-seat-adaptive-frame, .student-reservation-floating-summary, .campus-indoor-map, .admin-seat-map-workspace, .table-checkin-panel, .rule-explain-card, .admin-command-panel, .admin-status-flow, .admin-anomaly-panel):hover,
+.motion-page :where(.login-feature-item, .login-seat-map-panel, .login-student-flow-card, .login-flow-card, .login-account-card):hover {
+  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, 0.42);
+  box-shadow: var(--motion-shadow-hover);
+}
+
+.motion-viewport :where(.ant-btn, .ant-picker, .ant-input, .ant-input-number, .ant-select-selector, .ant-segmented, .ant-radio-button-wrapper),
+.motion-page :where(.ant-btn, .ant-input, .login-seat-cell) {
+  transition:
+    transform var(--motion-duration-fast) var(--motion-ease-standard),
+    border-color var(--motion-duration-fast) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-fast) var(--motion-ease-standard),
+    background-color var(--motion-duration-fast) var(--motion-ease-standard),
+    color var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+.motion-viewport :where(.ant-btn:not(:disabled)):active,
+.motion-page :where(.ant-btn:not(:disabled), .login-account-card):active {
+  transform: translateY(1px);
+}
+
+.motion-viewport :where(.ant-btn, .ant-picker, .ant-input, .ant-input-number, .ant-select-selector, .ant-segmented, .seat-map-cell, .campus-map-area):focus-visible,
+.motion-page :where(.ant-btn, .ant-input, .login-account-card):focus-visible {
+  outline: none;
+  box-shadow: var(--motion-ring-blue);
+}
+
+.motion-viewport :where(.ant-table-tbody > tr, .student-timeline-item, .student-area-item, .student-record-item, .usage-row, .admin-usage-row, .multi-date-picker-cell, .table-layout-item),
+.motion-page :where(.login-seat-cell, .login-student-flow-step) {
+  transition:
+    transform var(--motion-duration-fast) var(--motion-ease-standard),
+    background-color var(--motion-duration-fast) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-fast) var(--motion-ease-standard),
+    border-color var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+.motion-viewport :where(.ant-table-tbody > tr:hover, .student-timeline-item:hover, .student-area-item:hover, .student-record-item:hover, .usage-row:hover, .admin-usage-row:hover, .multi-date-picker-cell:hover, .table-layout-item:hover),
+.motion-page :where(.login-seat-cell:hover, .login-student-flow-step:hover) {
+  transform: translateY(-1px);
+}
+
+.motion-viewport :where(.ant-alert-warning, .reservation-rule-warning, .admin-command-advice-danger, .admin-usage-level-high, .seat-map-cell-abnormal),
+.motion-page :where(.login-live-badge) {
+  animation: motion-soft-pulse 3.8s ease-in-out infinite;
+}
+
+.motion-viewport :where(.seat-map-cell-selected, .campus-map-area-selected, .student-reservation-floating-summary, .admin-command-panel) {
+  animation:
+    motion-content-rise var(--motion-duration-slow) var(--motion-ease-emphasis) both,
+    motion-soft-glow 4.6s ease-in-out infinite;
 }
 
 .login-page {
   min-height: 100vh;
-  padding: 32px;
+  padding: 24px;
   display: grid;
-  place-items: center;
+  align-items: center;
+  justify-items: center;
+  overflow: auto;
   background:
-    linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(20, 184, 166, 0.06)),
-    #f5f5f4;
+    linear-gradient(90deg, rgba(37, 99, 235, 0.05) 1px, transparent 1px) 0 0 / 46px 46px,
+    linear-gradient(180deg, rgba(20, 184, 166, 0.05) 1px, transparent 1px) 0 0 / 46px 46px,
+    linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(20, 184, 166, 0.08) 48%, rgba(249, 250, 251, 0.96)),
+    #f6f9fc;
 }
 
 .login-shell {
-  width: min(100%, 1040px);
-  min-height: 620px;
+  width: min(100%, 1180px);
+  min-height: 690px;
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+  grid-template-columns: minmax(0, 1.32fr) minmax(360px, 0.78fr);
   overflow: hidden;
-  background: #ffffff;
-  border: 1px solid #d6d3d1;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(148, 163, 184, 0.3);
   border-radius: 8px;
-  box-shadow: 0 24px 70px rgba(17, 24, 39, 0.13);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.14);
 }
 
 .login-identity {
   min-width: 0;
-  padding: 48px;
+  padding: 34px;
   display: grid;
-  align-content: center;
-  gap: 22px;
+  align-content: start;
+  gap: 18px;
+  position: relative;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(245, 245, 244, 0.96)),
-    #eef2ff;
-  border-right: 1px solid #e7e5e4;
+    linear-gradient(120deg, rgba(255, 255, 255, 0.92), rgba(239, 246, 255, 0.88)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(240, 253, 250, 0.52));
+  border-right: 1px solid rgba(203, 213, 225, 0.78);
+}
+
+.login-identity::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(37, 99, 235, 0.08) 1px, transparent 1px) 0 0 / 34px 34px,
+    linear-gradient(180deg, rgba(20, 184, 166, 0.07) 1px, transparent 1px) 0 0 / 34px 34px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.78), rgba(0, 0, 0, 0.06));
+}
+
+.login-identity > * {
+  position: relative;
+}
+
+.login-hero-copy {
+  display: grid;
+  gap: 12px;
 }
 
 .login-kicker {
   width: fit-content;
-  padding: 5px 10px;
-  color: #1f2937;
+  padding: 5px 11px;
+  color: #0369a1;
   background: #ffffff;
-  border: 1px solid #d6d3d1;
+  border: 1px solid #bae6fd;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 700;
@@ -133,13 +254,13 @@ body {
 .login-identity h1.ant-typography {
   margin: 0;
   color: #111827;
-  font-size: 44px;
-  line-height: 52px;
+  font-size: 52px;
+  line-height: 58px;
   letter-spacing: 0;
 }
 
 .login-identity .ant-typography {
-  max-width: 520px;
+  max-width: 640px;
   margin-bottom: 0;
   color: #4b5563;
   font-size: 16px;
@@ -148,25 +269,29 @@ body {
 
 .login-feature-list {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .login-feature-item {
   min-width: 0;
-  min-height: 112px;
-  padding: 14px;
+  min-height: 124px;
+  padding: 12px;
   display: grid;
   align-content: start;
-  gap: 8px;
-  background: #ffffff;
-  border: 1px solid #d6d3d1;
+  gap: 7px;
+  color: #2563eb;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(191, 219, 254, 0.9);
   border-radius: 8px;
 }
 
+.login-feature-item svg {
+  color: #0284c7;
+}
+
 .login-feature-item span {
-  color: #2563eb;
+  color: #0f172a;
   font-size: 13px;
   font-weight: 800;
   line-height: 20px;
@@ -174,22 +299,334 @@ body {
 
 .login-feature-item strong {
   color: #374151;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
+  line-height: 18px;
+}
+
+.login-showcase {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.login-seat-map-panel,
+.login-student-flow-card,
+.login-flow-card {
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 8px;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+}
+
+.login-seat-map-panel {
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.login-showcase-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.login-showcase-header div {
+  display: grid;
+  gap: 3px;
+}
+
+.login-showcase-header span {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
   line-height: 20px;
+}
+
+.login-showcase-header strong {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.login-live-badge {
+  flex: none;
+  padding: 4px 8px;
+  color: #047857 !important;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  font-size: 12px !important;
+  line-height: 18px !important;
+}
+
+.login-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.login-metric-card {
+  min-width: 0;
+  padding: 9px 10px;
+  display: grid;
+  gap: 2px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.login-metric-card span {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.login-metric-card strong {
+  color: #0f172a;
+  font-size: 21px;
+  line-height: 26px;
+}
+
+.login-metric-card-blue {
+  border-color: #bfdbfe;
+}
+
+.login-metric-card-green {
+  border-color: #bbf7d0;
+}
+
+.login-metric-card-orange {
+  border-color: #fed7aa;
+}
+
+.login-metric-card-cyan {
+  border-color: #a5f3fc;
+}
+
+.login-map-preview {
+  min-height: 178px;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+  align-content: center;
+  background:
+    linear-gradient(90deg, rgba(148, 163, 184, 0.18) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(180deg, rgba(148, 163, 184, 0.16) 1px, transparent 1px) 0 0 / 24px 24px,
+    #f8fafc;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+}
+
+.login-seat-cell {
+  aspect-ratio: 1;
+  border-radius: 5px;
+  border: 1px solid currentColor;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.72);
+}
+
+.login-seat-cell-available,
+.login-seat-dot-available {
+  color: #16a34a;
+  background: #bbf7d0;
+}
+
+.login-seat-cell-occupied,
+.login-seat-dot-occupied {
+  color: #ea580c;
+  background: #fed7aa;
+}
+
+.login-seat-cell-reserved,
+.login-seat-dot-reserved {
+  color: #2563eb;
+  background: #bfdbfe;
+}
+
+.login-seat-cell-selected,
+.login-seat-dot-selected {
+  color: #ca8a04;
+  background: #fef08a;
+}
+
+.login-seat-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  color: #475569;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.login-seat-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.login-seat-dot {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 3px;
+}
+
+.login-student-flow-card {
+  padding: 16px;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  position: relative;
+}
+
+.login-student-flow-label {
+  justify-self: start;
+  padding: 4px 8px;
+  color: #0369a1;
+  background: #e0f2fe;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 18px;
+}
+
+.login-student-flow-card span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.login-student-flow-card strong {
+  color: #0f172a;
+  font-size: 18px;
+  line-height: 24px;
+}
+
+.login-student-flow-steps {
+  display: grid;
+  gap: 9px;
+}
+
+.login-student-flow-step {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+}
+
+.login-student-flow-step i {
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.login-student-flow-step div,
+.login-table-code-preview div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.login-student-flow-step b,
+.login-table-code-preview b {
+  color: #0f172a;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.login-student-flow-step small,
+.login-table-code-preview small {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.login-table-code-preview {
+  min-width: 0;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  color: #2563eb;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+}
+
+.login-student-flow-card small,
+.login-student-flow-card b {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.login-flow-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.login-flow-card {
+  min-height: 118px;
+  padding: 13px;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+}
+
+.login-flow-card svg {
+  color: #0284c7;
+}
+
+.login-flow-card span {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 20px;
+}
+
+.login-flow-card strong {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
 }
 
 .login-panel {
   min-width: 0;
-  padding: 48px;
+  padding: 42px;
   display: grid;
   align-content: center;
-  background: #ffffff;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96)),
+    #ffffff;
 }
 
 .login-panel-heading {
   display: grid;
-  gap: 4px;
+  gap: 6px;
   margin-bottom: 24px;
 }
 
@@ -210,7 +647,7 @@ body {
 
 .login-account-card {
   min-width: 0;
-  min-height: 126px;
+  min-height: 118px;
   padding: 14px;
   display: grid;
   gap: 6px;
@@ -219,12 +656,13 @@ body {
   background: #f8fafc;
   border: 1px solid #dbe3ef;
   border-radius: 8px;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
 .login-account-card:hover,
 .login-account-card:focus-visible {
   outline: none;
+  transform: translateY(-1px);
   background: #ffffff;
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
@@ -289,59 +727,123 @@ body {
   margin-bottom: 0;
 }
 
-.student-seat-filter-panel {
+.student-seat-reservation-control {
   min-width: 0;
   padding: 16px;
   margin-bottom: 16px;
   display: grid;
   gap: 14px;
-  background: #ffffff;
-  border: 1px solid #d1d5db;
+  background:
+    linear-gradient(135deg, rgba(239, 246, 255, 0.72), rgba(240, 253, 250, 0.48)),
+    #ffffff;
+  border: 1px solid #bfdbfe;
   border-radius: 8px;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
 }
 
-.student-seat-filter-header {
+.student-seat-control-header {
   min-width: 0;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 14px;
+  gap: 16px;
 }
 
-.student-seat-filter-title {
+.student-seat-control-title {
   min-width: 0;
   display: grid;
-  gap: 2px;
+  gap: 3px;
 }
 
-.student-seat-filter-title span {
+.student-seat-control-title span {
   color: #2563eb;
   font-size: 12px;
   font-weight: 700;
   line-height: 18px;
 }
 
-.student-seat-filter-title strong {
+.student-seat-control-title strong {
   color: #111827;
-  font-size: 17px;
-  line-height: 24px;
+  font-size: 18px;
+  line-height: 26px;
 }
 
-.student-seat-filter-status {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
+.student-seat-control-title p {
+  margin: 0;
   color: #4b5563;
   font-size: 13px;
   line-height: 20px;
 }
 
-.student-seat-filter-status span {
+.student-seat-control-status {
+  min-width: 0;
+  max-width: min(100%, 420px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.student-seat-control-status span {
+  min-width: 0;
+  padding: 5px 10px;
   overflow: hidden;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #1f2937;
+  font-size: 12px;
+  line-height: 18px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.student-seat-control-body {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.student-seat-time-panel {
+  min-width: 0;
+  position: relative;
+  z-index: 5;
+  padding-top: 14px;
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid rgba(147, 197, 253, 0.55);
+}
+
+.student-seat-time-panel-header {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.student-seat-time-panel-header strong {
+  color: #111827;
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.student-seat-time-panel-header span {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: right;
+}
+
+.student-seat-control-form.ant-form {
+  grid-template-columns: minmax(200px, 1.2fr) minmax(136px, 0.7fr) minmax(120px, 0.62fr) minmax(120px, 0.62fr) auto;
+}
+
+.student-seat-control-hints span {
+  border-color: rgba(20, 184, 166, 0.28);
+  background: rgba(240, 253, 250, 0.82);
+  color: #115e59;
 }
 
 .student-seat-filter-form.ant-form {
@@ -360,6 +862,38 @@ body {
 .student-seat-filter-form .ant-segmented,
 .student-seat-filter-form .ant-btn {
   width: 100%;
+}
+
+.student-seat-time-select {
+  min-width: 0;
+}
+
+.student-seat-time-popup {
+  z-index: 2100;
+}
+
+.student-seat-time-popup .ant-select-item {
+  min-height: 36px;
+  padding-block: 8px;
+}
+
+.student-seat-filter-form .student-seat-date-segmented.ant-segmented {
+  width: fit-content;
+  max-width: 100%;
+  justify-self: start;
+}
+
+.student-seat-date-segmented .ant-segmented-group {
+  width: 100%;
+}
+
+.student-seat-date-segmented .ant-segmented-item {
+  min-width: 68px;
+  text-align: center;
+}
+
+.student-seat-filter-form.student-seat-control-form.ant-form {
+  grid-template-columns: minmax(200px, 1.2fr) minmax(136px, 0.7fr) minmax(120px, 0.62fr) minmax(120px, 0.62fr) auto;
 }
 
 .student-seat-filter-hints {
@@ -969,24 +1503,81 @@ body {
   line-height: 1.6;
 }
 
-.student-home-hero {
+.student-home-hero,
+.admin-workbench-hero {
+  position: relative;
+  overflow: hidden;
   padding: 22px 24px;
   margin-bottom: 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background:
+    linear-gradient(135deg, rgba(239, 246, 255, 0.88), rgba(240, 253, 250, 0.66)),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.08) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(180deg, rgba(20, 184, 166, 0.07) 1px, transparent 1px) 0 0 / 28px 28px,
+    #ffffff;
+  border: 1px solid #bfdbfe;
   border-radius: 8px;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+  animation: panel-rise 0.36s ease both;
 }
 
-.student-home-hero h2 {
-  margin: 0 0 6px !important;
+.student-home-hero::after,
+.admin-workbench-hero::after {
+  content: "";
+  position: absolute;
+  right: -82px;
+  bottom: -120px;
+  width: 240px;
+  height: 240px;
+  border: 1px solid rgba(14, 165, 233, 0.18);
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.14), transparent 68%);
 }
 
-.student-home-hero .ant-typography {
+.student-home-hero > *,
+.admin-workbench-hero > * {
+  position: relative;
+}
+
+.student-workbench-eyebrow {
+  width: fit-content;
+  padding: 4px 9px;
+  display: inline-flex;
+  color: #0369a1;
+  background: rgba(224, 242, 254, 0.9);
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 18px;
+}
+
+.student-home-hero h3,
+.admin-workbench-hero h3 {
+  margin: 8px 0 6px !important;
+  color: #0f172a;
+}
+
+.student-home-hero .ant-typography,
+.admin-workbench-hero .ant-typography {
   margin-bottom: 0;
+}
+
+.student-quick-actions,
+.admin-workbench-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.student-quick-actions .ant-btn,
+.admin-workbench-controls .ant-btn {
+  display: inline-flex;
+  align-items: center;
 }
 
 .student-summary-grid {
@@ -996,6 +1587,28 @@ body {
   margin-bottom: 16px;
 }
 
+.student-workbench-status-grid .ant-card,
+.admin-workbench-stat-card {
+  overflow: hidden;
+  border-color: rgba(191, 219, 254, 0.86);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.9)),
+    #ffffff;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.student-workbench-status-grid .ant-card:hover,
+.admin-workbench-stat-card:hover,
+.student-section:hover,
+.student-seat-lock-panel:hover,
+.admin-workbench-card:hover,
+.admin-anomaly-panel:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, 0.46);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.1);
+}
+
 .student-seat-lock-panel {
   padding: 14px 16px;
   margin-bottom: 16px;
@@ -1003,9 +1616,12 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: #ffffff;
-  border: 1px solid #dbeafe;
+  background:
+    linear-gradient(135deg, rgba(240, 253, 250, 0.9), rgba(255, 255, 255, 0.9)),
+    #ffffff;
+  border: 1px solid #99f6e4;
   border-radius: 8px;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .student-seat-lock-panel > div,
@@ -1027,9 +1643,42 @@ body {
 .student-section {
   padding: 16px;
   margin-bottom: 16px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94)),
+    #ffffff;
+  border: 1px solid #dbeafe;
   border-radius: 8px;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.student-workbench-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  gap: 16px;
+  align-items: start;
+}
+
+.student-workbench-main,
+.student-workbench-aside,
+.admin-workbench-main,
+.admin-workbench-aside {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.student-workbench-aside {
+  position: sticky;
+  top: 88px;
+}
+
+.student-section-primary {
+  border-color: rgba(37, 99, 235, 0.28);
+}
+
+.student-side-section,
+.student-workbench-side-panel {
+  margin-bottom: 0;
 }
 
 .student-card-grid {
@@ -1040,6 +1689,10 @@ body {
 
 .reservation-card {
   height: 100%;
+}
+
+.student-reservation-card {
+  border-color: rgba(191, 219, 254, 0.88);
 }
 
 .reservation-card-stack {
@@ -1058,8 +1711,10 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  transition: transform 0.18s ease, border-color 0.18s ease;
 }
 
 .student-record-item > div {
@@ -1096,9 +1751,18 @@ body {
   grid-template-columns: 86px minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #dbeafe;
   border-radius: 8px;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.86);
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.student-timeline-item:hover,
+.student-area-item:hover,
+.student-record-item:hover,
+.admin-usage-row:hover {
+  transform: translateX(2px);
+  border-color: rgba(37, 99, 235, 0.42);
 }
 
 .student-timeline-time {
@@ -1129,7 +1793,7 @@ body {
 
 .student-area-list {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
@@ -1140,8 +1804,10 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  transition: transform 0.18s ease, border-color 0.18s ease;
 }
 
 .reservation-rules {
@@ -1149,6 +1815,11 @@ body {
   flex-wrap: wrap;
   gap: 8px;
   margin: -4px 0 16px;
+  padding: 10px 12px;
+  align-items: center;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  background: #fffbeb;
 }
 
 .reservation-rules.student-seat-adaptive-frame {
@@ -1156,12 +1827,13 @@ body {
 }
 
 .reservation-rules span {
-  padding: 4px 10px;
-  border: 1px solid #dbeafe;
-  border-radius: 999px;
-  background: #eff6ff;
-  color: #1e3a8a;
-  font-size: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 650;
   line-height: 20px;
 }
 
@@ -1171,6 +1843,19 @@ body {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
+}
+
+.student-reservation-floating-summary {
+  min-width: 0;
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+  background:
+    linear-gradient(135deg, rgba(239, 246, 255, 0.84), rgba(240, 253, 250, 0.74)),
+    #ffffff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.1);
 }
 
 .student-reservation-path-header {
@@ -1197,6 +1882,11 @@ body {
   display: grid;
   grid-template-columns: minmax(110px, 0.7fr) minmax(160px, 1fr) minmax(220px, 1.25fr) minmax(150px, 0.9fr);
   gap: 10px;
+}
+
+.student-reservation-floating-summary .student-reservation-path-steps {
+  grid-template-columns: 1fr;
+  gap: 8px;
 }
 
 .student-reservation-path-step {
@@ -1229,12 +1919,64 @@ body {
   background: #eff6ff;
 }
 
+.student-reservation-floating-summary .student-reservation-path-step {
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.student-reservation-floating-summary .student-reservation-path-step strong {
+  white-space: normal;
+}
+
+.student-floating-stat-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.student-floating-stat-grid div {
+  min-width: 0;
+  padding: 8px;
+  display: grid;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(147, 197, 253, 0.62);
+  border-radius: 8px;
+}
+
+.student-floating-stat-grid span {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-floating-stat-grid strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .campus-indoor-map {
   padding: 16px;
   margin-bottom: 16px;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
+}
+
+.campus-indoor-map-embedded {
+  padding: 0;
+  margin-bottom: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
 
 .campus-map-header {
@@ -1265,10 +2007,14 @@ body {
   align-items: stretch;
 }
 
+.campus-indoor-map-embedded .campus-map-stage {
+  gap: 10px;
+}
+
 .campus-map-row {
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
   gap: 12px;
   align-items: stretch;
 }
@@ -1298,6 +2044,14 @@ body {
   background:
     linear-gradient(180deg, rgba(240, 253, 250, 0.84), rgba(236, 253, 245, 0.72)),
     repeating-linear-gradient(90deg, rgba(20, 184, 166, 0.14) 0 14px, transparent 14px 28px);
+}
+
+.campus-indoor-map-embedded .campus-map-zone-connector,
+.campus-indoor-map-embedded .campus-map-zone-connector-cd {
+  min-height: 126px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(240, 253, 250, 0.72)),
+    repeating-linear-gradient(90deg, rgba(20, 184, 166, 0.12) 0 12px, transparent 12px 24px);
 }
 
 .campus-map-zone-title {
@@ -1344,6 +2098,17 @@ body {
   line-height: 18px;
 }
 
+.campus-map-occupancy {
+  width: 100%;
+  padding-top: 6px;
+  margin-top: 2px;
+  border-top: 1px solid #e5e7eb;
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 18px;
+}
+
 .campus-map-area-selected.ant-btn,
 .campus-map-area-selected.ant-btn:hover {
   border-color: #2563eb;
@@ -1374,9 +2139,11 @@ body {
 }
 
 .student-seat-workspace {
+  position: relative;
+  z-index: 1;
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+  grid-template-columns: minmax(0, 1fr) minmax(248px, 276px);
   gap: 16px;
   align-items: start;
 }
@@ -1397,9 +2164,98 @@ body {
   min-width: 0;
 }
 
+.student-mobile-reservation-dock,
+.student-mobile-reservation-drawer {
+  display: none;
+}
+
+.student-seat-mobile-panel {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.student-current-reservation-card .ant-card-head {
+  min-height: 46px;
+  padding: 0 14px;
+}
+
+.student-current-reservation-card .ant-card-head-title {
+  padding: 12px 0;
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.student-current-reservation-card .ant-card-body {
+  padding: 14px;
+}
+
 .student-seat-panel-stack {
   min-width: 0;
   width: 100%;
+}
+
+.student-current-reservation-head {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.student-current-reservation-head .ant-typography {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.student-current-reservation-summary {
+  min-width: 0;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  gap: 7px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(248, 250, 252, 0.96), rgba(239, 246, 255, 0.58)),
+    #ffffff;
+}
+
+.student-current-reservation-summary span,
+.student-current-reservation-code > span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 18px;
+}
+
+.student-current-reservation-summary strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.student-current-reservation-code {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.student-current-reservation-actions {
+  width: 100%;
+  gap: 8px !important;
+}
+
+.student-current-reservation-actions .ant-btn {
+  min-width: 0;
+  flex: 1 1 92px;
+  padding-inline: 10px;
 }
 
 .student-seat-time-grid {
@@ -1793,6 +2649,383 @@ body {
   margin-top: 8px;
 }
 
+.admin-command-panel {
+  position: relative;
+  overflow: hidden;
+  padding: 16px;
+  margin-bottom: 16px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(240, 253, 250, 0.78)),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.06) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(180deg, rgba(20, 184, 166, 0.06) 1px, transparent 1px) 0 0 / 24px 24px,
+    #ffffff;
+  border: 1px solid rgba(147, 197, 253, 0.9);
+  border-radius: 8px;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+  animation: panel-rise 0.36s ease both;
+}
+
+.admin-command-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(14, 165, 233, 0.12), transparent);
+  transform: translateX(-100%);
+  animation: admin-scan-line 5.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.admin-command-panel > * {
+  position: relative;
+}
+
+.admin-command-header,
+.admin-section-heading,
+.admin-usage-row-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-command-header {
+  margin-bottom: 12px;
+}
+
+.admin-command-header h4,
+.admin-section-heading h4 {
+  margin: 6px 0 0 !important;
+}
+
+.admin-command-kicker,
+.admin-section-kicker {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #0369a1;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 18px;
+}
+
+.admin-command-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1fr) minmax(260px, 1.25fr);
+  gap: 12px;
+}
+
+.admin-command-meter,
+.admin-command-advice {
+  min-width: 0;
+  min-height: 118px;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(191, 219, 254, 0.92);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.admin-command-meter:hover,
+.admin-command-advice:hover,
+.admin-status-flow:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, 0.44);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
+}
+
+.admin-command-meter svg,
+.admin-command-advice svg {
+  padding: 7px;
+  box-sizing: content-box;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+}
+
+.admin-command-meter > div,
+.admin-command-advice > div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.admin-command-meter span,
+.admin-command-advice span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 18px;
+}
+
+.admin-command-meter strong,
+.admin-command-advice strong {
+  min-width: 0;
+  color: #0f172a;
+  font-size: 22px;
+  line-height: 28px;
+  word-break: break-word;
+}
+
+.admin-command-meter-area strong {
+  font-size: 18px;
+  line-height: 24px;
+}
+
+.admin-command-advice-danger {
+  background: linear-gradient(135deg, rgba(254, 242, 242, 0.94), rgba(255, 255, 255, 0.84));
+  border-color: #fecaca;
+}
+
+.admin-command-advice-danger svg {
+  color: #dc2626;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.admin-command-advice-warning {
+  background: linear-gradient(135deg, rgba(255, 247, 237, 0.94), rgba(255, 255, 255, 0.84));
+  border-color: #fed7aa;
+}
+
+.admin-command-advice-warning svg {
+  color: #ea580c;
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.admin-command-advice-notice,
+.admin-command-advice-stable {
+  background: linear-gradient(135deg, rgba(239, 246, 255, 0.94), rgba(255, 255, 255, 0.84));
+}
+
+.admin-workbench-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.admin-workbench-stat-card-green {
+  border-color: #bbf7d0;
+}
+
+.admin-workbench-stat-card-blue {
+  border-color: #bfdbfe;
+}
+
+.admin-workbench-stat-card-cyan {
+  border-color: #a5f3fc;
+}
+
+.admin-workbench-stat-card-red {
+  border-color: #fecaca;
+}
+
+.admin-workbench-stat-card-red .ant-statistic-content {
+  color: #b91c1c;
+}
+
+.admin-workbench-stat-card-strong {
+  background:
+    linear-gradient(135deg, rgba(239, 246, 255, 0.96), rgba(240, 253, 250, 0.9)),
+    #ffffff;
+}
+
+.admin-workbench-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(270px, 340px);
+  gap: 16px;
+  align-items: start;
+}
+
+.admin-workbench-card {
+  border-color: #dbeafe;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.admin-status-flow {
+  min-width: 0;
+  padding: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.92)),
+    #ffffff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.admin-status-flow-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-status-flow-item {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.admin-status-flow-item::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #60a5fa;
+}
+
+.admin-status-flow-item span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 18px;
+}
+
+.admin-status-flow-item strong {
+  color: #0f172a;
+  font-size: 26px;
+  line-height: 30px;
+}
+
+.admin-status-flow-item small {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.admin-status-flow-item-green::after {
+  background: #22c55e;
+}
+
+.admin-status-flow-item-blue::after {
+  background: #3b82f6;
+}
+
+.admin-status-flow-item-cyan::after {
+  background: #06b6d4;
+}
+
+.admin-status-flow-item-red::after {
+  background: #ef4444;
+}
+
+.admin-usage-list {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-usage-row {
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.78);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.admin-usage-row:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+}
+
+.admin-usage-row-title strong {
+  min-width: 0;
+  word-break: break-word;
+}
+
+.admin-usage-row-title .ant-tag {
+  margin-inline-end: 0;
+  flex: 0 0 auto;
+}
+
+.admin-usage-level-high {
+  border-color: #fecaca;
+  background: linear-gradient(135deg, rgba(254, 242, 242, 0.7), rgba(255, 255, 255, 0.82));
+}
+
+.admin-usage-level-medium {
+  border-color: #fed7aa;
+  background: linear-gradient(135deg, rgba(255, 247, 237, 0.72), rgba(255, 255, 255, 0.82));
+}
+
+.admin-usage-level-low {
+  border-color: #bbf7d0;
+  background: linear-gradient(135deg, rgba(240, 253, 244, 0.72), rgba(255, 255, 255, 0.82));
+}
+
+.admin-anomaly-panel {
+  min-width: 0;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  background:
+    linear-gradient(135deg, rgba(255, 247, 237, 0.9), rgba(255, 255, 255, 0.92)),
+    #ffffff;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  box-shadow: 0 14px 30px rgba(124, 45, 18, 0.08);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.admin-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #9a3412;
+}
+
+.admin-anomaly-number {
+  color: #b91c1c;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 46px;
+}
+
+.admin-anomaly-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-anomaly-grid div {
+  min-width: 0;
+  padding: 10px;
+  display: grid;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+}
+
+.admin-anomaly-grid span {
+  color: #9a3412;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.admin-anomaly-grid strong {
+  color: #0f172a;
+  font-size: 20px;
+  line-height: 26px;
+}
+
 .admin-seat-lock-card {
   margin-bottom: 16px;
 }
@@ -1825,6 +3058,93 @@ body {
 
 .reservation-rule-stat-card .ant-card-body {
   height: 100%;
+}
+
+@keyframes panel-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes motion-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.997);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes motion-content-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes motion-soft-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+  }
+}
+
+@keyframes motion-soft-glow {
+  0%,
+  100% {
+    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
+  }
+
+  50% {
+    box-shadow: var(--motion-shadow-active);
+  }
+}
+
+@keyframes admin-scan-line {
+  0%,
+  42% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+
+  52% {
+    opacity: 1;
+  }
+
+  72%,
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 .rule-form {
@@ -1878,7 +3198,7 @@ body {
 
   .login-identity {
     padding: 24px;
-    gap: 14px;
+    gap: 16px;
     border-right: 0;
     border-bottom: 1px solid #e7e5e4;
   }
@@ -1889,11 +3209,26 @@ body {
   }
 
   .login-feature-list {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .login-feature-item {
     min-height: 0;
+  }
+
+  .login-showcase {
+    grid-template-columns: 1fr;
+  }
+
+  .login-metric-grid,
+  .login-flow-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .login-map-preview {
+    min-height: 150px;
+    padding: 12px;
+    gap: 6px;
   }
 
   .login-panel {
@@ -1953,6 +3288,10 @@ body {
     border-left: 0;
   }
 
+  .app-content:has(.student-seat-page) {
+    padding-bottom: 92px;
+  }
+
   .page {
     max-width: none;
   }
@@ -1965,27 +3304,43 @@ body {
 
   .toolbar .ant-form,
   .toolbar .ant-space,
-  .student-seat-filter-header,
+  .student-seat-control-header,
   .campus-map-header {
     width: 100%;
   }
 
-  .student-seat-filter-header,
+  .student-seat-control-header,
+  .student-seat-time-panel-header,
   .campus-map-header {
     flex-direction: column;
   }
 
-  .student-seat-filter-status {
+  .student-seat-control-status {
     width: 100%;
+    max-width: 100%;
     justify-content: flex-start;
   }
 
-  .student-seat-filter-status span {
+  .student-seat-control-status span {
     white-space: normal;
+  }
+
+  .student-seat-time-panel-header span {
+    text-align: left;
   }
 
   .campus-map-header .ant-segmented {
     width: 100%;
+  }
+
+  .student-seat-filter-form .student-seat-date-segmented.ant-segmented {
+    width: 100%;
+    justify-self: stretch;
+  }
+
+  .student-seat-date-segmented .ant-segmented-item {
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .toolbar .ant-form-item,
@@ -1994,6 +3349,7 @@ body {
   .toolbar .ant-input-number,
   .toolbar .ant-btn,
   .student-seat-filter-form .ant-btn,
+  .student-seat-control-form .ant-btn,
   .table-checkin-panel .ant-btn,
   .audit-filter-select,
   .reservation-filter-select,
@@ -2008,9 +3364,22 @@ body {
 
   .reservation-panel,
   .student-home-hero,
+  .admin-workbench-hero,
   .reservation-fields {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .student-quick-actions,
+  .admin-workbench-controls {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .student-quick-actions .ant-btn,
+  .admin-workbench-controls .ant-btn,
+  .admin-workbench-controls .ant-picker {
+    flex: 1 1 160px;
   }
 
   .reservation-input,
@@ -2020,13 +3389,19 @@ body {
   }
 
   .stats-grid,
+  .admin-workbench-stats,
+  .admin-command-grid,
+  .admin-status-flow-grid,
   .reservation-rule-stats-grid,
-  .student-summary-grid,
   .student-reservation-path-steps,
   .student-seat-filter-form.ant-form,
+  .student-seat-control-form.ant-form,
+  .student-seat-filter-form.student-seat-control-form.ant-form,
   .rule-explain-grid,
   .student-card-grid,
   .student-seat-workspace,
+  .student-workbench-layout,
+  .admin-workbench-layout,
   .admin-seat-map-workspace,
   .student-seat-time-grid,
   .student-area-list,
@@ -2040,6 +3415,74 @@ body {
   .slot-publish-grid,
   .slot-base-fields {
     grid-template-columns: 1fr;
+  }
+
+  .student-workbench-aside {
+    position: static;
+  }
+
+  .admin-command-header,
+  .admin-section-heading,
+  .admin-usage-row-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .student-seat-side-panel {
+    position: static;
+  }
+
+  .student-seat-desktop-side-panel {
+    display: none;
+  }
+
+  .student-mobile-reservation-dock {
+    position: fixed;
+    z-index: 1200;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    display: block;
+    padding: 8px;
+    border: 1px solid rgba(147, 197, 253, 0.78);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+    backdrop-filter: blur(12px);
+  }
+
+  .student-mobile-reservation-trigger.ant-btn {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .student-mobile-reservation-drawer {
+    display: block;
+  }
+
+  .student-mobile-reservation-drawer .ant-drawer-content {
+    border-radius: 8px 8px 0 0;
+  }
+
+  .student-mobile-reservation-drawer .ant-drawer-header {
+    padding: 14px 16px;
+  }
+
+  .student-mobile-reservation-drawer-body {
+    padding: 12px;
+    overflow: auto;
+    background: #f8fafc;
+  }
+
+  .student-seat-mobile-panel .student-reservation-floating-summary {
+    order: 0;
+  }
+
+  .student-floating-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .slot-publish-section-wide {
@@ -2087,10 +3530,6 @@ body {
     height: 46px;
   }
 
-  .student-seat-side-panel {
-    position: static;
-  }
-
   .student-timeline-item {
     grid-template-columns: 1fr;
     align-items: stretch;
@@ -2098,5 +3537,21 @@ body {
 
   .student-timeline-action {
     justify-content: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .login-feature-list,
+  .login-metric-grid,
+  .login-flow-list {
+    grid-template-columns: 1fr;
+  }
+
+  .login-showcase-header {
+    flex-direction: column;
+  }
+
+  .login-table-code-preview {
+    grid-template-columns: 1fr;
   }
 }

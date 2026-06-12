@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, Form, Input, message, Segmented, Select, Space, Statistic, Tag, Typography } from 'antd';
+import { Button, Card, Drawer, Form, Input, message, Segmented, Select, Space, Tag, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { listAreas } from '../api/areas';
 import { listSeats } from '../api/seats';
@@ -17,6 +17,9 @@ import SeatMap from '../components/SeatMap';
 import type { ReservationResult } from '../types/reservation';
 import type { Area, Seat, SeatSlot } from '../types/seat';
 import {
+  canCancelReservation,
+  canCheckInReservation,
+  canCheckOutReservation,
   formatDateTime,
   formatReservationLocation,
   formatReservationTime,
@@ -28,9 +31,20 @@ import {
   normalizeReservationRules,
   type NormalizedReservationRule,
 } from '../utils/reservationRules';
+import {
+  formatConnectorAreaName,
+  getVisibleConnectorAreasForFloor,
+  isCampusConnectorArea,
+  normalizeAreaFloor,
+} from '../utils/campusConnectors';
 import { buildStudentTimeOptions, type StudentTimeOption } from '../utils/studentTimeOptions';
 import { getSeatDisplayLabelInSlots, getSeatPathText } from '../utils/seatDisplay';
 import { getBusinessNow, parseBusinessDateTime } from '../utils/businessTime';
+
+type AreaOccupancy = {
+  total: number;
+  occupied: number;
+};
 
 export default function SeatSlotsPage() {
   const [areas, setAreas] = useState<Area[]>([]);
@@ -51,6 +65,7 @@ export default function SeatSlotsPage() {
   const [loading, setLoading] = useState(false);
   const [reservingId, setReservingId] = useState<number | null>(null);
   const [reservationAction, setReservationAction] = useState<string | null>(null);
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
   const todayText = useMemo(() => now.format('YYYY-MM-DD'), [now]);
@@ -73,7 +88,8 @@ export default function SeatSlotsPage() {
     [todayText, tomorrowReservationOpened, tomorrowText],
   );
   const activeAreas = useMemo(() => areas.filter((area) => area.status === 'ACTIVE'), [areas]);
-  const selectedArea = useMemo(() => areas.find((area) => area.id === areaId), [areas, areaId]);
+  const reservableAreas = useMemo(() => activeAreas.filter(isCampusConnectorArea), [activeAreas]);
+  const selectedArea = useMemo(() => reservableAreas.find((area) => area.id === areaId), [areaId, reservableAreas]);
   const earliestStartTime = useMemo(
     () => getEarliestStartTimeForDate(dateText, now, selectedArea?.openTime),
     [dateText, now, selectedArea?.openTime],
@@ -113,6 +129,15 @@ export default function SeatSlotsPage() {
     () => getReservationBlockedReason(dateText, startTimeText, now, reservationOpenHour),
     [dateText, now, reservationOpenHour, startTimeText],
   );
+  const reservationWarningText = useMemo(() => {
+    if (reservationBlockedReason) {
+      return reservationBlockedReason;
+    }
+    if (slots.length > 0 && timeOptions.startOptions.length === 0) {
+      return '当前已发布时段均已开始或无可预约座位';
+    }
+    return null;
+  }, [reservationBlockedReason, slots.length, timeOptions.startOptions.length]);
   const visibleSlots = useMemo(
     () => buildVisibleSlotsForSelectedTime(slots, seats, areaId, dateText, startTimeText, endTimeText),
     [areaId, dateText, endTimeText, seats, slots, startTimeText],
@@ -125,11 +150,18 @@ export default function SeatSlotsPage() {
     () => visibleSlots.filter((slot) => slot.status !== 'AVAILABLE' && slot.status !== 'UNPUBLISHED').length,
     [visibleSlots],
   );
+  const [areaOccupancy, setAreaOccupancy] = useState<Record<number, AreaOccupancy>>({});
   const selectedSlot = useMemo(
     () => visibleSlots.find((slot) => slot.seatId === selectedSeatId) ?? null,
     [selectedSeatId, visibleSlots],
   );
   const selectedAreaFloorText = selectedArea ? getAreaFloorText(selectedArea) : selectedCampusFloor ?? '未选择';
+  const selectedAreaOccupancy = selectedArea ? areaOccupancy[selectedArea.id] : undefined;
+  const selectedAreaOccupancyRate =
+    selectedAreaOccupancy && selectedAreaOccupancy.total > 0
+      ? Math.round((selectedAreaOccupancy.occupied / selectedAreaOccupancy.total) * 100)
+      : null;
+  const selectedAreaDisplayName = selectedArea ? formatConnectorAreaName(selectedArea) : '未选择区域';
   const selectedSeatPathText = selectedSlot ? getSeatPathText(selectedSlot, visibleSlots) : '未选择座位';
 
   function restoreActiveReservation(reservations: ReservationResult[]) {
@@ -144,15 +176,19 @@ export default function SeatSlotsPage() {
     try {
       const nextAreas = await listAreas();
       setAreas(nextAreas);
-      const nextActiveAreas = nextAreas.filter((area) => area.status === 'ACTIVE');
-      if (nextActiveAreas.length > 0) {
-        const currentArea = nextActiveAreas.find((area) => area.id === areaId);
+      const nextReservableAreas = nextAreas.filter((area) => area.status === 'ACTIVE' && isCampusConnectorArea(area));
+      if (nextReservableAreas.length > 0) {
+        const currentArea = nextReservableAreas.find((area) => area.id === areaId);
         if (!currentArea) {
-          applySelectedArea(nextActiveAreas[0]);
+          applySelectedArea(nextReservableAreas[0]);
         } else if (!areaTimeInitialized) {
           applySelectedArea(currentArea);
           setAreaTimeInitialized(true);
         }
+      } else {
+        setSlots([]);
+        setSeats([]);
+        setSelectedSeatId(null);
       }
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : '加载区域失败');
@@ -160,9 +196,15 @@ export default function SeatSlotsPage() {
   }, [areaId, areaTimeInitialized, messageApi]);
 
   const loadSlots = useCallback(async () => {
+    if (!selectedArea) {
+      setSlots([]);
+      setSeats([]);
+      setSelectedSeatId(null);
+      return;
+    }
     setLoading(true);
     try {
-      const [nextSlots, nextSeats] = await Promise.all([listSeatSlots(areaId, dateText), listSeats(areaId)]);
+      const [nextSlots, nextSeats] = await Promise.all([listSeatSlots(selectedArea.id, dateText), listSeats(selectedArea.id)]);
       setSlots(nextSlots);
       setSeats(nextSeats);
       setSelectedSeatId((currentSeatId) => {
@@ -187,7 +229,51 @@ export default function SeatSlotsPage() {
     } finally {
       setLoading(false);
     }
-  }, [areaId, dateText, messageApi, now, timeInitializedFromSlots]);
+  }, [dateText, messageApi, now, selectedArea, timeInitializedFromSlots]);
+
+  const loadAreaOccupancy = useCallback(async () => {
+    if (reservableAreas.length === 0) {
+      setAreaOccupancy({});
+      return;
+    }
+
+    const visibleAreas = selectedCampusFloor
+      ? getVisibleConnectorAreasForFloor(reservableAreas, selectedCampusFloor)
+      : selectedArea
+        ? getVisibleConnectorAreasForFloor(reservableAreas, normalizeAreaFloor(selectedArea))
+        : reservableAreas;
+
+    if (visibleAreas.length === 0) {
+      setAreaOccupancy({});
+      return;
+    }
+
+    try {
+      const entries = await Promise.all(
+        visibleAreas.map(async (area) => {
+          const [nextSlots, nextSeats] = await Promise.all([listSeatSlots(area.id, dateText), listSeats(area.id)]);
+          const nextVisibleSlots = buildVisibleSlotsForSelectedTime(
+            nextSlots,
+            nextSeats,
+            area.id,
+            dateText,
+            startTimeText,
+            endTimeText,
+          );
+          return [
+            area.id,
+            {
+              total: nextVisibleSlots.length,
+              occupied: nextVisibleSlots.filter((slot) => slot.status !== 'AVAILABLE' && slot.status !== 'UNPUBLISHED').length,
+            },
+          ] as const;
+        }),
+      );
+      setAreaOccupancy(Object.fromEntries(entries));
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : '加载连廊占用率失败');
+    }
+  }, [dateText, endTimeText, messageApi, reservableAreas, selectedArea, selectedCampusFloor, startTimeText]);
 
   const loadRules = useCallback(async () => {
     try {
@@ -277,12 +363,25 @@ export default function SeatSlotsPage() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadAreas();
-      void loadSlots();
       void loadRules();
       void loadActiveReservation();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadActiveReservation, loadAreas, loadSlots, loadRules]);
+  }, [loadActiveReservation, loadAreas, loadRules]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadSlots();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadSlots]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadAreaOccupancy();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadAreaOccupancy]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(getBusinessNow()), 60_000);
@@ -291,7 +390,7 @@ export default function SeatSlotsPage() {
 
   function applySelectedArea(area: Area) {
     setAreaId(area.id);
-    setSelectedCampusFloor(getAreaFloorText(area));
+    setSelectedCampusFloor(normalizeAreaFloor(area));
     setStartTime(toHalfHourCeil(area.openTime.slice(0, 5)));
     setEndTime(toHalfHourFloor(area.closeTime.slice(0, 5)));
     setSelectedSeatId(null);
@@ -302,7 +401,7 @@ export default function SeatSlotsPage() {
     setSelectedCampusFloor(nextFloor);
     const selectedAreaStillVisible =
       selectedArea &&
-      getAreaFloorText(selectedArea) === nextFloor &&
+      normalizeAreaFloor(selectedArea) === nextFloor &&
       visibleAreas.some((area) => area.id === selectedArea.id);
     if (selectedAreaStillVisible) {
       return;
@@ -321,88 +420,12 @@ export default function SeatSlotsPage() {
     setTimeInitializedFromSlots(false);
   }
 
-  return (
-    <div className="page student-seat-page student-seat-centered-page">
-      {contextHolder}
-      <CampusIndoorMap
-        areas={activeAreas}
-        selectedAreaId={areaId}
-        selectedFloor={selectedCampusFloor ?? selectedAreaFloorText}
-        onFloorChange={changeCampusFloor}
-        onSelectArea={applySelectedArea}
-      />
-
-      <section className="student-seat-filter-panel student-seat-adaptive-frame" aria-label="选座筛选">
-        <div className="student-seat-filter-header">
-          <div className="student-seat-filter-title">
-            <span>选座筛选</span>
-            <strong>楼栋楼层与时段</strong>
-          </div>
-          <div className="student-seat-filter-status">
-            <Tag color="blue">{selectedAreaFloorText}</Tag>
-            <span>当前区域 {selectedArea?.name ?? '未选择区域'}</span>
-          </div>
-        </div>
-        <Form layout="vertical" className="student-seat-filter-form">
-          <Form.Item label="区域">
-            <Select
-              className="area-select"
-              value={areaId}
-              options={activeAreas.map((area) => ({
-                label: `${area.name}${area.floor ? ` · ${area.floor}` : ''}`,
-                value: area.id,
-              }))}
-              onChange={(nextAreaId) => {
-                const nextArea = areas.find((area) => area.id === nextAreaId);
-                if (nextArea) {
-                  applySelectedArea(nextArea);
-                } else {
-                  setAreaId(nextAreaId);
-                }
-              }}
-            />
-          </Form.Item>
-          <Form.Item label="日期">
-            <Segmented<string> value={dateText} options={dateOptions} onChange={changeSlotDate} />
-          </Form.Item>
-          <Form.Item label="开始时间">
-            <Select
-              aria-label="开始时间"
-              value={validStartTime}
-              options={timeOptions.startOptions}
-              placeholder="暂无可预约开始时间"
-              onChange={(value) => {
-                setStartTime(value);
-              }}
-            />
-          </Form.Item>
-          <Form.Item label="结束时间">
-            <Select
-              aria-label="结束时间"
-              value={validEndTime}
-              options={timeOptions.endOptions}
-              placeholder="暂无可预约结束时间"
-              onChange={(value) => {
-                setEndTime(value);
-              }}
-            />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" onClick={loadSlots} loading={loading}>
-              刷新座位
-            </Button>
-          </Form.Item>
-        </Form>
-        <div className="student-seat-filter-hints">
-          <span>
-            {dateText} {validStartTime}-{validEndTime}
-          </span>
-          <span>{availableSeatCount} 个座位可预约</span>
-          {reservationBlockedReason ? <span>{reservationBlockedReason}</span> : null}
-        </div>
-      </section>
-
-      <div className="student-reservation-path student-seat-adaptive-frame" aria-label="选择路径">
+  const reservationPanelContent = (
+    <>
+      <div
+        className="student-reservation-floating-summary student-seat-adaptive-frame"
+        aria-label="预约确认浮窗"
+      >
         <div className="student-reservation-path-header">
           <strong>选择路径</strong>
           <span>从楼层到桌座连续确认</span>
@@ -414,7 +437,7 @@ export default function SeatSlotsPage() {
           </div>
           <div className="student-reservation-path-step">
             <span>区域</span>
-            <strong>{selectedArea?.name ?? '未选择区域'}</strong>
+            <strong>{selectedAreaDisplayName}</strong>
           </div>
           <div className="student-reservation-path-step">
             <span>预约时段</span>
@@ -427,47 +450,252 @@ export default function SeatSlotsPage() {
             <strong>{selectedSeatPathText}</strong>
           </div>
         </div>
+        <div className="student-floating-stat-grid">
+          <div>
+            <span>可预约</span>
+            <strong>{availableSeatCount} 个</strong>
+          </div>
+          <div>
+            <span>占用/异常</span>
+            <strong>{occupiedSeatCount} 个</strong>
+          </div>
+        </div>
       </div>
+      <Card title="已选座位">
+        {selectedSlot ? (
+          <Space orientation="vertical" size={12} className="student-seat-panel-stack">
+            <Space wrap>
+              <Typography.Text strong>
+                {getSeatDisplayLabelInSlots(selectedSlot, visibleSlots)}
+              </Typography.Text>
+              <Tag color={seatStatusColor(selectedSlot.status)}>
+                {seatStatusText(selectedSlot.status)}
+              </Tag>
+            </Space>
+            <Typography.Text type="secondary">
+              {selectedAreaDisplayName}
+              {selectedArea?.floor ? ` · ${selectedArea.floor}` : ''}
+              {selectedSlot.tableNo ? ` · ${selectedSlot.tableNo}` : ''}
+            </Typography.Text>
+            <div className="student-seat-selected-summary">
+              <span>预约日期</span>
+              <strong>{dateText}</strong>
+              <span>预约时段</span>
+              <strong>
+                {validStartTime}-{validEndTime}
+              </strong>
+            </div>
+            <div className="student-seat-next-step">
+              <Typography.Text strong>下一步：确认座位和时间无误后提交预约，成功后到座扫码签到。</Typography.Text>
+            </div>
+            <Button
+              type="primary"
+              block
+              disabled={selectedSlot.status !== 'AVAILABLE' || !canReserveSelectedTime}
+              loading={reservingId === selectedSlot.id}
+              onClick={() => reserve(selectedSlot)}
+            >
+              预约该座位
+            </Button>
+            {reservationBlockedReason ? (
+              <Typography.Text type="secondary">
+                {reservationBlockedReason}
+              </Typography.Text>
+            ) : null}
+            {selectedSlot.status === 'UNPUBLISHED' ? (
+              <Typography.Text type="secondary">
+                当前时间段未开放，可调整时间或等待管理员开放后预约。
+              </Typography.Text>
+            ) : null}
+          </Space>
+        ) : (
+          <Typography.Text type="secondary">请先在座位地图中选择一个位置。</Typography.Text>
+        )}
+      </Card>
 
-      <div className="student-summary-grid student-seat-adaptive-frame" aria-label="预约概览">
-        <Card>
-          <Statistic title="可预约座位" value={availableSeatCount} suffix="个" />
-        </Card>
-        <Card>
-          <Statistic title="已占用/异常" value={occupiedSeatCount} suffix="个" />
-        </Card>
-        <Card>
-          <Statistic title="预约日期" value={dateText} />
-        </Card>
-      </div>
+      <Card title="当前预约" className="student-current-reservation-card" aria-label="当前预约">
+        {activeReservation ? (
+          <Space orientation="vertical" size={10} className="student-seat-panel-stack">
+            <div className="student-current-reservation-head">
+              <Tag color={reservationStatusColor[activeReservation.status] ?? 'default'}>
+                {reservationStatusText[activeReservation.status] ?? activeReservation.status}
+              </Tag>
+              <Typography.Text type="secondary">#{activeReservation.reservationId}</Typography.Text>
+            </div>
+            <div className="student-current-reservation-summary">
+              <span>预约位置</span>
+              <strong>{formatReservationLocation(activeReservation)}</strong>
+              <span>预约时段</span>
+              <strong>{formatReservationTime(activeReservation)}</strong>
+              <span>签到截止</span>
+              <strong>{formatDateTime(activeReservation.expiresAt)}</strong>
+              <span>锁位次数</span>
+              <strong>
+                {activeReservation.seatLockUsedCount ?? 0}/{activeReservation.seatLockQuota ?? 0}
+                {activeReservation.lockedUntilAt ? ` · 至 ${formatDateTime(activeReservation.lockedUntilAt)}` : ''}
+              </strong>
+            </div>
+            {activeReservation.status === 'RESERVED' ? (
+              <Typography.Text type="secondary" className="reservation-qr-checkin-hint">
+                扫描桌面/座位二维码完成正式签到；测试入口仍会校验校园网 IP 和签到时间窗。
+              </Typography.Text>
+            ) : null}
+            <div className="student-current-reservation-code">
+              <span>签到凭证</span>
+              <div className="reservation-code-field reservation-code">
+                <span>签到码</span>
+                <Input
+                  value={checkinCode}
+                  placeholder="预约成功后自动填入"
+                  disabled={!canCheckInReservation(activeReservation)}
+                  onChange={(event) => setCheckinCode(event.target.value)}
+                />
+              </div>
+            </div>
+            <Space wrap className="student-current-reservation-actions">
+              <Button
+                disabled={!canCheckInReservation(activeReservation)}
+                loading={reservationAction === 'check-in'}
+                onClick={() => runReservationAction('check-in')}
+              >
+                开发测试签到
+              </Button>
+              <Button
+                disabled={!canCheckOutReservation(activeReservation)}
+                loading={reservationAction === 'check-out'}
+                onClick={() => runReservationAction('check-out')}
+              >
+                签退
+              </Button>
+              <Button
+                danger
+                disabled={!canCancelReservation(activeReservation)}
+                loading={reservationAction === 'cancel'}
+                onClick={() => runReservationAction('cancel')}
+              >
+                取消
+              </Button>
+            </Space>
+          </Space>
+        ) : (
+          <Typography.Text type="secondary">暂无活跃预约。</Typography.Text>
+        )}
+      </Card>
+    </>
+  );
 
-      <div className="reservation-rules student-seat-adaptive-frame" aria-label="预约规则提示">
-        <span>同一时间仅允许保留一个活跃预约</span>
-        <span>
-          当前选择 {validStartTime}-{validEndTime}
-        </span>
-        {selectedArea ? (
-          <span>
-            开放 {selectedArea.openTime.slice(0, 5)}-{selectedArea.closeTime.slice(0, 5)}
-          </span>
-        ) : null}
-        <span>
-          每日最多保留 {reservationRules?.dailyActiveReservationLimit ?? '-'} 个活跃预约
-        </span>
-        <span>已开始或过期时段不可预约</span>
-        <span>
-          每日 {String(reservationOpenHour).padStart(2, '0')}:00 开放明日预约
-        </span>
-        <span>时间最小粒度为半小时</span>
-        <span>预约后 {reservationRules?.checkinGraceMinutes ?? '-'} 分钟内未签到将自动释放</span>
-        <span>
-          连续跨上午/下午可锁位 1 次，跨上午/下午/晚上可锁位 2 次
-        </span>
-        <span>分开预约不累计锁位权益</span>
-        {slots.length > 0 && timeOptions.startOptions.length === 0 ? (
-          <span>当前已发布时段均已开始或无可预约座位</span>
-        ) : null}
-      </div>
+  return (
+    <>
+      <div className="page student-seat-page student-seat-centered-page">
+      {contextHolder}
+      <section className="student-seat-reservation-control student-seat-adaptive-frame" aria-label="选座导航">
+        <div className="student-seat-control-header">
+          <div className="student-seat-control-title">
+            <span>学生选座</span>
+            <strong>公共区域位置</strong>
+            <p>选择教学楼连廊公共座位、日期和时段。</p>
+          </div>
+          <div className="student-seat-control-status" aria-label="当前选择">
+            <Tag color="blue">{selectedAreaFloorText}</Tag>
+            <span>
+              {selectedAreaOccupancyRate === null ? '占用率 暂无数据' : `占用率 ${selectedAreaOccupancyRate}%`}
+            </span>
+          </div>
+        </div>
+
+        <div className="student-seat-control-body">
+          <CampusIndoorMap
+            areas={reservableAreas}
+            selectedAreaId={areaId}
+            selectedFloor={selectedCampusFloor ?? selectedAreaFloorText}
+            areaOccupancy={areaOccupancy}
+            embedded
+            onFloorChange={changeCampusFloor}
+            onSelectArea={applySelectedArea}
+          />
+
+          <div className="student-seat-time-panel" aria-label="日期与时段">
+            <div className="student-seat-time-panel-header">
+              <strong>预约时间</strong>
+              <span>可预约今天，达到开放时间后可预约明天。</span>
+            </div>
+            <Form layout="vertical" className="student-seat-filter-form student-seat-control-form">
+              <Form.Item label="区域">
+                <Select
+                  className="area-select"
+                  value={areaId}
+                  options={reservableAreas.map((area) => ({
+                    label: `${formatConnectorAreaName(area)}${area.floor ? ` · ${area.floor}` : ''}`,
+                    value: area.id,
+                  }))}
+                  onChange={(nextAreaId) => {
+                    const nextArea = reservableAreas.find((area) => area.id === nextAreaId);
+                    if (nextArea) {
+                      applySelectedArea(nextArea);
+                    } else {
+                      setAreaId(nextAreaId);
+                    }
+                  }}
+                />
+              </Form.Item>
+              <Form.Item label="日期">
+                <Segmented<string>
+                  aria-label="预约日期"
+                  className="student-seat-date-segmented"
+                  value={dateText}
+                  options={dateOptions}
+                  onChange={changeSlotDate}
+                />
+              </Form.Item>
+              <Form.Item label="开始时间">
+                <Select
+                  aria-label="开始时间"
+                  className="student-seat-time-select"
+                  classNames={{ popup: { root: 'student-seat-time-popup' } }}
+                  getPopupContainer={() => document.body}
+                  value={validStartTime}
+                  options={timeOptions.startOptions}
+                  placeholder="暂无可预约开始时间"
+                  onChange={(value) => {
+                    setStartTime(value);
+                  }}
+                />
+              </Form.Item>
+              <Form.Item label="结束时间">
+                <Select
+                  aria-label="结束时间"
+                  className="student-seat-time-select"
+                  classNames={{ popup: { root: 'student-seat-time-popup' } }}
+                  getPopupContainer={() => document.body}
+                  value={validEndTime}
+                  options={timeOptions.endOptions}
+                  placeholder="暂无可预约结束时间"
+                  onChange={(value) => {
+                    setEndTime(value);
+                  }}
+                />
+              </Form.Item>
+              <Form.Item>
+                <Button type="primary" onClick={loadSlots} loading={loading}>
+                  刷新座位
+                </Button>
+              </Form.Item>
+            </Form>
+            <div className="student-seat-filter-hints student-seat-control-hints">
+              <span>
+                {dateText} {validStartTime}-{validEndTime}
+              </span>
+              <span>{availableSeatCount} 个座位可预约</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {reservationWarningText ? (
+        <div className="reservation-rules student-seat-adaptive-frame" aria-label="预约规则提示" role="alert">
+          <span>{reservationWarningText}</span>
+        </div>
+      ) : null}
 
       <div className="student-seat-workspace student-seat-adaptive-frame" aria-label="座位预约工作区">
         <SeatMap
@@ -481,122 +709,35 @@ export default function SeatSlotsPage() {
           onReserve={(slot) => setSelectedSeatId(slot.seatId)}
         />
 
-        <aside className="student-seat-side-panel">
-          <Card title="已选座位">
-            {selectedSlot ? (
-              <Space orientation="vertical" size={12} className="student-seat-panel-stack">
-                <Space wrap>
-                  <Typography.Text strong>
-                    {getSeatDisplayLabelInSlots(selectedSlot, visibleSlots)}
-                  </Typography.Text>
-                  <Tag color={seatStatusColor(selectedSlot.status)}>
-                    {seatStatusText(selectedSlot.status)}
-                  </Tag>
-                </Space>
-                <Typography.Text type="secondary">
-                  {selectedArea?.name ?? '未知区域'}
-                  {selectedArea?.floor ? ` · ${selectedArea.floor}` : ''}
-                  {selectedSlot.tableNo ? ` · ${selectedSlot.tableNo}` : ''}
-                </Typography.Text>
-                <div className="student-seat-selected-summary">
-                  <span>预约日期</span>
-                  <strong>{dateText}</strong>
-                  <span>预约时段</span>
-                  <strong>
-                    {validStartTime}-{validEndTime}
-                  </strong>
-                </div>
-                <div className="student-seat-next-step">
-                  <Typography.Text strong>下一步：确认座位和时间无误后提交预约，成功后到座扫码签到。</Typography.Text>
-                </div>
-                <Button
-                  type="primary"
-                  block
-                  disabled={selectedSlot.status !== 'AVAILABLE' || !canReserveSelectedTime}
-                  loading={reservingId === selectedSlot.id}
-                  onClick={() => reserve(selectedSlot)}
-                >
-                  预约该座位
-                </Button>
-                {reservationBlockedReason ? (
-                  <Typography.Text type="secondary">
-                    {reservationBlockedReason}
-                  </Typography.Text>
-                ) : null}
-                {selectedSlot.status === 'UNPUBLISHED' ? (
-                  <Typography.Text type="secondary">
-                    当前时间段未开放，可调整时间或等待管理员开放后预约。
-                  </Typography.Text>
-                ) : null}
-              </Space>
-            ) : (
-              <Typography.Text type="secondary">请先在座位地图中选择一个位置。</Typography.Text>
-            )}
-          </Card>
-
-          <Card title="当前预约">
-            {activeReservation ? (
-              <Space orientation="vertical" size={12} className="student-seat-panel-stack">
-                <Space wrap>
-                  <Tag color={reservationStatusColor[activeReservation.status] ?? 'default'}>
-                    {reservationStatusText[activeReservation.status] ?? activeReservation.status}
-                  </Tag>
-                  <Typography.Text>#{activeReservation.reservationId}</Typography.Text>
-                </Space>
-                <Typography.Text>{formatReservationLocation(activeReservation)}</Typography.Text>
-                <Typography.Text type="secondary">{formatReservationTime(activeReservation)}</Typography.Text>
-                <Typography.Text type="secondary">
-                  签到截止 {formatDateTime(activeReservation.expiresAt)}
-                </Typography.Text>
-                <Typography.Text type="secondary">
-                  锁位次数 {activeReservation.seatLockUsedCount ?? 0}/{activeReservation.seatLockQuota ?? 0}
-                  {activeReservation.lockedUntilAt ? ` · 锁位至 ${formatDateTime(activeReservation.lockedUntilAt)}` : ''}
-                </Typography.Text>
-                {activeReservation.status === 'RESERVED' ? (
-                  <Typography.Text type="secondary" className="reservation-qr-checkin-hint">
-                    正式签到请扫描桌面/座位二维码；测试入口仍会校验校园网 IP 和签到时间窗。
-                  </Typography.Text>
-                ) : null}
-                <div className="reservation-code-field reservation-code">
-                  <span>签到码</span>
-                  <Input
-                    value={checkinCode}
-                    placeholder="预约成功后自动填入"
-                    onChange={(event) => setCheckinCode(event.target.value)}
-                  />
-                </div>
-                <Space wrap>
-                  <Button
-                    disabled={!activeReservation}
-                    loading={reservationAction === 'check-in'}
-                    onClick={() => runReservationAction('check-in')}
-                  >
-                    开发测试签到
-                  </Button>
-                  <Button
-                    disabled={!activeReservation}
-                    loading={reservationAction === 'check-out'}
-                    onClick={() => runReservationAction('check-out')}
-                  >
-                    签退
-                  </Button>
-                  <Button
-                    danger
-                    disabled={!activeReservation}
-                    loading={reservationAction === 'cancel'}
-                    onClick={() => runReservationAction('cancel')}
-                  >
-                    取消
-                  </Button>
-                </Space>
-              </Space>
-            ) : (
-              <Typography.Text type="secondary">暂无活跃预约。</Typography.Text>
-            )}
-          </Card>
+        <aside className="student-seat-side-panel student-seat-desktop-side-panel" aria-label="桌面预约侧栏">
+          {reservationPanelContent}
         </aside>
       </div>
-    </div>
+      </div>
+      <div className="student-mobile-reservation-dock" aria-label="移动端预约入口">
+        <Button
+          type="primary"
+          size="large"
+          className="student-mobile-reservation-trigger"
+          onClick={() => setMobilePanelOpen(true)}
+        >
+          预约面板 · {selectedSlot ? selectedSeatPathText : '未选座'} · {availableSeatCount} 可预约
+        </Button>
+      </div>
+      <Drawer
+        title="预约面板"
+        placement="bottom"
+        size="78vh"
+        open={mobilePanelOpen}
+        rootClassName="student-mobile-reservation-drawer"
+        classNames={{ body: 'student-mobile-reservation-drawer-body' }}
+        onClose={() => setMobilePanelOpen(false)}
+      >
+        <div className="student-seat-mobile-panel" aria-label="移动端预约面板">
+          {reservationPanelContent}
+        </div>
+      </Drawer>
+    </>
   );
 }
 

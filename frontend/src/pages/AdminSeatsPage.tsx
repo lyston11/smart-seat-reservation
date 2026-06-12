@@ -265,7 +265,7 @@ export default function AdminSeatsPage() {
       width: 220,
       fixed: 'left',
       render: (_, record) => (
-        <Space direction="vertical" size={2}>
+        <Space orientation="vertical" size={2}>
           <Typography.Text strong>{record.seatNo}</Typography.Text>
           <Typography.Text type="secondary">{record.seatLabel ?? '未配置桌上标签'}</Typography.Text>
         </Space>
@@ -280,7 +280,7 @@ export default function AdminSeatsPage() {
         const tableColumnNo = record.tableColumnNo ?? table?.columnNo;
         const tableNo = record.tableNo ?? table?.tableNo;
         return (
-          <Space direction="vertical" size={2}>
+          <Space orientation="vertical" size={2}>
             <Typography.Text>{tableNo ?? '未绑定桌子'}</Typography.Text>
             <Typography.Text type="secondary">
               {tableRowNo && tableColumnNo ? `第 ${tableRowNo} 排 / 第 ${tableColumnNo} 列` : '桌位行列未配'}
@@ -293,7 +293,7 @@ export default function AdminSeatsPage() {
       title: '桌上位置',
       width: 160,
       render: (_, record) => (
-        <Space direction="vertical" size={2}>
+        <Space orientation="vertical" size={2}>
           <Typography.Text>{getSeatSideLabel(record.seatSide)}</Typography.Text>
           <Typography.Text type="secondary">同侧顺序 {record.seatOrder ?? '-'}</Typography.Text>
         </Space>
@@ -303,7 +303,7 @@ export default function AdminSeatsPage() {
       title: '网格顺序',
       width: 160,
       render: (_, record) => (
-        <Space direction="vertical" size={2}>
+        <Space orientation="vertical" size={2}>
           <Typography.Text>
             {record.rowNo && record.columnNo ? `第 ${record.rowNo} 排 / 第 ${record.columnNo} 列` : '未配置行列'}
           </Typography.Text>
@@ -522,7 +522,7 @@ export default function AdminSeatsPage() {
               <div className="table-qr-code" aria-label={`${seatQr.seatNo} 固定座位二维码`}>
                 <QRCode value={checkinUrl} size={180} />
               </div>
-              <Space direction="vertical" size={6}>
+              <Space orientation="vertical" size={6}>
                 <Typography.Text strong>
                   {seatQr.tableNo ?? '未绑定桌子'} · {seatQr.seatNo}
                   {seatQr.seatLabel ? ` (${seatQr.seatLabel})` : ''}

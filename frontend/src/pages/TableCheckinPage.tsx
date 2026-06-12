@@ -65,7 +65,7 @@ export default function TableCheckinPage() {
     <div className="page table-checkin-page">
       {contextHolder}
       <div className="table-checkin-panel">
-        <Space direction="vertical" size={16} className="table-checkin-stack">
+        <Space orientation="vertical" size={16} className="table-checkin-stack">
           <div>
             <Typography.Title level={4} className="table-checkin-title">
               桌码签到

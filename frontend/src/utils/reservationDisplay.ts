@@ -1,4 +1,5 @@
 import type { ReservationResult } from '../types/reservation';
+import { formatConnectorAreaNameText } from './campusConnectors';
 
 export type ReservationStatusFilter =
   | 'ALL'
@@ -225,7 +226,7 @@ export function formatReservationTime(reservation: ReservationResult) {
 }
 
 export function formatReservationLocation(reservation: ReservationResult) {
-  const area = reservation.areaName ?? '未知区域';
+  const area = reservation.areaName ? formatConnectorAreaNameText(reservation.areaName) : '未知区域';
   const floor = reservation.floor ? ` · ${reservation.floor}` : '';
   const table = reservation.tableNo ? ` · ${reservation.tableNo}` : '';
   const seat = reservation.seatNo ?? `座位 ${reservation.seatId}`;
