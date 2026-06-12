@@ -113,6 +113,7 @@ describe('App', () => {
       </MemoryRouter>,
     );
     expect(await screen.findByRole('heading', { level: 3, name: '学生选座' })).toBeTruthy();
+    expect(document.querySelector('.app-content')?.className).toContain('motion-viewport');
   });
 
   it('clears stored session and redirects to login when token is invalid', async () => {
@@ -162,9 +163,22 @@ describe('App', () => {
     );
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Smart Seat' })).toBeTruthy();
-    expect(await screen.findByText('实时座位')).toBeTruthy();
-    expect(await screen.findByText('预约与扫码签到')).toBeTruthy();
-    expect(await screen.findByText('管理员一屏调度')).toBeTruthy();
+    expect(document.querySelector('.login-page')?.className).toContain('motion-page');
+    expect(await screen.findByText('智慧座位预约系统')).toBeTruthy();
+    expect(await screen.findByText('实时选座')).toBeTruthy();
+    expect(await screen.findByText('扫码签到')).toBeTruthy();
+    expect(await screen.findByText('预约规则')).toBeTruthy();
+    expect(await screen.findByText('管理看板')).toBeTruthy();
+    expect(await screen.findByText('防重复预约')).toBeTruthy();
+    expect(await screen.findByText('座位地图 / Seat Map')).toBeTruthy();
+    expect(await screen.findByText('学生预约流程')).toBeTruthy();
+    expect(await screen.findByText('学生预约')).toBeTruthy();
+    expect((await screen.findAllByText('到场签到')).length).toBeGreaterThanOrEqual(1);
+    expect(await screen.findByText('管理员调度')).toBeTruthy();
+    expect(await screen.findByText('状态追踪')).toBeTruthy();
+    expect(screen.queryByText('我的预约')).toBeNull();
+    expect(screen.queryByText('已预约')).toBeNull();
+    expect(screen.queryByText('A区-2F-026')).toBeNull();
 
     const adminAccount = await screen.findByRole('button', { name: /管理员演示账号/ });
     fireEvent.click(adminAccount);
@@ -292,6 +306,14 @@ describe('App', () => {
                 status: 'CHECKED_IN',
                 checkinCode: '246810',
                 expiresAt: '2026-05-18T10:00:00',
+                areaName: 'A/B 连廊学习区',
+                floor: '2F',
+                tableNo: 'T04',
+                seatNo: 'A-013',
+                seatLabel: '1',
+                slotDate: '2026-05-18',
+                startTime: '08:00:00',
+                endTime: '22:00:00',
               },
             ],
           }),
@@ -334,7 +356,15 @@ describe('App', () => {
 
     expect(await screen.findByText('#7')).toBeTruthy();
     expect(await screen.findByDisplayValue('246810')).toBeTruthy();
+    const currentReservation = await screen.findByLabelText('当前预约');
+    expect(currentReservation.className).toContain('student-current-reservation-card');
+    expect(within(currentReservation).getByText('使用中')).toBeTruthy();
+    expect(within(currentReservation).getByText('预约位置')).toBeTruthy();
+    expect(within(currentReservation).getByText('A-B教学楼连廊学习区 · 2F · T04 · A-013 (1)')).toBeTruthy();
+    expect(within(currentReservation).getByText('签到凭证')).toBeTruthy();
 
+    const checkinButton = await screen.findByRole('button', { name: '开发测试签到' });
+    expect(checkinButton).toHaveProperty('disabled', true);
     const checkoutButton = await screen.findByRole('button', { name: '签 退' });
     expect(checkoutButton).not.toHaveProperty('disabled', true);
     fireEvent.click(checkoutButton);
@@ -365,9 +395,12 @@ describe('App', () => {
             data: [
               {
                 id: 1,
-                name: 'A 区',
-                floor: '1F',
-                description: null,
+                name: 'A/B 连廊学习区',
+                floor: '2F',
+                buildingCode: 'CONNECTOR',
+                floorCode: '2F',
+                areaType: 'CONNECTOR',
+                description: 'A/B connector',
                 status: 'ACTIVE',
                 openTime: '08:00:00',
                 closeTime: '22:00:00',
@@ -525,8 +558,7 @@ describe('App', () => {
         expect.objectContaining({ method: 'POST' }),
       );
     });
-    expect(await screen.findByText('正式签到请扫描桌面/座位二维码；测试入口仍会校验校园网 IP 和签到时间窗。')).toBeTruthy();
-    expect(await screen.findByRole('button', { name: /开发测试签到/ })).toBeTruthy();
+    expect(await screen.findByText('扫描桌面/座位二维码完成正式签到；测试入口仍会校验校园网 IP 和签到时间窗。')).toBeTruthy();
     expect(await screen.findByText('下一步：确认座位和时间无误后提交预约，成功后到座扫码签到。')).toBeTruthy();
   });
 
@@ -549,9 +581,12 @@ describe('App', () => {
             data: [
               {
                 id: 1,
-                name: 'A 区',
-                floor: '1F',
-                description: null,
+                name: 'A/B 连廊学习区',
+                floor: '2F',
+                buildingCode: 'CONNECTOR',
+                floorCode: '2F',
+                areaType: 'CONNECTOR',
+                description: 'A/B connector',
                 status: 'ACTIVE',
                 openTime: '08:00:00',
                 closeTime: '22:00:00',
@@ -687,9 +722,12 @@ describe('App', () => {
             data: [
               {
                 id: 1,
-                name: 'A 区',
-                floor: '1F',
-                description: null,
+                name: 'A/B 连廊学习区',
+                floor: '2F',
+                buildingCode: 'CONNECTOR',
+                floorCode: '2F',
+                areaType: 'CONNECTOR',
+                description: 'A/B connector',
                 status: 'ACTIVE',
                 openTime: '08:00:00',
                 closeTime: '22:00:00',
@@ -793,9 +831,12 @@ describe('App', () => {
               },
               {
                 id: 2,
-                name: 'B 楼南自习区',
-                floor: '1F',
-                description: null,
+                name: 'B/C 连廊学习区',
+                floor: '2F',
+                buildingCode: 'CONNECTOR_CD',
+                floorCode: '2F',
+                areaType: 'CONNECTOR',
+                description: 'B/C connector',
                 status: 'ACTIVE',
                 openTime: '09:00:00',
                 closeTime: '21:00:00',
@@ -804,8 +845,11 @@ describe('App', () => {
               {
                 id: 3,
                 name: 'A/B 连廊学习区',
-                floor: '1F',
-                description: 'connector',
+                floor: '2F',
+                buildingCode: 'CONNECTOR',
+                floorCode: '2F',
+                areaType: 'CONNECTOR',
+                description: 'A/B connector',
                 status: 'ACTIVE',
                 openTime: '08:00:00',
                 closeTime: '22:00:00',
@@ -880,13 +924,158 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('室内导航')).toBeTruthy();
-    fireEvent.click(await screen.findByRole('button', { name: /B 楼南自习区/ }));
+    const seatNavigator = await screen.findByLabelText('选座导航');
+    expect(within(seatNavigator).getByText('公共区域位置')).toBeTruthy();
+    expect(within(seatNavigator).queryByText('连廊区域')).toBeNull();
+    expect(screen.queryByRole('button', { name: /A 楼北自习区/ })).toBeNull();
+    fireEvent.click(await screen.findByRole('button', { name: /B-C教学楼连廊学习区/ }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith('/api/seats?areaId=2', expect.any(Object));
     });
     expect(await screen.findByRole('button', { name: /1号/ })).toBeTruthy();
+  });
+
+  it('finishes student seat loading after connector areas and slots resolve', async () => {
+    storeStudentSession();
+    const todayText = toLocalDateText(new Date());
+    const startText = nextFutureHalfHourText();
+    const endText = addMinutesToTimeText(startText, 60);
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('/api/areas')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                name: 'A/B 连廊学习区',
+                floor: '2F',
+                buildingCode: 'CONNECTOR',
+                floorCode: '2F',
+                areaType: 'CONNECTOR',
+                description: 'A/B connector',
+                status: 'ACTIVE',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/seat-slots?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 8,
+                seatId: 9,
+                seatNo: 'A-001',
+                tableId: 1,
+                tableNo: 'T01',
+                tableRowNo: 1,
+                tableColumnNo: 1,
+                tableDisplayOrder: 1,
+                tablePositionX: 120,
+                tablePositionY: 80,
+                tableWidthPx: 260,
+                tableHeightPx: 96,
+                tableRotationDeg: 0,
+                seatLabel: '1号',
+                seatSide: 'NORTH',
+                seatOrder: 1,
+                rowNo: 1,
+                columnNo: 1,
+                displayOrder: 1,
+                areaId: 1,
+                slotDate: todayText,
+                startTime: `${startText}:00`,
+                endTime: `${endText}:00`,
+                status: 'AVAILABLE',
+                reservedBy: null,
+                reservationId: null,
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/seats?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 9,
+                areaId: 1,
+                tableId: 1,
+                tableNo: 'T01',
+                tableRowNo: 1,
+                tableColumnNo: 1,
+                tableDisplayOrder: 1,
+                tablePositionX: 120,
+                tablePositionY: 80,
+                tableWidthPx: 260,
+                tableHeightPx: 96,
+                tableRotationDeg: 0,
+                seatNo: 'A-001',
+                seatLabel: '1号',
+                seatSide: 'NORTH',
+                seatOrder: 1,
+                rowNo: 1,
+                columnNo: 1,
+                displayOrder: 1,
+                status: 'ACTIVE',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/reservations/rules')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: makeReservationRules({ reservationOpenHour: 0 }),
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/student/seats']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole('button', { name: /1号/ });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '刷新座位' }).querySelector('.anticon-loading')).toBeNull();
+    });
   });
 
   it('keeps floor changes, time filters, and the seat map aligned on the student page', async () => {
@@ -922,14 +1111,14 @@ describe('App', () => {
               },
               {
                 id: 2,
-                name: 'B 楼二层自习区',
+                name: 'B/C 连廊二层学习区',
                 floor: '2F',
-                buildingCode: 'B',
+                buildingCode: 'CONNECTOR_CD',
                 floorCode: '2F',
-                areaType: 'STUDY_ROOM',
+                areaType: 'CONNECTOR',
                 mapX: 70,
                 mapY: 20,
-                description: null,
+                description: 'B/C connector',
                 status: 'ACTIVE',
                 openTime: '09:00:00',
                 closeTime: '21:00:00',
@@ -1049,9 +1238,16 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
-    const filters = await screen.findByLabelText('选座筛选');
-    expect(within(filters).getByLabelText('开始时间')).toBeTruthy();
-    expect(within(filters).getByLabelText('结束时间')).toBeTruthy();
+    const seatNavigator = await screen.findByLabelText('选座导航');
+    expect(screen.queryByLabelText('选座筛选')).toBeNull();
+    expect(within(seatNavigator).getByText('公共区域位置')).toBeTruthy();
+    expect(within(seatNavigator).queryByText('连廊区域')).toBeNull();
+    const dateSegmented = within(seatNavigator).getByLabelText('预约日期');
+    expect(dateSegmented.className).toContain('student-seat-date-segmented');
+    const startTimeSelect = within(seatNavigator).getByLabelText('开始时间');
+    const endTimeSelect = within(seatNavigator).getByLabelText('结束时间');
+    expect(startTimeSelect.closest('.ant-select')?.className).toContain('student-seat-time-select');
+    expect(endTimeSelect.closest('.ant-select')?.className).toContain('student-seat-time-select');
 
     fireEvent.click(await screen.findByRole('radio', { name: '2F' }));
 
@@ -1060,11 +1256,16 @@ describe('App', () => {
     });
     expect(await screen.findByRole('group', { name: 'B02' })).toBeTruthy();
 
-    const reservationPath = await screen.findByLabelText('选择路径');
+    const reservationPath = await screen.findByLabelText('预约确认浮窗');
     await waitFor(() => {
       expect(within(reservationPath).getByText('2F')).toBeTruthy();
-      expect(within(reservationPath).getByText('B 楼二层自习区')).toBeTruthy();
+      expect(within(reservationPath).getByText('B-C教学楼连廊二层学习区')).toBeTruthy();
     });
+    expect(within(reservationPath).getByText('可预约')).toBeTruthy();
+    expect(within(reservationPath).getByText('占用/异常')).toBeTruthy();
+    expect(within(reservationPath).queryByText('日期')).toBeNull();
+    expect(screen.queryByLabelText('选择路径')).toBeNull();
+    expect(screen.queryByLabelText('预约概览')).toBeNull();
   });
 
   it('connects floor, area, time, table, and seat in one reservation path', async () => {
@@ -1085,14 +1286,14 @@ describe('App', () => {
             data: [
               {
                 id: 1,
-                name: 'A 楼北自习区',
-                floor: '1F',
-                buildingCode: 'A',
-                floorCode: '1F',
-                areaType: 'STUDY_ROOM',
+                name: 'A/B 连廊学习区',
+                floor: '2F',
+                buildingCode: 'CONNECTOR',
+                floorCode: '2F',
+                areaType: 'CONNECTOR',
                 mapX: 20,
                 mapY: 20,
-                description: null,
+                description: 'A/B connector',
                 status: 'ACTIVE',
                 openTime: '08:00:00',
                 closeTime: '22:00:00',
@@ -1204,15 +1405,16 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
-    const reservationPath = await screen.findByLabelText('选择路径');
+    const reservationPath = await screen.findByLabelText('预约确认浮窗');
     expect(within(reservationPath).getByText('选择路径')).toBeTruthy();
+    expect(reservationPath.className).toContain('student-reservation-floating-summary');
     expect(within(reservationPath).getByText('楼层')).toBeTruthy();
     await waitFor(() => {
-      expect(within(reservationPath).getByText('1F')).toBeTruthy();
+      expect(within(reservationPath).getByText('2F')).toBeTruthy();
     });
     expect(within(reservationPath).getByText('区域')).toBeTruthy();
     await waitFor(() => {
-      expect(within(reservationPath).getByText('A 楼北自习区')).toBeTruthy();
+      expect(within(reservationPath).getByText('A-B教学楼连廊学习区')).toBeTruthy();
     });
     expect(within(reservationPath).getByText('预约时段')).toBeTruthy();
 
@@ -1244,14 +1446,29 @@ describe('App', () => {
             data: [
               {
                 id: 1,
-                name: 'A 楼北自习区',
-                floor: '1F',
-                buildingCode: 'A',
-                floorCode: '1F',
-                areaType: 'STUDY_ROOM',
-                mapX: 20,
+                name: 'A/B 连廊学习区',
+                floor: '2F',
+                buildingCode: 'CONNECTOR',
+                floorCode: '2F',
+                areaType: 'CONNECTOR',
+                mapX: 30,
                 mapY: 20,
-                description: null,
+                description: 'A/B connector',
+                status: 'ACTIVE',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
+              },
+              {
+                id: 2,
+                name: 'B/C 连廊学习区',
+                floor: '2F',
+                buildingCode: 'CONNECTOR_CD',
+                floorCode: '2F',
+                areaType: 'CONNECTOR',
+                mapX: 70,
+                mapY: 20,
+                description: 'B/C connector',
                 status: 'ACTIVE',
                 openTime: '08:00:00',
                 closeTime: '22:00:00',
@@ -1363,22 +1580,175 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
-    const navigationFrame = await screen.findByLabelText('室内导航');
+    const navigationFrame = await screen.findByLabelText('选座导航');
     const page = navigationFrame.closest('.student-seat-page');
     expect(page?.className).toContain('student-seat-centered-page');
+    expect(within(navigationFrame).getByText('公共区域位置')).toBeTruthy();
+    expect(within(navigationFrame).queryByText('连廊区域')).toBeNull();
+    await waitFor(() => {
+      expect(within(navigationFrame).getByText('A-B教学楼连廊')).toBeTruthy();
+      expect(within(navigationFrame).getByText('B-C教学楼连廊')).toBeTruthy();
+    });
+    expect(within(navigationFrame).queryByText('A/B 连廊')).toBeNull();
+    expect(within(navigationFrame).queryByText('B/C 连廊')).toBeNull();
+    const currentSelection = within(navigationFrame).getByLabelText('当前选择');
+    expect(within(currentSelection).queryByText('A-B教学楼连廊学习区')).toBeNull();
+    expect(within(currentSelection).queryByText('B-C教学楼连廊学习区')).toBeNull();
+    expect(within(navigationFrame).getByLabelText('开始时间')).toBeTruthy();
+    expect(screen.queryByLabelText('室内导航')).toBeNull();
+    expect(screen.queryByLabelText('选座筛选')).toBeNull();
 
     const adaptiveFrames = [
       navigationFrame,
-      await screen.findByLabelText('选座筛选'),
-      await screen.findByLabelText('选择路径'),
-      screen.getByLabelText('预约概览'),
-      screen.getByLabelText('预约规则提示'),
+      await screen.findByLabelText('预约确认浮窗'),
       screen.getByLabelText('座位预约工作区'),
     ];
 
     adaptiveFrames.forEach((frame) => {
       expect(frame.className).toContain('student-seat-adaptive-frame');
     });
+    expect(screen.queryByLabelText('预约规则提示')).toBeNull();
+  });
+
+  it('shows the reservation rule warning only when the selected time is out of range', async () => {
+    storeStudentSession();
+    const todayText = toLocalDateText(new Date());
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('/api/areas')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                name: 'A/B 连廊学习区',
+                floor: '2F',
+                buildingCode: 'CONNECTOR',
+                floorCode: '2F',
+                areaType: 'CONNECTOR',
+                description: 'A/B connector',
+                status: 'ACTIVE',
+                openTime: '08:00:00',
+                closeTime: '08:30:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/seat-slots?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 18,
+                seatId: 41,
+                seatNo: 'A-041',
+                tableId: 1,
+                tableNo: 'T01',
+                tableRowNo: 1,
+                tableColumnNo: 1,
+                tableDisplayOrder: 1,
+                tablePositionX: 120,
+                tablePositionY: 80,
+                tableWidthPx: 260,
+                tableHeightPx: 96,
+                tableRotationDeg: 0,
+                seatLabel: '41号',
+                seatSide: 'NORTH',
+                seatOrder: 1,
+                rowNo: 1,
+                columnNo: 1,
+                displayOrder: 1,
+                areaId: 1,
+                slotDate: todayText,
+                startTime: '08:00:00',
+                endTime: '08:30:00',
+                status: 'AVAILABLE',
+                reservedBy: null,
+                reservationId: null,
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/seats?')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 41,
+                areaId: 1,
+                tableId: 1,
+                tableNo: 'T01',
+                tableRowNo: 1,
+                tableColumnNo: 1,
+                tableDisplayOrder: 1,
+                tablePositionX: 120,
+                tablePositionY: 80,
+                tableWidthPx: 260,
+                tableHeightPx: 96,
+                tableRotationDeg: 0,
+                seatNo: 'A-041',
+                seatLabel: '41号',
+                seatSide: 'NORTH',
+                seatOrder: 1,
+                rowNo: 1,
+                columnNo: 1,
+                displayOrder: 1,
+                status: 'ACTIVE',
+              },
+            ],
+          }),
+        };
+      }
+
+      if (url.startsWith('/api/reservations/rules')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: makeReservationRules({ reservationOpenHour: 0 }),
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/student/seats']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    const ruleWarning = await screen.findByLabelText('预约规则提示');
+    expect(ruleWarning.getAttribute('role')).toBe('alert');
+    expect(within(ruleWarning).getByText('已开始或过去的时间段不可预约')).toBeTruthy();
+    expect(screen.getAllByText('已开始或过去的时间段不可预约')).toHaveLength(1);
+    expect(screen.queryByText('同一时间仅允许保留一个活跃预约')).toBeNull();
+    expect(screen.queryByText('时间最小粒度为半小时')).toBeNull();
   });
 
   it('renders the student home dashboard with active reservation details', async () => {
@@ -1435,7 +1805,10 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { level: 3, name: '学生首页' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 3, name: '学生预约工作台' })).toBeTruthy();
+    expect(await screen.findByLabelText('今日状态')).toBeTruthy();
+    expect(await screen.findByLabelText('快捷入口')).toBeTruthy();
+    expect(await screen.findByLabelText('学生首页主内容')).toBeTruthy();
     expect((await screen.findAllByText('A 区 · 1F · T01 · A-001 (1号)')).length).toBeGreaterThan(0);
     expect(await screen.findByText('签到码 246810 · 截止 2026-05-18 10:00')).toBeTruthy();
     expect(await screen.findByText('正式签到请扫描桌面/座位二维码，测试按钮仍会校验校园网 IP。')).toBeTruthy();
@@ -1475,7 +1848,7 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
-    const heroText = await screen.findByText('今天也给自己留一段安静的自习时间。');
+    const heroText = await screen.findByText('先看今天状态，再选择座位或处理签到。');
     const page = heroText.closest('.page');
     expect(page?.className).toContain('student-home-page');
   });
@@ -1632,7 +2005,7 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('heading', { level: 3, name: '学生首页' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 3, name: '学生预约工作台' })).toBeTruthy();
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/reservations/7/wifi-presence',
@@ -2046,7 +2419,17 @@ describe('App', () => {
                 activeReservations: 5,
                 checkedInReservations: 2,
               },
-              areaUsage: [],
+              areaUsage: [
+                {
+                  areaId: 1,
+                  areaName: 'A/B 连廊学习区',
+                  totalSlots: 10,
+                  reservedSlots: 3,
+                  usingSlots: 2,
+                  abnormalSlots: 1,
+                  usageRate: 0.5,
+                },
+              ],
             },
           }),
         };
@@ -2082,7 +2465,16 @@ describe('App', () => {
       </MemoryRouter>,
     );
 
+    expect(await screen.findByRole('heading', { level: 3, name: '管理员运营工作台' })).toBeTruthy();
+    expect(await screen.findByLabelText('运行概览')).toBeTruthy();
+    expect(await screen.findByLabelText('异常处理')).toBeTruthy();
     expect(await screen.findByText('锁位运维')).toBeTruthy();
+    expect(await screen.findByText('区域利用率')).toBeTruthy();
+    expect(await screen.findByText('运营指挥')).toBeTruthy();
+    expect(await screen.findByText('处理建议')).toBeTruthy();
+    expect(await screen.findByText('状态流')).toBeTruthy();
+    expect(await screen.findByText('高利用区域')).toBeTruthy();
+    expect((await screen.findAllByText('A-B教学楼连廊学习区')).length).toBeGreaterThanOrEqual(1);
     fireEvent.click(await screen.findByRole('button', { name: '释放过期锁位' }));
 
     await waitFor(() => {
@@ -2172,6 +2564,74 @@ describe('App', () => {
     expect(await screen.findByText(/当前 IP 10\.10\.1\.20 命中该网段/)).toBeTruthy();
   });
 
+  it('shows teaching building connector names in admin area management', async () => {
+    storeAdminSession();
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('/api/areas')) {
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            code: 'OK',
+            message: 'ok',
+            data: [
+              {
+                id: 1,
+                name: 'A/B 连廊学习区',
+                floor: '2F',
+                buildingCode: 'CONNECTOR',
+                floorCode: '2F',
+                areaType: 'CONNECTOR',
+                mapX: 30,
+                mapY: 30,
+                description: 'A/B connector public study seats',
+                status: 'ACTIVE',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
+              },
+              {
+                id: 2,
+                name: 'B/C 连廊学习区',
+                floor: '2F',
+                buildingCode: 'CONNECTOR_CD',
+                floorCode: '2F',
+                areaType: 'CONNECTOR',
+                mapX: 70,
+                mapY: 30,
+                description: 'B/C connector public study seats',
+                status: 'ACTIVE',
+                openTime: '08:00:00',
+                closeTime: '22:00:00',
+                checkinIpCidrs: '127.0.0.1/32,::1/128',
+              },
+            ],
+          }),
+        };
+      }
+
+      return {
+        ok: true,
+        json: async () => ({ success: true, code: 'OK', message: 'ok', data: [] }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter initialEntries={['/admin/areas']}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { level: 3, name: '区域管理' })).toBeTruthy();
+    expect(await screen.findByText('A-B教学楼连廊学习区')).toBeTruthy();
+    expect(await screen.findByText('B-C教学楼连廊学习区')).toBeTruthy();
+    expect(screen.queryByText('A/B 连廊学习区')).toBeNull();
+    expect(screen.queryByText('B/C 连廊学习区')).toBeNull();
+  });
+
   it('submits admin area map metadata when creating an area', async () => {
     storeAdminSession();
 
@@ -2241,7 +2701,7 @@ describe('App', () => {
     fireEvent.change(await screen.findByLabelText('区域名称'), { target: { value: '三楼连廊学习区' } });
     fireEvent.change(await screen.findByLabelText('楼层'), { target: { value: '3F' } });
     fireEvent.change(await screen.findByLabelText('说明'), { target: { value: 'A/B 连廊公共座位' } });
-    await selectComboboxValue('楼栋分区', 'A/B 连廊');
+    await selectComboboxValue('楼栋分区', 'A-B教学楼连廊');
     fireEvent.change(await screen.findByLabelText('地图楼层'), { target: { value: '3F' } });
     await selectComboboxValue('区域类型', '连廊');
     fireEvent.change(await screen.findByLabelText('地图 X %'), { target: { value: '50' } });

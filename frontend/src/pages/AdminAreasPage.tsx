@@ -3,6 +3,7 @@ import { Button, Form, Input, InputNumber, message, Modal, Popconfirm, Select, S
 import type { TableColumnsType } from 'antd';
 import { createArea, listAreas, testCheckinIp, updateArea, updateAreaStatus } from '../api/areas';
 import type { Area, AreaBuildingCode, AreaMapType, AreaStatus } from '../types/seat';
+import { formatConnectorAreaName } from '../utils/campusConnectors';
 
 type AreaFormValues = {
   name: string;
@@ -34,8 +35,8 @@ const buildingOptions: { label: string; value: AreaBuildingCode }[] = [
   { label: 'B 楼', value: 'B' },
   { label: 'C 楼', value: 'C' },
   { label: 'D 楼', value: 'D' },
-  { label: 'A/B 连廊', value: 'CONNECTOR' },
-  { label: 'C/D 连廊', value: 'CONNECTOR_CD' },
+  { label: 'A-B教学楼连廊', value: 'CONNECTOR' },
+  { label: 'B-C教学楼连廊', value: 'CONNECTOR_CD' },
 ];
 
 const areaTypeOptions: { label: string; value: AreaMapType }[] = [
@@ -50,9 +51,9 @@ const buildingLabels: Record<AreaBuildingCode, string> = {
   B: 'B 楼',
   C: 'C 楼',
   D: 'D 楼',
-  CONNECTOR: 'A/B 连廊',
-  CONNECTOR_AB: 'A/B 连廊',
-  CONNECTOR_CD: 'C/D 连廊',
+  CONNECTOR: 'A-B教学楼连廊',
+  CONNECTOR_AB: 'A-B教学楼连廊',
+  CONNECTOR_CD: 'B-C教学楼连廊',
 };
 
 const areaTypeLabels: Record<AreaMapType, string> = {
@@ -196,7 +197,7 @@ export default function AdminAreasPage() {
 
   const columns: TableColumnsType<Area> = [
     { title: '区域 ID', dataIndex: 'id', width: 120 },
-    { title: '区域名称', dataIndex: 'name', width: 180 },
+    { title: '区域名称', dataIndex: 'name', width: 180, render: (_, record) => formatConnectorAreaName(record) },
     { title: '楼层', dataIndex: 'floor', width: 120, render: (value) => value ?? '-' },
     {
       title: '地图配置',

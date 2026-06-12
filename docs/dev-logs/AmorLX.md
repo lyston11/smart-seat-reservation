@@ -1,5 +1,563 @@
 # AmorLX 开发日志
 
+## 2026-06-12
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-light-tech-login-showcase
+- 目标: 修复学生预约界面时间下拉被下方区域覆盖的问题，并压缩“当前预约”窗口的信息密度，使右侧操作区更协调。
+
+### 本次改动
+- 学生选座页开始/结束时间 `Select` 增加专用类名，并将下拉弹层挂载到 `document.body`，避免被后续座位工作区或动效容器层级压住。
+- 时间下拉弹层使用 `student-seat-time-popup` 独立层级，保证选项浮在主界面上方。
+- “当前预约”卡片改为紧凑结构：状态与预约编号放在顶部，位置、时段、签到截止、锁位次数进入摘要网格。
+- 签到码区域增加“签到凭证”分组，操作按钮改为更紧凑的横向自适应布局。
+- 当前预约位置展示复用连廊名称格式化，避免同一页同时出现 `A-B教学楼连廊` 和旧 `A/B 连廊` 文案。
+- App 级测试补充断言，覆盖时间选择控件的专用类名、当前预约紧凑卡片结构和连廊名称统一展示。
+
+### 涉及文件
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/utils/reservationDisplay.ts
+- frontend/src/App.test.tsx
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- App.test.tsx -t "restores checked-in reservation|keeps floor changes"`，确认旧实现缺少时间选择专用类名和当前预约紧凑卡片结构。
+- 已运行 `npm run test -- App.test.tsx -t "restores checked-in reservation|keeps floor changes"`，相关回归测试通过。
+- 已用内置浏览器打开 `http://127.0.0.1:5173/student/seats`，确认时间下拉弹层存在且 `z-index` 为 `2100`，当前预约卡片约 360px 高并显示紧凑摘要结构。
+- 已运行 `npm run test`，8 个测试文件、72 个测试通过；jsdom 仍提示不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn test`，后端 93 个测试通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+
+### 遗留问题
+- 内置浏览器截图接口偶发超时，本次采用 DOM 层级、页面文本和自动化测试验证；本地页面仍可直接通过浏览器查看。
+- 本次不修改预约状态机、签到验证、二维码闭环和服务器部署边界。
+
+### 对其他成员的影响
+- 不影响后端接口或数据库结构。
+- `formatReservationLocation` 现在会对预约中的连廊区域名称做展示层格式化，旧数据仍保持兼容。
+
+## 2026-06-12
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-light-tech-login-showcase
+- 目标: 排查学生选座页“当前预约”中点击 `开发测试签到`、`签退` 等按钮出现后端报错的原因，并减少无效点击。
+
+### 本次改动
+- 确认根因：学生选座页的当前预约卡片只判断是否存在活跃预约，没有按预约状态限制按钮可点击，导致已签到、已完成或不可取消状态仍能发起对应操作。
+- 学生选座页复用 `reservationDisplay` 中已有的 `canCheckInReservation`、`canCheckOutReservation`、`canCancelReservation` 规则，与“我的预约”页面保持一致。
+- `开发测试签到` 仅在 `RESERVED` 待签到状态可点；`签退` 仅在 `CHECKED_IN` 使用中状态可点；`取消` 仅在 `RESERVED` 待签到状态可点。
+- 签到码输入框在当前状态不允许签到时禁用，避免学生误以为修改签到码后仍可签到。
+- App 级测试补充断言，覆盖已签到预约恢复到学生选座页时，签到按钮禁用、签退按钮可用。
+
+### 涉及文件
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/App.test.tsx
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- App.test.tsx -t "restores checked-in reservation on student seat page so the student can check out"`，确认旧实现失败于已签到状态下 `开发测试签到` 仍可点击。
+- 已运行 `npm run test -- App.test.tsx -t "restores checked-in reservation on student seat page so the student can check out"`，相关回归测试通过。
+- 已运行 `npm run test`，8 个测试文件、72 个测试通过；jsdom 仍提示不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+
+### 遗留问题
+- `开发测试签到` 虽然是测试入口，但后端仍会校验签到时间窗、校园网/IP、预约码和预约状态；如果当前时间或网络不满足规则，点击仍会被后端正常拒绝。
+- 本次只修复前端明显无效状态的按钮可点击问题，不修改后端签到验证、二维码闭环、预约状态机或服务器部署边界。
+
+### 对其他成员的影响
+- 不影响签到验证接口和后端状态机；同事继续按原有签到校验逻辑开发即可。
+- 学生选座页和“我的预约”页的按钮状态规则已统一，后续新增预约操作入口建议继续复用 `reservationDisplay` 中的状态判断函数。
+
+## 2026-06-12
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-light-tech-login-showcase
+- 目标: 将动效从指定页面扩展为全站统一体验，让登录页、学生端、管理员端、签到页和后续新增页面都具备浅色科技风微动效。
+
+### 本次改动
+- 新增全站动效设计文档和实施计划，明确采用“全局 motion 入口 + 通用 CSS 动效语言”的方式，而不是每个页面单独堆动画。
+- `AppLayout` 的主内容区新增 `motion-viewport`，所有登录后的业务页面自动继承页面进入、卡片、表格、表单、提示、地图和浮窗动效。
+- 登录页根容器新增 `motion-page`，未登录入口也纳入同一套动效体系。
+- `main.css` 新增全局 motion token、页面进入动画、内容浮现动画、柔和脉冲和柔光强调。
+- 为卡片、表格行、工具栏、表单区、预约浮窗、座位图、室内地图、签到面板、登录页展示卡统一增加 hover/focus/active 反馈。
+- 为 warning、异常、高利用区域、选中座位、当前区域和登录实时标识增加更明显但克制的状态强调。
+- 保留并复用 `prefers-reduced-motion`，系统设置减少动态效果时会自动降级。
+- App 级测试补充断言，确认登录页有 `motion-page`，登录后的内容区有 `motion-viewport`。
+
+### 涉及文件
+- frontend/src/layout/AppLayout.tsx
+- frontend/src/pages/LoginPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- docs/plans/2026-06-12-global-motion-design.md
+- docs/plans/2026-06-12-global-motion.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- App.test.tsx -t "renders student seat page title|renders the polished login page"`，确认旧实现缺少 `motion-viewport` 和 `motion-page` 后测试失败。
+- 已运行 `npm run test -- App.test.tsx -t "renders student seat page title|renders the polished login page"`，2 个相关测试通过。
+- 已运行 `npm run test`，8 个测试文件、72 个测试通过；jsdom 仍提示不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已用内置浏览器打开 `http://127.0.0.1:5173/login`，确认登录页带 `motion-page`，桌面宽度无横向溢出。
+
+### 遗留问题
+- 内置浏览器自动点击 Ant Design 登录按钮时出现工具超时，因此登录后页面的浏览器自动化只采用测试覆盖和构建验证；需要人工可直接用 `admin / admin` 或 `20260001 / 123456` 打开页面查看动效。
+- 本次是全局动效基础层，后续如果某个具体页面需要更有业务含义的局部动效，可以在此基础上继续细化。
+
+### 对其他成员的影响
+- 不修改接口、数据库、签到验证、预约状态机和服务器部署边界。
+- 后续新增页面只要放在 `AppLayout` 的 `.app-content` 内并使用 `.page` 根容器，就会自动继承全站动效。
+
+## 2026-06-11
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-light-tech-login-showcase
+- 目标: 继续增强管理员看板的信息层级、运营引导、响应式适配和浅色科技感动效。
+
+### 本次改动
+- 管理员看板新增 `运营指挥` 模块，集中展示实时占用率、高利用区域和处理建议，让管理员先看到下一步该处理什么。
+- 新增 `状态流` 模块，将空闲、待签到、使用中、异常四类状态做成可扫读的运行分布卡片。
+- 区域利用率列表按利用率降序展示，并增加 `高利用`、`中利用`、`低利用` 标签和对应浅色状态底纹。
+- 删除原先独立的当前日期条，日期信息合并到顶部日期选择和运营指挥模块，减少重复信息。
+- 管理员看板补充扫描线、卡片 hover、状态边线等轻量动效，并保留 `prefers-reduced-motion` 降低动画支持。
+- App 级测试补充 `运营指挥`、`处理建议`、`状态流`、`高利用区域` 结构断言。
+
+### 涉及文件
+- frontend/src/pages/AdminDashboardPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- App.test.tsx -t "lets administrators manually release expired seat locks from the dashboard"`，确认旧界面缺少 `运营指挥` 后测试失败。
+- 已运行 `npm run test -- App.test.tsx -t "lets administrators manually release expired seat locks from the dashboard"`，管理员看板相关测试通过。
+- 已运行 `npm run test`，8 个测试文件、72 个测试通过；jsdom 仍提示不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已用内置浏览器登录管理员并打开 `http://127.0.0.1:5173/admin/dashboard`，确认 `运营指挥`、`处理建议`、`状态流`、`高利用区域` 均可见，桌面宽度无横向溢出。
+- 已用内置浏览器临时切换到 390px 移动宽度验证管理员看板，确认新模块可见且无横向溢出，随后已恢复默认视口。
+
+### 遗留问题
+- 本次继续聚焦管理员看板首页；管理员区域、桌子、座位、开放时段等子页面后续仍可按同一浅色科技工作台风格逐步统一。
+- 当前 `处理建议` 基于看板汇总数据做前端提示，不改变后端异常判定、签到验证或预约状态机。
+
+### 对其他成员的影响
+- 不修改接口、数据库、签到验证、预约状态机和服务器部署边界。
+- 管理员看板新增展示层排序和标签，不影响后端返回的区域利用率数据结构。
+
+## 2026-06-11
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-light-tech-login-showcase
+- 目标: 优化学生首页和管理员看板的排列、显示和浅色科技感动效，让入口页面像学生选座页一样更好用。
+
+### 本次改动
+- 学生首页改为 `学生预约工作台`，新增今日状态、快捷入口、主内容区和侧栏结构，突出当前预约、今日时间线、锁位权益、常用区域和最近记录。
+- 管理员看板改为 `管理员运营工作台`，新增运行概览、日期控制条、异常处理侧栏、锁位运维和区域利用率主列表。
+- 首页和看板统一浅色科技风，补充细网格背景、轻量进入动画、hover 微动效，并支持 `prefers-reduced-motion`。
+- 管理员区域利用率列表复用连廊显示名格式化，避免看板继续显示旧 `A/B 连廊` 文案。
+- App 级测试补充学生首页工作台和管理员看板工作台结构断言。
+
+### 涉及文件
+- frontend/src/pages/StudentHomePage.tsx
+- frontend/src/pages/AdminDashboardPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/utils/campusConnectors.ts
+- frontend/src/App.test.tsx
+- docs/plans/2026-06-11-student-admin-workbench-ui-design.md
+- docs/plans/2026-06-11-student-admin-workbench-ui.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- App.test.tsx -t "renders student home|centers the student home|manually release expired"`，确认旧布局缺少新工作台结构断言。
+- 已运行 `npm run test -- App.test.tsx -t "manually release expired|renders student home|centers the student home|lock a checked-in|WiFi presence"`，4 个相关测试通过。
+- 已运行 `npm run test`，8 个测试文件、72 个测试通过；jsdom 仍提示不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已用内置浏览器打开 `http://127.0.0.1:5173/student/home`，确认学生工作台、今日状态、快捷入口和主内容区存在且无横向溢出。
+- 已用内置浏览器登录管理员并打开 `http://127.0.0.1:5173/admin/dashboard`，确认管理员运营工作台、运行概览、异常处理、区域利用率存在且无横向溢出。
+
+### 遗留问题
+- 本次优化学生首页和管理员看板入口页；其它管理员子页面可后续继续按同一工作台风格逐步统一。
+- 页面顶栏菜单名称仍保持原路由标题 `学生首页` / `占用看板`，避免本次 UI 改动影响导航结构。
+
+### 对其他成员的影响
+- 不修改接口、数据库、签到验证、预约状态机和服务器部署边界。
+- `formatConnectorAreaNameText` 可供后续只有区域名称字符串的列表复用，统一旧连廊命名展示。
+
+## 2026-06-11
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-light-tech-login-showcase
+- 目标: 删除预约确认浮窗底部多余的 `日期` 统计卡，避免与上方预约时段重复且窄宽度下被截断。
+
+### 本次改动
+- 移除学生选座页 `预约确认浮窗` 底部统计区中的 `日期` 卡片。
+- 将浮窗底部统计网格从三列调整为两列，只保留 `可预约` 和 `占用/异常`，并同步修正小屏响应式规则。
+- App 级测试补充断言，确保预约确认浮窗里不再出现多余 `日期` 统计项。
+
+### 涉及文件
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- App.test.tsx -t "keeps floor changes"`，确认测试失败于浮窗仍显示 `日期`。
+- 已运行 `npm run test -- App.test.tsx -t "keeps floor changes|connects floor, area, time, table, and seat|marks student reservation panels"`，3 个相关测试通过。
+- 已运行 `npm run test`，8 个测试文件、72 个测试通过；jsdom 仍提示不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已用内置浏览器打开 `http://127.0.0.1:5173/student/seats`，确认 `预约确认浮窗` 底部只剩 `可预约` 和 `占用/异常` 两项，`日期` 统计卡不再显示。
+- 已复查运行 `npm run test -- App.test.tsx -t "marks student reservation panels"`、`npm run lint`、`npm run build`，并确认浮窗统计区实际渲染为两列。
+
+### 遗留问题
+- 本次只删除重复日期统计，不调整上方预约时段展示和日期选择控件。
+
+### 对其他成员的影响
+- 不影响接口、数据库、签到验证、预约状态机和管理员端流程。
+
+## 2026-06-11
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-light-tech-login-showcase
+- 目标: 将页面中的 `A/B连廊`、`B/C连廊` 统一改为 `A-B教学楼连廊`、`B-C教学楼连廊`，并检查删除重复展示信息。
+
+### 本次改动
+- 新增连廊区域显示名格式化能力，兼容后端/旧演示数据中的 `A/B 连廊`、`B/C 连廊` 名称，但学生端和管理员端统一按新名称展示。
+- 学生选座页地图、区域下拉、右侧预约确认浮窗和已选座位说明统一使用新连廊名称。
+- 学生选座页顶部 `当前选择` 删除重复的完整区域名，只保留楼层和占用率。
+- 移除时间提示行里与 `预约规则提示` 重复出现的不可预约原因，越界/过期提示只保留一处 warning。
+- 管理员区域管理页的楼栋分区选项、地图配置标签和区域名称列同步展示新连廊名称。
+- 收紧连廊推断规则，避免英文 `A/B connector` 被误判到 `B-C教学楼连廊`。
+
+### 涉及文件
+- frontend/src/utils/campusConnectors.ts
+- frontend/src/components/CampusIndoorMap.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/pages/AdminAreasPage.tsx
+- frontend/src/App.test.tsx
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- CampusIndoorMap.test.tsx` 和 `npm run test -- App.test.tsx -t "switches reservation area|keeps floor changes|connects floor, area, time, table, and seat|marks student reservation panels"`，确认旧实现仍显示旧连廊命名。
+- 已运行 `npm run test -- CampusIndoorMap.test.tsx`，6 个组件测试通过。
+- 已运行 `npm run test -- App.test.tsx -t "admin area management|reservation rule warning|marks student reservation panels"`，3 个相关测试通过。
+- 已运行 `npm run test`，8 个测试文件、72 个测试通过；jsdom 仍提示不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已用内置浏览器打开 `http://127.0.0.1:5173/student/seats`，确认学生页显示 `A-B教学楼连廊` / `B-C教学楼连廊`，不再显示旧 `A/B 连廊` / `B/C 连廊`，`当前选择` 只显示楼层和占用率，预约 warning 只出现一次。
+- 已用内置浏览器登录管理员并打开 `http://127.0.0.1:5173/admin/areas`，确认区域名称列和地图配置标签均显示新连廊名称。
+
+### 遗留问题
+- 后端演示数据和数据库中的原始区域 `name` 仍可能是旧名称，本次只做前端显示层兼容；如果要彻底清理数据库名称，可后续单独做一次迁移和接口文档同步。
+- 本次不修改预约状态机、签到验证、二维码闭环和服务器部署边界。
+
+### 对其他成员的影响
+- 同事继续使用现有区域接口和 `CONNECTOR` / `CONNECTOR_CD` 编码即可；前端会统一格式化展示名称。
+- 管理员端表格看到的新名称是展示层结果，编辑区域时仍会看到和保存后端真实名称，避免本次 UI 调整静默改库。
+
+## 2026-06-11
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-light-tech-login-showcase
+- 目标: 精简学生选座页公共区域标题层级，只保留“公共区域位置”，避免“选择连廊座位 / 连廊区域”两个大标题重复。
+
+### 本次改动
+- 学生选座页导航区主标题改为 `公共区域位置`。
+- `CampusIndoorMap` 在嵌入学生选座页时不再渲染自身 `连廊区域` 标题和副标题，仅保留楼层切换和区域地图。
+- 保留 `CampusIndoorMap` 独立使用时的 `室内导航` 标题，不影响其它页面或组件测试。
+- App 级测试同步约束嵌入导航区只显示 `公共区域位置`，不显示重复的 `连廊区域` 标题。
+
+### 涉及文件
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/components/CampusIndoorMap.tsx
+- frontend/src/App.test.tsx
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- App.test.tsx -t "switches reservation area|keeps floor changes|marks student reservation panels"`，确认测试失败于旧页面仍显示重复标题。
+- 已运行 `npm run test -- App.test.tsx -t "switches reservation area|keeps floor changes|marks student reservation panels"`，3 个相关测试通过。
+- 已运行 `npm run test -- CampusIndoorMap.test.tsx`，6 个组件测试通过，确认独立地图标题不受影响。
+
+### 遗留问题
+- 本次只调整标题文案层级，未修改选座数据、预约规则、签到验证或后端接口。
+
+### 对其他成员的影响
+- 学生预约端标题更清晰；不影响管理员端和同事签到验证流程。
+
+## 2026-06-11
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-light-tech-login-showcase
+- 目标: 将学生选座页常驻预约规则胶囊改为越界/不可预约时才出现的警告提示。
+
+### 本次改动
+- 移除学生选座页常驻显示的整排预约规则说明，减少主界面信息噪音。
+- 新增条件 `reservationWarningText`，仅在预约日期/时段不符合规则、当前已发布时段均不可预约等情况下渲染 `预约规则提示`。
+- 将提示样式从蓝色规则胶囊改为黄色 warning 条，并增加 `role="alert"`，更符合异常提示语义。
+- App 级测试覆盖正常状态不显示规则提示，以及超出可预约时段时显示 warning。
+
+### 涉及文件
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- App.test.tsx -t "marks student reservation panels"`，确认测试失败于旧页面仍常驻显示 `预约规则提示`。
+- 已运行 `npm run test -- App.test.tsx -t "marks student reservation panels|shows the reservation rule warning"`，2 个相关测试通过。
+
+### 遗留问题
+- 本次只调整学生端提示展示策略，未修改预约规则接口、后端校验或签到流程。
+
+### 对其他成员的影响
+- 正常选座界面更简洁；真正超出预约范围时仍会显示明确 warning，不影响同事的签到验证开发。
+
+## 2026-06-11
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-light-tech-login-showcase
+- 目标: 缩小学生选座页“选择路径”和预约统计信息，将其放到侧边浮窗，减少对主座位图界面的占用。
+
+### 本次改动
+- 将原先位于座位图上方的“选择路径”大卡片和“预约概览”三张统计卡合并为右侧 `预约确认浮窗`。
+- 浮窗内保留楼层、区域、预约时段、桌座、可预约数量、占用/异常数量和日期，保证学生选座时仍能连续确认。
+- 桌面端侧栏宽度收紧，浮窗跟随右侧预约操作区 sticky 显示；小屏下取消 sticky，随页面自然堆叠，避免遮挡主座位图。
+- App 级测试同步约束：不再出现独立大块 `选择路径` / `预约概览`，改为 `预约确认浮窗`。
+
+### 涉及文件
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- App.test.tsx -t "keeps floor changes|connects floor, area, time, table, and seat|marks student reservation panels"`，确认测试失败于旧页面没有 `预约确认浮窗`。
+- 已运行 `npm run test -- App.test.tsx -t "keeps floor changes|connects floor, area, time, table, and seat|marks student reservation panels"`，3 个相关测试通过。
+
+### 遗留问题
+- 本次只调整学生预约端信息布局，未改座位预约接口、签到验证、预约状态机或数据库结构。
+
+### 对其他成员的影响
+- 不影响同事正在做的签到验证和后端状态流转；学生选座页主画布可用空间更大。
+
+## 2026-06-11
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-light-tech-login-showcase
+- 目标: 修复学生选座页日期分段控件中灰色框与“今天 / 明天”文字按钮显示不协调的问题。
+
+### 本次改动
+- 为学生选座页日期 `Segmented` 控件增加独立 `aria-label="预约日期"` 和 `student-seat-date-segmented` 样式类。
+- 覆盖通用表单控件的 `width: 100%` 规则，桌面端让日期控件按内容宽度紧凑显示，避免灰色外框多出大块空白。
+- 小屏下保留日期控件满宽展示，并让“今天 / 明天”两个选项均分宽度，避免文字被裁切或挤压。
+- App 级测试补充日期控件样式断言，防止后续再次被通用表单规则误伤。
+
+### 涉及文件
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- App.test.tsx -t "keeps floor changes"`，确认测试失败于旧日期控件没有独立 `预约日期` 标识和紧凑样式类。
+- 已运行 `npm run test -- App.test.tsx -t "keeps floor changes"`，相关测试通过。
+- 已用内置浏览器打开 `http://127.0.0.1:5173/student/seats`，确认日期控件外框约 140px，“今天 / 明天”各 68px，页面无横向溢出。
+- 已运行 `npm run test`，8 个测试文件、70 个测试通过；jsdom 仍提示不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+
+### 遗留问题
+- 本次只修复日期控件显示问题，未调整其它筛选控件的信息结构。
+
+### 对其他成员的影响
+- 不修改接口、数据库、签到验证、预约状态机和服务器部署边界。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-light-tech-login-showcase
+- 目标: 将学生端室内导航和选座筛选合并为一个实用、清晰、可响应式适配的选座导航板块。
+
+### 本次改动
+- 学生选座页新增统一的 `选座导航` 控制区，把连廊区域选择、当前楼层/区域/占用率、日期、开始时间、结束时间和刷新座位合并在同一板块内。
+- `CampusIndoorMap` 增加嵌入模式，保留原组件单独使用时的 `室内导航` 外壳，同时允许学生选座页将其作为控制区内部的连廊选择组件使用。
+- 移除学生端旧的独立 `选座筛选` 大卡片，减少重复标题和上下割裂感。
+- 优化窄屏布局优先级，确保时间表单在小宽度下单列展示，避免横向溢出。
+- 更新 App 级测试，约束学生选座页只出现一个 `选座导航` 自适应框，并确认连廊区域和开始/结束时间在同一板块内。
+
+### 涉及文件
+- frontend/src/components/CampusIndoorMap.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/App.test.tsx
+- frontend/src/styles/main.css
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- App.test.tsx -t "switches reservation area from the indoor map|keeps floor changes|marks student reservation panels"`，确认新测试失败于旧页面没有统一 `选座导航` 区域。
+- 已运行 `npm run test -- App.test.tsx -t "switches reservation area from the indoor map|keeps floor changes|marks student reservation panels"`，3 个相关测试通过。
+- 已运行 `npm run test -- CampusIndoorMap.test.tsx`，6 个组件测试通过。
+- 已运行 `npm run test`，8 个测试文件、70 个测试通过；jsdom 仍提示不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `mvn -q test`，后端测试通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已用内置浏览器打开 `http://127.0.0.1:5173/student/seats`，确认页面只保留一个 `选座导航` 区域，内部同时包含连廊区域和预约时间；旧 `室内导航` / `选座筛选` 独立区域不再出现。
+- 已在当前窄宽浏览器下检查布局指标，确认 `选座导航` 无横向溢出。
+
+### 遗留问题
+- 本次只合并学生选座入口的 UI 信息层级，未调整座位图、预约状态机、签到验证或后端接口。
+- 后续可继续精简 `选择路径` 与 `预约概览` 的信息密度，让学生端首屏更聚焦可选座位。
+
+### 对其他成员的影响
+- 不修改签到验证、二维码签到、预约接口、数据库结构和服务器部署边界。
+- `CampusIndoorMap` 原有单独渲染行为保留，新增嵌入模式只服务当前学生选座页。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-light-tech-login-showcase
+- 目标: 学生预约端暂时只展示 A/B 连廊和 B/C 连廊两个选座区域，并在地图入口显示当前占用率。
+
+### 本次改动
+- 新增连廊归类工具，统一判断学生端可见区域、楼层显示规则和占用率展示标签。
+- 学生端室内导航改为只渲染 `A/B 连廊` 与 `B/C 连廊`，不再展示 A、B、C、D 楼栋卡片或其它普通区域入口。
+- 学生选座页区域下拉同步过滤为连廊区域，避免地图入口和下拉选择不一致。
+- 按当前日期和选定时段为可见连廊区域计算占用率，在连廊卡片中显示 `占用率 xx%` 或暂无数据提示。
+- 收紧连廊名称推断规则，避免 `Teaching Building Area B` 这类普通教学楼英文名称被误判为 A/B 连廊。
+- 拆分学生选座页基础数据加载和座位时段加载，避免切换/刷新后 `刷新座位` 按钮长时间保持 loading。
+- 管理端区域维护文案同步为 `B/C 连廊`，并补充演示数据迁移，将既有示例区域归类到两个连廊学习区。
+- 更新接口示例和契约说明，保留旧 `CONNECTOR_CD` 数据兼容，但前端当前按 `B/C 连廊` 展示。
+
+### 涉及文件
+- frontend/src/utils/campusConnectors.ts
+- frontend/src/components/CampusIndoorMap.tsx
+- frontend/src/components/CampusIndoorMap.test.tsx
+- frontend/src/pages/SeatSlotsPage.tsx
+- frontend/src/pages/AdminAreasPage.tsx
+- frontend/src/App.test.tsx
+- frontend/src/styles/main.css
+- backend/src/main/resources/db/migration/V18__align_demo_areas_to_connector_seating.sql
+- docs/API_EXAMPLES.md
+- docs/architecture/API_CONTRACT.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已运行 `npm run test -- CampusIndoorMap.test.tsx App.test.tsx`。
+- 已运行 `npm run test -- App.test.tsx -t "finishes student seat loading|switches reservation area|keeps floor changes"`。
+- 已运行 `npm run test`。
+- 已运行 `npm run lint`。
+- 已运行 `npm run build`。
+- 已运行 `mvn -q test`。
+- 已运行 `git diff --check`。
+- 已重启本地后端到 `smart_seat_login_preview_20260611`，确认 Flyway 从 V17 执行到 V18。
+- 已用浏览器打开 `http://127.0.0.1:5173/student/seats`，检查学生选座入口只显示 A/B 连廊、B/C 连廊，并展示占用率；切换 B/C 连廊后座位图正常显示且刷新按钮不再长时间 loading。
+
+### 遗留问题
+- 本次按用户要求暂时隐藏其它楼栋和普通区域入口，没有物理删除数据库区域、桌子或座位数据。
+- 旧 `CONNECTOR_CD` 编码仍保留兼容说明，后续如需要彻底改名为 `CONNECTOR_BC`，建议单独做一次后端枚举、迁移和文档清理。
+
+### 对其他成员的影响
+- 学生预约端当前只暴露两个连廊学习区，普通楼栋区域不会出现在预约入口。
+- 不修改签到验证、二维码签到、预约状态机和服务器部署边界。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-light-tech-login-showcase
+- 目标: 修正登录前展示误导和本地登录进不去的问题，保证登录页按未登录学生视角展示，并完整跑通学生账号登录。
+
+### 本次改动
+- 将登录页右侧“已预约 / 我的预约 / A区-2F-026”静态预约卡改为“学生预约流程”说明卡，避免未登录前出现像真实学生预约数据的界面。
+- 保留浅色科技风和座位地图展示，但展示内容改为中性流程：选择空间、确认桌座、到场扫码、开始使用。
+- 登录页测试新增约束：未登录前不应显示 `我的预约`、`已预约`、`A区-2F-026`，应显示 `学生预约流程`。
+- 定位本地登录失败根因：前端代理 `/api/auth/login` 返回 502 是因为后端未运行；后端启动后登录 500 是因为旧 Redis 容器未发布宿主机 6379 端口，导致 session 写入 Redis 失败。
+- 新增本地预览 Redis 容器 `smart-seat-redis-login-preview`，映射 `127.0.0.1:16379->6379`，并以 `REDIS_PORT=16379` 重启后端。
+- 使用新演示库 `smart_seat_login_preview_20260611` 跑通 Flyway V1-V17，避免影响本机旧库。
+
+### 涉及文件
+- frontend/src/pages/LoginPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已运行 `npm run test -- App.test.tsx -t "renders the polished login page"`，先确认“学生预约流程”测试失败，再实现后通过。
+- 已运行 `npm run test`，8 个测试文件、68 个测试通过；jsdom 仍提示不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已通过 `POST http://127.0.0.1:5173/api/auth/login` 验证学生账号 `20260001 / 123456` 返回 token。
+- 已通过 `GET http://127.0.0.1:18080/actuator/health` 验证后端健康状态为 `UP`。
+- 已用内置浏览器打开 `http://127.0.0.1:5173/login`，确认未登录前不再显示真实预约卡，并点击登录成功跳转到 `http://127.0.0.1:5173/student/home`。
+
+### 遗留问题
+- 本地当前使用临时预览 Redis 端口 `16379`，原因是 Windows 拒绝绑定 `127.0.0.1:6379`；后续如果要长期固定本地环境，可以清理旧工作树 Redis 容器后按项目 compose 重新发布 6379。
+- 本次仍只修改登录页展示和测试，不修改后端业务代码、数据库迁移或签到验证流程。
+
+### 对其他成员的影响
+- 不影响签到验证、预约接口、二维码 token、后端状态机和共享数据库服务器。
+- 本地新增的 `smart-seat-redis-login-preview` 容器仅用于当前电脑预览，不属于提交内容。
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-light-tech-login-showcase
+- 目标: 在已备份当前成果后，参考图片的信息层级尝试登录页浅色科技风 UI，并跑通本地演示地址。
+
+### 本次改动
+- 从最新 `main` 创建独立功能分支 `feature/AmorLX-light-tech-login-showcase`，避免直接在 `main` 开发。
+- 新增浅色科技风登录展示区：系统标题、功能能力标签、座位地图预览、预约凭证卡和学生/签到/管理员/状态追踪流程卡。
+- 保留原有登录表单、学生/管理员演示账号、一键填充账号密码和登录跳转逻辑不变。
+- 优化登录页响应式：桌面端左右分栏，手机端同一页面纵向堆叠；修正内容高于视口时顶部被裁切的问题。
+- 新增设计文档和实施计划，记录本次 UI 尝试范围。
+- 更新 App 级测试，覆盖登录页新增展示文案并继续验证管理员快捷账号填充。
+
+### 涉及文件
+- frontend/src/pages/LoginPage.tsx
+- frontend/src/styles/main.css
+- frontend/src/App.test.tsx
+- docs/plans/2026-06-11-light-tech-login-showcase-design.md
+- docs/plans/2026-06-11-light-tech-login-showcase.md
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已运行 `npm run test -- App.test.tsx -t "renders the polished login page"`，先确认新展示内容测试失败，再实现并通过。
+- 已运行 `npm run test`，8 个测试文件、68 个测试通过；jsdom 仍提示不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+- 已启动前端 dev server，并用内置浏览器打开 `http://127.0.0.1:5173/login` 验证桌面端新版浅色科技 UI 可见、无横向溢出、顶部不被裁切。
+- 已用 390px 手机视口验证登录页同一套页面可响应式堆叠，表单和登录按钮可滚动访问，无横向溢出。
+
+### 遗留问题
+- 本次只优化登录展示页，不修改学生预约端、管理员端座位管理、签到验证和后端状态机。
+- 当前座位地图和二维码是登录页展示用静态视觉预览，不接入真实座位数据。
+
+### 对其他成员的影响
+- 不修改 API、数据库迁移、签到验证、二维码 token、预约规则接口和共享数据库连接方式。
+- 同事正在做的签到验证流程不受影响。
+
 ## 2026-05-26
 
 ### 任务
