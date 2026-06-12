@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { App as AntApp } from 'antd';
 import { getStoredUser } from '../api/http';
 import { listUserReservations, markReservationWifiPresence } from '../api/reservations';
+import { isStudentSessionActive } from '../utils/authSession';
 
 const WIFI_HEARTBEAT_INTERVAL_MS = 60_000;
 
@@ -16,6 +17,9 @@ export default function WifiPresenceGuard() {
 
     let stopped = false;
     async function sendWifiHeartbeats() {
+      if (!isStudentSessionActive()) {
+        return;
+      }
       try {
         const reservations = await listUserReservations(20);
         const usingReservations = reservations.filter((reservation) => reservation.status === 'CHECKED_IN');

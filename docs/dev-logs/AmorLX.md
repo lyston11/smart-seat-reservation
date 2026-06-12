@@ -5,6 +5,44 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/AmorLX-light-tech-login-showcase
+- 目标: 修复管理员界面仍触发学生预约接口导致控制台出现 `403 Forbidden` 的问题，并清理 Ant Design `Space direction` 过期属性警告。
+
+### 本次改动
+- `WifiPresenceGuard` 在每次 WiFi 在线心跳前重新读取当前登录角色，避免从学生切换到管理员后旧心跳继续请求 `/api/reservations?limit=20`。
+- 新增 `authSession` 工具集中判断当前是否为学生会话。
+- 新增 `WifiPresenceGuard.test.tsx`，覆盖管理员会话不请求学生预约接口，以及角色切换后学生会话判断会即时失效。
+- 将页面中 `Space direction="vertical"` 统一替换为 `orientation="vertical"`，消除 Ant Design 过期属性警告。
+
+### 涉及文件
+- frontend/src/components/WifiPresenceGuard.tsx
+- frontend/src/components/WifiPresenceGuard.test.tsx
+- frontend/src/utils/authSession.ts
+- frontend/src/pages/AdminSeatSlotsPage.tsx
+- frontend/src/pages/AdminSeatsPage.tsx
+- frontend/src/pages/AdminTablesPage.tsx
+- frontend/src/pages/SeatCheckinPage.tsx
+- frontend/src/pages/TableCheckinPage.tsx
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已运行 `npm run test -- WifiPresenceGuard.test.tsx`，2 个专项测试通过。
+- 已运行 `npm run test`，9 个测试文件、75 个测试通过；jsdom 仍提示不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+- 已运行 `git diff --check`，未发现空白格式错误；仅有 Windows 换行提示。
+
+### 遗留问题
+- 控制台中单独的 `404` 仍需看 Network 里具体 URL；如果是 `favicon.ico` 可忽略，如果是 `/api/...` 需要按具体路径继续排查。
+
+### 对其他成员的影响
+- 不修改后端权限、签到接口、预约状态机或数据库结构。
+- 管理员页面不再由全局 WiFi 心跳触发学生预约接口；学生已签到预约的 WiFi 心跳逻辑保留。
+
+## 2026-06-12
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-light-tech-login-showcase
 - 目标: 优化学生选座页手机端适配，将预约确认、已选座位和当前预约收纳到可展开面板，减少移动端长页面上下滚动。
 
 ### 本次改动
