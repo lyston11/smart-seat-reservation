@@ -7,6 +7,11 @@ const DEFAULT_AUTH_EXPIRED_MESSAGE = '登录状态已过期，请重新登录';
 const DEFAULT_REQUEST_ERROR_MESSAGE = '请求失败';
 const DEFAULT_RESPONSE_FORMAT_ERROR_MESSAGE = '响应格式异常';
 const AUTH_EXPIRED_CODES = new Set(['AUTH_INVALID', 'AUTH_REQUIRED', 'AUTH_USER_NOT_FOUND']);
+const BUSINESS_ERROR_MESSAGES: Record<string, string> = {
+  RESERVATION_CHECKIN_TIME_NOT_ALLOWED: '当前不在签到时间窗内，请在预约开始前后规定时间内签到',
+  CHECKIN_WIFI_IP_NOT_ALLOWED: '当前网络不在允许的校园网范围内，请连接指定校园网后再签到',
+  RESERVATION_CHECKIN_FAILED: '签到失败，请确认预约状态和签到码是否正确',
+};
 export const AUTH_EXPIRED_EVENT = 'smart-seat-auth-expired';
 
 export function getAuthToken() {
@@ -94,6 +99,10 @@ function getErrorMessage(response: Response, body: ApiResponse<unknown> | null) 
     return body?.message || DEFAULT_AUTH_EXPIRED_MESSAGE;
   }
   if (body) {
+    const businessMessage = BUSINESS_ERROR_MESSAGES[body.code];
+    if (businessMessage) {
+      return businessMessage;
+    }
     return body.message || DEFAULT_REQUEST_ERROR_MESSAGE;
   }
   if (response.ok) {

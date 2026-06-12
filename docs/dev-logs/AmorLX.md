@@ -5,6 +5,38 @@
 ### 任务
 - Issue: 暂无
 - 分支: feature/AmorLX-light-tech-login-showcase
+- 目标: 将签到时间窗等后端英文业务错误改为中文提示，避免学生点击“开发测试签到”后看到英文报错。
+
+### 本次改动
+- 前端 API 请求层新增已知业务错误码中文映射。
+- `RESERVATION_CHECKIN_TIME_NOT_ALLOWED` 显示为“当前不在签到时间窗内，请在预约开始前后规定时间内签到”。
+- 同步补充 `CHECKIN_WIFI_IP_NOT_ALLOWED` 和 `RESERVATION_CHECKIN_FAILED` 的中文提示兜底。
+- `http.test.ts` 增加回归测试，覆盖后端返回英文签到时间窗错误时前端展示中文消息。
+
+### 涉及文件
+- frontend/src/api/http.ts
+- frontend/src/api/http.test.ts
+- docs/dev-logs/AmorLX.md
+
+### 验证方式
+- 已先运行 `npm run test -- http.test.ts -t "translates known backend business error codes"`，确认旧实现仍透传英文错误。
+- 已运行 `npm run test -- http.test.ts -t "translates known backend business error codes"`，相关测试通过。
+- 已运行 `npm run test`，8 个测试文件、73 个测试通过；jsdom 仍提示不支持 pseudo-element `getComputedStyle` 和 QRCode canvas，不影响通过结果。
+- 已运行 `npm run lint`，前端 lint 通过。
+- 已运行 `npm run build`，前端生产构建通过。
+
+### 遗留问题
+- 本次只做前端错误提示中文化，不修改签到时间窗、校园网 IP 校验、预约状态机或后端错误码。
+
+### 对其他成员的影响
+- 所有前端入口通过统一 API 请求层收到这些错误码时都会显示中文提示。
+- 后端仍可继续返回原有错误码和英文 message，前端按 code 做展示层翻译。
+
+## 2026-06-12
+
+### 任务
+- Issue: 暂无
+- 分支: feature/AmorLX-light-tech-login-showcase
 - 目标: 修复学生预约界面时间下拉被下方区域覆盖的问题，并压缩“当前预约”窗口的信息密度，使右侧操作区更协调。
 
 ### 本次改动
